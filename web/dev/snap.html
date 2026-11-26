@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harness views</title>
+  <style>
+    :root { color-scheme: dark; --bg: #131e2a; --fg: #e8e2d0; --muted: #9aa6b2; --line: #2b3a4a; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+    header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+    select, button { font: inherit; background: #1c2a38; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+    main { display: flex; gap: 16px; padding: 16px; align-items: flex-start; flex-wrap: wrap; }
+    iframe { border: 1px solid var(--line); background: #000; flex: none; }
+    pre { margin: 0; flex: 1 1 320px; min-width: 0; max-height: 800px; overflow: auto; white-space: pre-wrap; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <!-- A run by hand of the harness views (docs/HARNESS.md): pick an edition and a view; the app loads in the frame
+       at the view's window size, its steps run, and what snap.js reads is shown beside it. -->
+  <header>
+    <select id="edition"><option value="ca">Canada</option><option value="us">United States</option></select>
+    <button id="list">List views</button>
+    <select id="view" disabled></select>
+    <button id="run" disabled>Run</button>
+    <span id="status"></span>
+  </header>
+  <main><iframe id="frame" width="1280" height="800" title="The app"></iframe><pre id="out"></pre></main>
+  <script src="snap.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const SIZES = { desktop: [1280, 800], phone: [390, 844] };
+    let views = [];
+    const app = (hash = "") => `../index.html?country=${$("edition").value}${hash}`;
+    function load(url, [w, h]) {
+      const f = $("frame");
+      f.width = w; f.height = h;
+      return new Promise((resolve) => { f.onload = () => { __snap.instrument(f.contentWindow); resolve(f.contentWindow); }; f.src = url; });
+    }
+    $("list").onclick = async () => {
+      $("status").textContent = "loading…";
+      const win = await load(app(), SIZES.desktop);
+      views = await __snap.views(win);
+      $("view").innerHTML = views.map((v, k) => `<option value="${k}">${v.id}${v.note ? ` · ${v.note}` : ""}</option>`).join("");
+      $("view").disabled = $("run").disabled = false;
+      $("status").textContent = `${views.length} views`;
+    };
+    $("run").onclick = async () => {
+      const v = views[$("view").value];
+      $("status").textContent = `running ${v.id}…`;
+      const win = await load(app(v.hash), SIZES[v.viewport]);
+      try {
+        await __snap.apply(win, v);
+        await __snap.idle(win);
+        const c = __snap.capture(win);
+        $("out").textContent = `${c.title}\n${c.hash}\n\n${c.text}`;
+        $("status").textContent = v.id;
+      } catch (err) {
+        $("status").textContent = `${v.id} failed: ${err.message}`;
+      }
+    };
+  </script>
+</body>
+</html>
