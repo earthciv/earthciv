@@ -5,7 +5,7 @@
 export const CONFIG = {
   title: "The United States",
   subtitle: "as a strategy game — built from real public data",
-  url: "usaciv-canada.pages.dev", // shown big on the end card ("" shows the cta line instead)
+  url: "earthciv.org", // shown big on the end card ("" shows the cta line instead)
   cta: "Open source · link below", // shown on the end card instead while url is empty ("" hides the line)
 };
 

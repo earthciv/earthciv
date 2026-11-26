@@ -103,7 +103,7 @@ uv run python -m pipeline package      # → usaciv.zip: one file to upload
 ```
 
 `usaciv.zip` unzips to a `usaciv/` folder: `web/` without the dev pages, plus `usaciv-source.zip`: this whole project, minus downloads and
-caches, which the in-app help links to. If you publish your own copy, change the address `karpathy.ai/usaciv` in
+caches, which the in-app help links to. If you publish your own copy, change the address `earthciv.org` in
 `web/index.html` (the social-card tags), in `SITE_URL` in `web/js/app/share.js` (printed on share images) and in
 `web/dev/trailer/storyboard.js`.
 

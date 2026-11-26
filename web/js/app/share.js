@@ -5,7 +5,7 @@ import { DEFAULT_COUNTRY, canada, country, regionName } from "./country.js";
 
 // The address printed on shared images. Set it to the published site (e.g. "example.com/us-atlas"); when left
 // empty, the page's own host and path are used, except on a local dev server, where SITE_FALLBACK is printed.
-export const SITE_URL = "usaciv-canada.pages.dev";
+export const SITE_URL = "earthciv.org";
 const SITE_FALLBACK = "usaciv";
 
 export function siteLabel() {
