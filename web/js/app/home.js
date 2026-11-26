@@ -7,22 +7,18 @@
 // an edition's state, so an old shared link such as /#city=35620&lens=income still opens the default edition. A
 // ?country= that is not a built-in edition (?country=fr) opens the world map with that country picked.
 
+import { EDITIONS } from "./edition-index.js";
+
 const html = typeof document !== "undefined" ? document.documentElement : null;
 export const WORLD_HOME = html?.dataset?.home === "world";
 
 // Hash keys the world view owns (ext/ports): the open map ("all" or a map's id) and the picked country.
 export const WORLD_HASH_KEYS = ["ports", "country"];
 
-// The built-in editions, as index.html lists them in the country picker.
-function builtInEditions() {
-  if (typeof document === "undefined") return [];
-  return [...document.querySelectorAll("#country-picker option")].map((o) => o.value).filter((v) => /^[a-z]{2,}$/.test(v));
-}
-
 function decide() {
   if (!WORLD_HOME || typeof location === "undefined") return { world: false, pick: null };
   const requested = new URLSearchParams(location.search).get("country");
-  if (requested && builtInEditions().includes(requested)) return { world: false, pick: null };
+  if (requested && EDITIONS.some((edition) => edition.id === requested)) return { world: false, pick: null };
   const keys = [...new URLSearchParams(location.hash.replace(/^#/, "")).keys()];
   if (keys.some((k) => !WORLD_HASH_KEYS.includes(k))) return { world: false, pick: null };
   const pick = requested && /^[a-z]{2}$/i.test(requested) ? requested.toUpperCase() : null;

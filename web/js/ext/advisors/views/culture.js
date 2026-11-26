@@ -6,7 +6,18 @@ import { int, pct, money, count3 } from "../core/fmt.js";
 import { barList, shareBar, histogram } from "../core/charts.js";
 import { createTable } from "../core/table.js";
 import { section, tiles, segmented, mapPicker, sourcesHtml } from "../core/view.js";
-import { canada } from "../../../app/country.js";
+import { TERMS, defaults, rich, richText, textList, txt } from "../../../app/text.js";
+
+defaults({
+  "advisor.culture.park_visits_sub": "all national parks, {year}",
+  "advisor.culture.faith_tile_label": "Faith ≈",
+  "advisor.culture.faith_tile_sub": "residents",
+  "advisor.culture.wonders_note": "Hover a wonder to find it on the map; click to fly there.",
+  "advisor.culture.faith_kicker": "",
+  "advisor.culture.faith_regions": "Regions by residents reporting a religion, per 100 ≈",
+  "advisor.culture.faith_note": "Region figures are population-weighted means of division shares (≈).",
+  "advisor.culture.disasters_kicker": "",
+});
 import { rowsHighlight } from "../core/data.js";
 import { frameBox, focusPoint } from "../core/frame.js";
 
@@ -39,18 +50,17 @@ export async function mount(ctx) {
   const tileEl = mk("div");
   el.appendChild(tileEl);
   const drawTiles = (dis) => {
-    tileEl.innerHTML = canada ? tiles([
-      { label: "Wonders", value: int(wonders.length), sub: (() => { const byRule = (...ids) => wonders.filter((w) => ids.includes(w.rule)).length; return `${byRule("national_park", "park_unit")} park units · ${byRule("research_university")} universities · ${byRule("landmark")} landmarks`; })() },
-      { label: "Park visits", value: count3(won?.national?.park_visits), sub: `all national parks and reserves, FY ${won?.national?.park_visits_year || ""}` },
-      dis?.cdd?.national
-        ? { label: "Disasters", value: int(dis.cdd.national.events), sub: `${dis.cdd.years?.join("–") || ""} · ${money(dis.cdd.national.cost_cad)}` }
-        : { label: "Report a religion ≈", value: fin(adherents) ? `${adherents.toFixed(0)} / 100` : "–", sub: "residents, 2021 Census" },
-    ]) : tiles([
-      { label: "Wonders", value: int(wonders.length), sub: (() => { const byRule = (...ids) => wonders.filter((w) => ids.includes(w.rule)).length; return `${byRule("national_park", "park_unit")} park units · ${byRule("research_university")} universities · ${byRule("landmark")} landmarks`; })() },
-      { label: "Park visits", value: count3(won?.national?.park_visits), sub: `all NPS units, ${won?.national?.park_visits_year || ""}` },
-      dis?.noaa?.national
+    // The third tile: the disaster records once they arrive (Canada's event database, or the U.S. billion-dollar events),
+    // else faith.
+    const third = dis?.cdd?.national
+      ? { label: "Disasters", value: int(dis.cdd.national.events), sub: `${dis.cdd.years?.join("–") || ""} · ${money(dis.cdd.national.cost_cad)}` }
+      : dis?.noaa?.national
         ? { label: "$1B+ disasters", value: int(dis.noaa.national.events), sub: `${dis.noaa.years?.join("–") || ""} · ${money(dis.noaa.national.cost_usd)}` }
-        : { label: "Adherents ≈", value: fin(adherents) ? `${adherents.toFixed(0)} / 100` : "–", sub: "residents, 2020 congregations" },
+        : { label: txt("advisor.culture.faith_tile_label"), value: fin(adherents) ? `${adherents.toFixed(0)} / 100` : "–", sub: txt("advisor.culture.faith_tile_sub") };
+    tileEl.innerHTML = tiles([
+      { label: "Wonders", value: int(wonders.length), sub: (() => { const byRule = (...ids) => wonders.filter((w) => ids.includes(w.rule)).length; return `${byRule("national_park", "park_unit")} park units · ${byRule("research_university")} universities · ${byRule("landmark")} landmarks`; })() },
+      { label: "Park visits", value: count3(won?.national?.park_visits), sub: txt("advisor.culture.park_visits_sub", { year: won?.national?.park_visits_year || "" }) },
+      third,
     ]);
   };
   drawTiles(null);
@@ -78,7 +88,7 @@ export async function mount(ctx) {
     onClick: (b) => flyTo(b.it),
   });
   if (won && wonders.length) {
-    const wBody = section(el, { title: "Wonders", kicker: "Each chosen by a published rule", note: canada ? `Hover a wonder to find it on the map; click to fly there. Parks, other park units and landmarks (national historic sites) are ranked by Parks Canada's fiscal ${esc(won.national?.park_visits_year || "")} attendance, universities by doctoral students.` : "Hover a wonder to find it on the map; click to fly there. Parks are ranked by recreation visits, universities by research spending; landmarks are a hand-picked list." });
+    const wBody = section(el, { title: "Wonders", kicker: "Each chosen by a published rule", note: rich("advisor.culture.wonders_note", { year: won.national?.park_visits_year || "" }) });
     let kind = "all";
     segmented(wBody, {
       label: "Kind", value: kind,
@@ -127,7 +137,7 @@ export async function mount(ctx) {
   // --- faith ----------------------------------------------------------------------------------------------------
   let faithStates = null;
   if (counties && lensTrad) {
-    const fBody = section(el, { title: "Faith", kicker: canada ? "2021 Census" : "2020 U.S. Religion Census" });
+    const fBody = section(el, { title: "Faith", kicker: txt("advisor.culture.faith_kicker") });
     if (lensTrad.note || lensFaith?.note) fBody.insertAdjacentHTML("beforeend", `<p class="adv-callout adv-caveat">${esc(lensTrad.note || lensFaith?.note || "")}</p>`);
     const cats = lensTrad.categories || [];
     const catByName = new Map(cats.map((c) => [c.name, c]));
@@ -136,7 +146,7 @@ export async function mount(ctx) {
       const c = catByName.get(r.v.faith_tradition);
       if (c && fin(r.v.population)) popBy.set(c.id, (popBy.get(c.id) || 0) + r.v.population);
     }
-    fBody.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">Residents of ${canada ? "census divisions" : "counties"} where each tradition is the largest</h4>`);
+    fBody.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">Residents of ${esc(TERMS.division.many)} where each tradition is the largest</h4>`);
     const tradRows = (id) => counties.rows.filter((r) => catByName.get(r.v.faith_tradition)?.id === id);
     shareBar(fBody, {
       parts: cats.map((c) => ({ key: c.id, label: c.name, value: popBy.get(c.id) || 0, color: c.color, text: `${count3(popBy.get(c.id) || 0)} people` })),
@@ -147,7 +157,7 @@ export async function mount(ctx) {
     let order = "most";
     const sRow = mk("div", "adv-row");
     fBody.appendChild(sRow);
-    sRow.insertAdjacentHTML("beforeend", `<span class="adv-note" style="margin:0">${canada ? "Provinces by residents reporting a religion, per 100 ≈" : "States by adherents per 100 residents ≈"}</span>`);
+    sRow.insertAdjacentHTML("beforeend", `<span class="adv-note" style="margin:0">${esc(txt("advisor.culture.faith_regions"))}</span>`);
     segmented(sRow, { label: "Order", value: order, options: [{ value: "most", label: "Most" }, { value: "fewest", label: "Fewest" }], onChange: (v) => { order = v; drawFaith(); } });
     const sHost = mk("div");
     fBody.appendChild(sHost);
@@ -156,16 +166,14 @@ export async function mount(ctx) {
       sHost.innerHTML = "";
       const list = stLevel.rows.filter((r) => fin(r.v.faith)).sort((a, b) => (order === "most" ? b.v.faith - a.v.faith : a.v.faith - b.v.faith)).slice(0, 10);
       faithStates = barList(sHost, {
-        rank: true, compact: true, max: 100, ariaLabel: canada ? "Provinces by residents reporting a religion, per 100" : "States by adherents per 100 residents",
+        rank: true, compact: true, max: 100, ariaLabel: txt("advisor.culture.faith_regions").replace(/ ≈$/, ""),
         rows: list.map((r) => ({ key: r.key, label: r.name, value: Math.min(100, r.v.faith), text: r.v.faith.toFixed(0), color: fColor(r.v.faith) })),
         onHover: (x) => link.hover(x ? rowsHighlight(stLevel, [stLevel.byKey.get(x.key)], { dim: true }) : null),
         onClick: (x) => { picker.set("faith"); stLevel.focus(stLevel.byKey.get(x.key)); },
       });
     }
     drawFaith();
-    fBody.insertAdjacentHTML("beforeend", canada
-      ? `<p class="adv-note">Province figures are population-weighted means of census division shares (≈). Religion is self-identified in the census.</p>`
-      : `<p class="adv-note">State figures are population-weighted means of county rates (≈). Adherents are counted where congregations meet, so a county can pass 100.</p>`);
+    fBody.insertAdjacentHTML("beforeend", `<p class="adv-note">${rich("advisor.culture.faith_note")}</p>`);
   }
 
   // --- amenities ------------------------------------------------------------------------------------------------
@@ -198,30 +206,17 @@ export async function mount(ctx) {
   }
 
   // --- disasters (lazy) -----------------------------------------------------------------------------------------
-  const dSec = section(el, { title: "Disasters", kicker: canada ? "Canadian Disaster Database" : "FEMA declarations · NOAA billion-dollar events" });
+  const dSec = section(el, { title: "Disasters", kicker: txt("advisor.culture.disasters_kicker") });
   if (dSec) dSec.innerHTML = `<p class="adv-loading">Reading the disaster records…</p>`;
   const srcEl = mk("div");
   el.appendChild(srcEl);
   const drawSources = (dis) => {
-    if (canada) {
-      srcEl.innerHTML = sourcesHtml(data, [...(won?.sources || []), "statcan_census_divisions", ...(dis?.sources || ["ps_cdd", "statcan_cpi"])], [
-        "Faith is self-identified religion in the 2021 Census, not congregation membership; Catholic and other Christian groups are counted apart.",
-        `Park visits are Parks Canada's fiscal ${esc(won?.national?.park_visits_year || "")} attendance; Mount Revelstoke and Glacier are reported together and count as one wonder.`,
-        "Universities rank by doctoral students, as Statistics Canada publishes no research spending by institution. Campus points come from Statistics Canada's Open Database of Educational Facilities; UBC, which it does not list, and Memorial, which it lists without coordinates, from Wikidata.",
-        "Historic sites and canals stand at their official place-name points (Canadian Geographical Names Database); the Klondike sites at Dawson's Historical Complex.",
-        `Disasters: ${esc(dis?.cdd?.rule || "the Canadian Disaster Database's natural disasters.")} The database ends with events of ${esc(dis?.cdd?.last_event?.slice(0, 4) || "2022")}, the latest it publishes.`,
-        "There is no census-division disaster count (the database locates events by province, not county), so the U.S. disasters lens and county table are left out, and so is the wellbeing index, which has no Canadian counterpart.",
-      ]);
-      return;
-    }
-    srcEl.innerHTML = sourcesHtml(data, [...(won?.sources || []), "usrc_2020", "cdc_places", ...(dis?.sources || ["fema_declarations", "noaa_billions"])], [
-      `Faith: ${esc(lensFaith?.note || "counts adherents of congregations where they worship, not residents' beliefs.")}`,
-      `Amenities: ${esc(lensAmen?.note || "model-based estimates, not a happiness survey.")}`,
-      "A FEMA declaration is an administrative act that unlocks federal aid, not a measure of damage; Connecticut's planning regions count a disaster declared for any old county they overlap, which can overstate them.",
-      "NOAA billion-dollar events span several states: a state's cost is its share of the events that touched it, and state figures must not be added up.",
-      "Park visits are counted differently by unit type, so parks are ranked only within their own rule. Landmarks are an editorial choice.",
-      "University R&D includes medical schools; a few universities report together with their medical centre.",
-    ]);
+    // Sources: the wonders' and disasters' own (from their files; the edition's list until the disasters arrive), and
+    // the edition's caveats.
+    const vars = { park_year: won?.national?.park_visits_year || "", rule: dis?.cdd?.rule || "", last_year: dis?.cdd?.last_event?.slice(0, 4) || "",
+      faith_note: lensFaith?.note || "", amen_note: lensAmen?.note || "" };
+    srcEl.innerHTML = sourcesHtml(data, [...(won?.sources || []), ...textList("advisor.culture.sources"), ...(dis?.sources || textList("advisor.culture.disaster_sources"))],
+      textList("advisor.culture.caveats").map((c) => richText(c, vars)));
   };
   drawSources(null);
   let dState = null, dCounty = null;
@@ -300,7 +295,8 @@ export async function mount(ctx) {
   }
 
   function drawDisasters(D) {
-    if (canada) return drawCanadianDisasters(D.cdd || {});
+    // One national event database by region (Canada's CDD block) or FEMA declarations and NOAA events (the U.S.).
+    if (D.cdd) return drawCanadianDisasters(D.cdd);
     dSec.innerHTML = "";
     const fema = D.fema || {}, noaa = D.noaa || {};
     dSec.insertAdjacentHTML("beforeend", `<p class="adv-callout adv-caveat">A declaration is an administrative act that unlocks federal aid, not a measure of damage.</p><p class="adv-note">${esc(fema.rule || "")}</p>`);

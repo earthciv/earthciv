@@ -244,7 +244,11 @@ def districts_doc(places, dguid_of, grid, water, rivers):
         "rule": {"min_lq": MIN_LQ, "min_jobs": MIN_JOBS, "min_share": MIN_SHARE, "specialty_lq": SPECIALTY_LQ,
                  "specialty_jobs": SPECIALTY_JOBS, "specialty_share": SPECIALTY_SHARE, "max_per_city": MAX_PER_CITY,
                  "harbor_needs_water": True, "badge_lq": BADGE_LQ, "badge_share": BADGE_SHARE, "text": RULE_TEXT,
-                 "county_note": "Census divisions get no districts in the Canadian edition."},
+                 "county_note": "Census divisions get no districts in the Canadian edition.",
+                 # The Encampment is the census's Defence services (catalog), so the City View adds none from military.json.
+                 "military_encampments": False,
+                 # What `emp` counts: employed residents, where they live (the U.S. file counts jobs at the employer).
+                 "counts": "workers"},
         "catalog": CATALOG,
         "industries": {c: {"title": titles[c], "national_emp": nat.get(c)} for c in CODES},
         "national": {"emp": int(nat["all"]), "avg_pay": None},

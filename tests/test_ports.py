@@ -129,8 +129,8 @@ class WorldHomeTest(unittest.TestCase):
 
     def test_edition_links_always_name_their_edition(self):
         main = self.read("js", "main.js")
-        self.assertIn("pinEditionInUrl(country)", main)
-        self.assertIn("editionUrl(picker.value, DEFAULT_COUNTRY)", main)
+        self.assertIn("pinEditionInUrl(EDITION_ID)", main)
+        self.assertIn("editionUrl(picker.value, DEFAULT_EDITION)", main)
 
 
 if __name__ == "__main__":

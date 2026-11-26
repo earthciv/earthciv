@@ -6,7 +6,9 @@
 // Each advisor is a module in views/ exporting mount(ctx) → {onMapHover?, onMapClick?, onEscape?, destroy?}.
 // ctx = {app, data, el, link, params, on(name, fn), bubbles(id, opts), tip, setResourceFilter, setShowResources,
 //        switchTo(id, params)} — everything registered through ctx is undone when the view goes away.
-import { canada } from "../../app/country.js";
+import { hasText, rich, txt, defaults } from "../../app/text.js";
+
+defaults({ "advisor.council.note": "All figures are public data. Each dashboard lists its sources and caveats at the bottom." });
 import { buildData } from "./core/data.js";
 import { createLinker, createBubbles, createMapTip } from "./core/link.js";
 import { emblem } from "./core/emblems.js";
@@ -26,19 +28,9 @@ export const ADVISORS = [
   { id: "culture", name: "Culture", role: "Keeper of Wonders", color: "#c25b9a", dark: "#2e0c22", blurb: "Wonders of the land, faith and wellbeing, and the disasters places endure.", load: () => import("./views/culture.js") },
   { id: "explorer", name: "Explorer", role: "Cartographer", color: "#9a7bc9", dark: "#1e1236", blurb: "Slice and dice every number: any level, any columns, any chart.", load: () => import("./views/explorer.js") },
 ];
-// The Canadian edition's blurbs only promise what its data has (no broadband or wellbeing figures, no defence spending
-// by province; freight routes between provinces), and its General has its own view (bases from the federal property
-// directory, serving members and veterans from the 2021 Census).
-const CANADA_BLURB = {
-  military: "Bases and ranges, and where serving members and veterans live.",
-  commerce: "The great freight routes between provinces, and the busiest ports and airports.",
-  knowledge: "Degrees, incomes and the science workforce.",
-  culture: "Wonders of the land, faith, and the disasters places endure.",
-};
-const availableAdvisors = canada
-  ? ADVISORS.map((a) => ({ ...a, ...(CANADA_BLURB[a.id] ? { blurb: CANADA_BLURB[a.id] } : {}),
-    ...(a.id === "military" ? { load: () => import("./views/military_ca.js") } : {}) }))
-  : ADVISORS;
+// An edition's text pack can reword a blurb so it only promises what its data has ("advisor.<id>.blurb"; Canada: no
+// broadband or wellbeing figures, no defence spending by province, freight routes between provinces).
+const availableAdvisors = ADVISORS.map((a) => (hasText(`advisor.${a.id}.blurb`) ? { ...a, blurb: txt(`advisor.${a.id}.blurb`) } : a));
 const byId = new Map(availableAdvisors.map((a) => [a.id, a]));
 // The council picker groups its advisors (any advisor not listed here is added to the last group).
 const COUNCIL = (() => {
@@ -65,6 +57,11 @@ function injectCss() {
 }
 
 export function install(app) {
+  // The General's view follows military.json: personnel by duty state and spending (the U.S. files), or bases with
+  // census counts of serving members and veterans (Canada's).
+  const mil = byId.get("military");
+  if (mil) mil.load = async () => ((await app.loadData("military").catch(() => null))?.national?.personnel
+    ? import("./views/military.js") : import("./views/military_census.js"));
   injectCss();
   let data = null, dataP = null;
   let dock = null;
@@ -262,7 +259,7 @@ export function install(app) {
       <p>Each advisor opens a dashboard on one part of the real economy. Hover anything to see it on the map; hover the map to find it in the charts; click to drill in.</p></div></div>
       ${COUNCIL.filter((g) => g.ids.some((id) => byId.has(id))).map((g) => `<h4 class="adv-council-h">${esc(g.label)}</h4><div class="adv-council">${g.ids.map((id) => byId.get(id)).filter(Boolean).map((a) => `<button type="button" class="adv-card" data-adv="${a.id}" style="--adv:${a.color}">
         ${emblem(a, 48)}<span class="t"><span class="r">${esc(a.role)}</span><b>${esc(a.name)}</b><span class="d">${esc(a.blurb)}</span></span></button>`).join("")}</div>`).join("")}
-      <p class="adv-note pad">${canada ? "All figures are public data: Statistics Canada's 2021 Census, July 1 population estimates, Labour Force Survey, GDP by industry, freight flows, airport traffic, university enrolments and boundary files, Transport Canada's port tonnage, Public Safety Canada's disaster database, the Treasury Board's federal property directory, Natural Resources Canada's land cover, resource sites and place names, the World Resources Institute's power plants (as listed in 2016–17) and Parks Canada's attendance. Each dashboard lists its sources and caveats at the bottom." : "All figures are public data: Census ACS and population estimates, BEA GDP, BLS QCEW, EIA and MSHA site lists, USGS land cover, DoD installation and spending files, FHWA freight flows, USACE and FAA traffic, NPS visits, NSF research spending, the U.S. Religion Census, CDC PLACES, FEMA and NOAA. Each dashboard lists its sources and caveats at the bottom."}</p>`;
+      <p class="adv-note pad">${rich("advisor.council.note")}</p>`;
   }
 
   // --- map → dashboard --------------------------------------------------------------------------------------------

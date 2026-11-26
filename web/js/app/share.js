@@ -1,25 +1,27 @@
 // Share popover: copy a link to the current view, or download a 1600×900 PNG of it with a caption strip.
 import { drawIcon, hasIcon } from "../icons.js";
 import { icon } from "../ui/icon.js";
-import { DEFAULT_COUNTRY, canada, country, regionName } from "./country.js";
+import { DEFAULT_EDITION, EDITION_ID, edition } from "./edition.js";
 import { WORLD_HOME } from "./home.js";
+import { TERMS, VIEW, defaults, txt } from "./text.js";
 
-// The address printed on shared images. Set it to the published site (e.g. "example.com/us-atlas"); when left
-// empty, the page's own host and path are used, except on a local dev server, where SITE_FALLBACK is printed.
-export const SITE_URL = "usaciv-canada.pages.dev";
-const SITE_FALLBACK = "usaciv";
+import { SITE_URL } from "./project.js";
+
+// The address printed on shared images comes from app/project.js; when it is empty, the page's own host and path are
+// used, except on a local dev server, where the edition's local label is printed.
+export { SITE_URL };
+defaults({ "share.local_label": "{name} edition", "share.credit": "Data: public sources" });
 
 export function siteLabel() {
-  // Where the bare address is the world map (app/home.js), the default edition is at ?country= too.
-  if (SITE_URL) return country === DEFAULT_COUNTRY && !WORLD_HOME ? SITE_URL : `${SITE_URL}/?country=${country}`;
+  if (SITE_URL) return EDITION_ID === DEFAULT_EDITION && !WORLD_HOME ? SITE_URL : `${SITE_URL}/?country=${EDITION_ID}`;
   try {
     const { hostname, host, pathname } = location;
     const local = !hostname || /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(hostname) || /\.(localhost|test|local)$/.test(hostname);
-    if (local || !/^https?:$/.test(location.protocol)) return canada ? "Canada edition" : SITE_FALLBACK;
+    if (local || !/^https?:$/.test(location.protocol)) return txt("share.local_label", { name: edition.name });
     const path = pathname.replace(/\/index\.html?$/, "/").replace(/\/$/, "");
     return (host.replace(/^www\./, "") + path).slice(0, 60);
   } catch {
-    return canada ? "Canada edition" : SITE_FALLBACK;
+    return txt("share.local_label", { name: edition.name });
   }
 }
 
@@ -28,7 +30,6 @@ export const IMG_H = 900;
 export const CAPTION_H = 118;
 const SERIF = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
 const SANS = '-apple-system, "Segoe UI", system-ui, sans-serif';
-const CREDIT = "Data: Census ACS, BEA, NOAA, USGS/MRLC, EIA, Natural Earth";
 
 async function copyText(text) {
   try {
@@ -110,12 +111,13 @@ export function composeImage(info, { height = IMG_H } = {}) {
   ctx.fill();
   ctx.beginPath();
   ctx.arc(ex, cy, 24.5, 0, Math.PI * 2);
-  ctx.fillStyle = canada ? "#9f302e" : "#2a4d8f";
+  ctx.fillStyle = VIEW.emblem_color || "#2a4d8f";
   ctx.fill();
-  if (canada) {
+  // The emblem: the U.S. star is drawn as a shape; any other edition's emblem is its emoji.
+  if (edition.emblem && edition.emblem !== "★") {
     ctx.font = `25px ${SANS}`;
     ctx.textAlign = "center";
-    ctx.fillText("🍁", ex, cy + 9);
+    ctx.fillText(edition.emblem, ex, cy + 9);
     ctx.textAlign = "left";
   } else star(ctx, ex, cy + 1, 14, 6, "#f8f0d8");
 
@@ -123,7 +125,7 @@ export function composeImage(info, { height = IMG_H } = {}) {
   ctx.fillStyle = "#ecd08e";
   ctx.font = `bold 36px ${SERIF}`;
   spaced(ctx, 5);
-  ctx.fillText((info.countryName || (canada ? "Canada" : "United States")).toUpperCase(), 112, cy + 2);
+  ctx.fillText((info.countryName || edition.name).toUpperCase(), 112, cy + 2);
   spaced(ctx, 0);
   ctx.fillStyle = "#b9ab88";
   ctx.font = `italic 17px ${SERIF}`;
@@ -169,7 +171,7 @@ export function composeImage(info, { height = IMG_H } = {}) {
     ctx.font = `13px ${SANS}`;
     ctx.fillStyle = "#b9ab88";
     spaced(ctx, 2);
-    ctx.fillText(sel.kind === "state" ? regionName.toUpperCase() : "CITY", rx, cy - 30);
+    ctx.fillText(sel.kind === "state" ? TERMS.region.one.toUpperCase() : "CITY", rx, cy - 30);
     spaced(ctx, 0);
     ctx.font = `bold 24px ${SERIF}`;
     ctx.fillStyle = "#f3e6c4";
@@ -177,7 +179,7 @@ export function composeImage(info, { height = IMG_H } = {}) {
   }
   ctx.font = `14px ${SANS}`;
   ctx.fillStyle = "#b9ab88";
-  ctx.fillText(canada ? "Data: StatCan, NRCan, Parks Canada, NOAA, WRI, Natural Earth" : CREDIT, rx, cy + 20);
+  ctx.fillText(txt("share.credit"), rx, cy + 20);
   ctx.font = `bold 17px ${SERIF}`;
   ctx.fillStyle = "#c9a45c";
   spaced(ctx, 1);

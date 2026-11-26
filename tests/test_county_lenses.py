@@ -142,9 +142,9 @@ class ContractTest(unittest.TestCase):
     """The faith, wellbeing, disaster and veteran lenses in the built file (skipped when web/data has not been built with them)."""
 
     def test_built_lenses(self):
-        path = Path(__file__).resolve().parents[1] / "web" / "data" / "lenses.json"
+        path = Path(__file__).resolve().parents[1] / "web" / "data" / "us" / "lenses.json"
         if not path.exists():
-            self.skipTest("web/data/lenses.json not built")
+            self.skipTest("web/data/us/lenses.json not built")
         by_id = {l["id"]: l for l in json.loads(path.read_text())["lenses"]}
         if "faith" not in by_id:
             self.skipTest("faith/wellbeing/disaster/veteran lenses not built yet")

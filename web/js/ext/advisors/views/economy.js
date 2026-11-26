@@ -4,11 +4,18 @@ import { money, dollars, pct, int, signedPct, count3, fmtShort } from "../core/f
 import { barList, rampLegend, sizeLegend } from "../core/charts.js";
 import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
-import { section, tiles, segmented, selectBox, sourcesHtml, frameBtn } from "../core/view.js";
+import { section, tiles, segmented, selectBox, editionSources, frameBtn } from "../core/view.js";
 import { rowsHighlight } from "../core/data.js";
 import { icon } from "../../../ui/icon.js";
 import { hasIcon } from "../../../icons.js";
-import { canada, countryName } from "../../../app/country.js";
+import { edition } from "../../../app/edition.js";
+import { LABEL_YEARS, NATION, defaults, rich, txt } from "../../../app/text.js";
+
+defaults({
+  "advisor.economy.gdp_kicker": "{name}",
+  "advisor.economy.gdp_note": "Value added by each industry, where the work is done. Hover an industry to light up the regions where it is the biggest share of the economy; click it to rank the metros that specialise in it.",
+  "advisor.economy.workers_note": "Employed residents by industry, where they live. Hover an industry to light up the regions where it is the biggest share of jobs; click it to rank the metros that specialise in it.",
+});
 
 export const METRO_MIN = 250000;
 const short = (s) => String(s || "").replace(/\s*\(.*\)\s*$/, "");
@@ -30,20 +37,18 @@ export function mount(ctx) {
   const topInd = Object.entries(gdpInd).filter(([, v]) => fin(v)).sort((a, b) => b[1] - a[1])[0];
   const topJob = Object.entries(n.jobs || {}).filter(([, v]) => fin(v)).sort((a, b) => b[1] - a[1])[0];
   el.insertAdjacentHTML("beforeend", tiles([
-    { label: `GDP ${n.gdp_year || ""}`, value: money(n.gdp), sub: canada ? "current Canadian dollars" : "current dollars" },
+    { label: `GDP ${n.gdp_year || ""}`, value: money(n.gdp), sub: `current ${edition.currency?.words || "dollars"}` },
     { label: "Per person", value: money(ratio(n.gdp, n.gdp_population ?? n.population)), sub: "GDP ÷ residents" },
     byGdp || !topJob
-      ? { label: "Top industry", value: topInd ? short(nation.gdp_industries?.[topInd[0]] || topInd[0]) : "–", sub: topInd ? `${pct(topInd[1] / gdpBase)} of GDP${canada && n.gdp_industry_year ? ` (${n.gdp_industry_year})` : ""}` : "" }
+      ? { label: "Top industry", value: topInd ? short(nation.gdp_industries?.[topInd[0]] || topInd[0]) : "–", sub: topInd ? `${pct(topInd[1] / gdpBase)} of GDP${LABEL_YEARS && n.gdp_industry_year ? ` (${n.gdp_industry_year})` : ""}` : "" }
       : { label: "Top industry", value: short(nation.industries?.[topJob[0]] || topJob[0]), sub: `${pct(topJob[1] / n.employed)} of workers` },
   ]));
 
   // --- GDP by industry ------------------------------------------------------------------------------------------
   const stRows = data.levels.states.rows;
   const indBody = section(el, byGdp
-    ? canada
-      ? { title: "GDP by industry", kicker: `Canada · ${n.gdp_industry_year ?? ""}`, note: "Value added by each industry at basic prices, where the work is done (the provinces and territories summed). Hover an industry to light up the provinces and territories where it is the biggest share of the economy; click it to rank the cities whose workers specialise in it." }
-      : { title: "GDP by industry", kicker: "United States", note: "Value added by each industry, where the work is done. Hover an industry to light up the states where it is the biggest share of the economy; click it to rank the metros that specialise in it." }
-    : { title: "Workers by industry", kicker: countryName, note: "Employed residents by industry, where they live (2021 Census). Statistics Canada publishes no GDP by industry for metro areas, so this dashboard ranks industries by workers. Hover an industry to light up the provinces where it is the biggest share of jobs; click it to rank the metros that specialise in it." });
+    ? { title: "GDP by industry", kicker: txt("advisor.economy.gdp_kicker", { name: NATION.name, year: n.gdp_industry_year ?? "" }), note: rich("advisor.economy.gdp_note") }
+    : { title: "Workers by industry", kicker: NATION.name, note: rich("advisor.economy.workers_note") });
   const indRows = byGdp ? Object.entries(gdpInd).filter(([, v]) => fin(v)).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({
     key: k, label: short(nation.gdp_industries?.[k] || k), full: nation.gdp_industries?.[k], value: v, text: money(v), sub: pct(v / gdpBase), icon: indIcon(k),
   })) : Object.entries(n.jobs || {}).filter(([, v]) => fin(v)).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({
@@ -103,7 +108,7 @@ export function mount(ctx) {
   });
 
   // --- specialisation -------------------------------------------------------------------------------------------
-  const specBody = section(el, { title: "Who specialises in what", note: `Location quotient: the share of a metro's employed residents in the industry ÷ the ${canada ? "Canadian" : "U.S."} share. ×2 means twice as concentrated as the country. Metros of ${count3(METRO_MIN)}+ people; the 15 most specialised are outlined on the map.` });
+  const specBody = section(el, { title: "Who specialises in what", note: `Location quotient: the share of a metro's employed residents in the industry ÷ the ${NATION.adj} share. ×2 means twice as concentrated as the country. Metros of ${count3(METRO_MIN)}+ people; the 15 most specialised are outlined on the map.` });
   let industry = params.industry && jobInd.includes(params.industry) ? params.industry : "manufacturing";
   const indSel = selectBox(specBody, {
     label: "Industry", value: industry,
@@ -149,7 +154,7 @@ export function mount(ctx) {
     x: { label: "GDP per person", fmt: (v) => money(v), log: true },
     y: { label: "Population growth", fmt: (v) => fmtShort("signed", v) },
     size: { label: "Population", fmt: count3, max: 15, min: 2 },
-    refY: [{ v: n.growth ?? 0, label: `${canada ? "Canada" : "U.S."} ${signedPct(n.growth)}` }],
+    refY: [{ v: n.growth ?? 0, label: `${NATION.short} ${signedPct(n.growth)}` }],
     onHover: (p) => { link.hover(p ? rowsHighlight(metros, [p.row]) : null); bubbles.setHot(p ? p.key : null); table.setHot(p ? p.key : null, false); },
     onClick: (p) => app.selectCity(p.row.ref),
     onBrush: (set) => {
@@ -166,7 +171,7 @@ export function mount(ctx) {
   function brushSummary(sel) {
     const pop = sel.reduce((a, r) => a + (r.v.population || 0), 0);
     const gdp = sel.reduce((a, r) => a + (r.v.gdp || 0), 0);
-    return `<b>${sel.length}</b> metros selected · ${count3(pop)} people · ${money(gdp)} GDP (${pct(gdp / n.gdp)} of ${canada ? "Canada" : "U.S."}) ${frameBtn()}<button type="button" class="adv-mini" data-clear>Clear</button>`;
+    return `<b>${sel.length}</b> metros selected · ${count3(pop)} people · ${money(gdp)} GDP (${pct(gdp / n.gdp)} of ${esc(NATION.short)}) ${frameBtn()}<button type="button" class="adv-mini" data-clear>Clear</button>`;
   }
   brushInfo.addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) { scatter.setSelected(null); link.base(specHighlight()); bubbles.setSelected(null); brushInfo.innerHTML = ""; } });
 
@@ -207,24 +212,19 @@ export function mount(ctx) {
     ], { key: "lq", dir: "desc" });
     specTable.setRows(list);
     const us = ratio(n.jobs?.[k], n.employed);
-    specInfo.innerHTML = `${canada ? "Canada" : "U.S."}: <b>${pct(us)}</b> of employed residents (${count3(n.jobs?.[k])} people) work in ${esc(short(nation.industries[k]).toLowerCase())}.`;
+    specInfo.innerHTML = `${esc(NATION.short)}: <b>${pct(us)}</b> of employed residents (${count3(n.jobs?.[k])} people) work in ${esc(short(nation.industries[k]).toLowerCase())}.`;
     if (!scatter.selected) link.base(specHighlight());
-    indBars.setSelected(byGdp && !canada && k === "public_admin" ? "government" : k); // Canada keeps public_admin
+    // GDP tables that call public administration "government" (the U.S.) select that bar; Canada's keeps public_admin.
+    indBars.setSelected(byGdp && k === "public_admin" && !("public_admin" in gdpInd) && "government" in gdpInd ? "government" : k);
     drawScatter();
   }
   setIndustry(industry);
 
-  el.insertAdjacentHTML("beforeend", canada ? sourcesHtml(data, ["statcan_gdp", "statcan_gdp_industry", "statcan_metro_gdp", "statcan_census_areas", "statcan_population", "statcan_lfs"], [
-    `GDP by industry is ${esc(String(n.gdp_industry_year ?? ""))} value added at basic prices for the provinces and territories, summed for Canada; its shares are of GDP at basic prices, which leaves out taxes less subsidies on products (so the industries add up to less than GDP at market prices). Cities have no GDP by industry.`,
-    "GDP is counted where the work is done; jobs and specialisation are counted where workers live (2021 Census), so a commuter town's workers count in its own urban area.",
-    `GDP is for ${esc(String(n.gdp_year))} for provinces and territories and ${esc(String(rows.find((r) => fin(r.v.gdp) && r.ref.gdp_year)?.ref.gdp_year ?? "an earlier year"))} for CMAs, the latest year Statistics Canada publishes; per-person GDP divides by the July 1 population of the same year.`,
-    "Statistics Canada publishes GDP for census metropolitan areas only (at basic prices, on the GDP table's borders); provinces and territories are at market prices, and census agglomerations have no GDP.",
-    `The unemployment colour is from the ${esc(nation.unemployment_vintage || "Labour Force Survey")}; jobs are from the 2021 Census and population from the July 1, ${esc(String(nation.year))} estimates.`,
-  ]) : sourcesHtml(data, ["bea_gdp", "acs_1yr", "pep_population", "cbsa_delineation"], [
-    "GDP is counted where the work is done (BEA); jobs and specialisation are counted where workers live (ACS), so a commuter suburb's workers count in its own metro.",
-    `GDP is ${esc(nation.gdp_vintage || "BEA")} while population is ${esc(nation.vintage || "ACS")}: per-person figures divide numbers a year apart.`,
-    "Metro GDP sums the member counties of each metro (OMB 2023 delineation); BEA suppresses some industry figures for small areas, so metro industry GDP is incomplete and not used here.",
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.economy", {
+    gdp_industry_year: n.gdp_industry_year ?? "", gdp_year: n.gdp_year ?? "", year: nation.year ?? "", vintage: nation.vintage || "",
+    gdp_vintage: nation.gdp_vintage || "", unemployment_vintage: nation.unemployment_vintage || "",
+    metro_gdp_year: rows.find((r) => fin(r.v.gdp) && r.ref.gdp_year)?.ref.gdp_year ?? "an earlier year",
+  }));
 
   return {
     onMapHover(h) {

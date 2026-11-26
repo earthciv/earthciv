@@ -1,6 +1,6 @@
 // DOM icons: the SVG set from icons.js, with the emoji as a fallback when an id is missing.
 import { svgIcon, hasIcon } from "../icons.js";
-import { esc } from "../format.js";
+import { esc } from "../app/escape.js";
 
 // icon("l-income", "💵") → inline <svg> (currentColor) or an emoji <span>.
 export function icon(id, fallback = "•", { size = 16, title = "" } = {}) {

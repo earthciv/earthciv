@@ -10,8 +10,9 @@
 //   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), and #country=<ISO code>.
 //   * Loads web/data/ports.json, world-outlines.json and world-figures.json only when first opened.
 
-import { esc } from "../../format.js";
+import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
+import { DEFAULT_EDITION, EDITIONS } from "../../app/edition-index.js";
 import { editionUrl } from "../../app/home.js";
 // The map script and the stylesheet are versioned (as ./home.js versions this file) so that a browser holding copies
 // from before this rewrite fetches new ones; see ./home.js.
@@ -24,9 +25,6 @@ const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
-
-const HTML_EL = document.documentElement;
-const DEFAULT_EDITION = HTML_EL.dataset.defaultEdition || HTML_EL.dataset.defaultCountry || "us";
 
 const GLOBE_SVG = `<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5a14.5 14.5 0 0 1 0 19M12 2.5a14.5 14.5 0 0 0 0 19"/></svg>`;
 const EXT_SVG = `<svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 4h6v6M10 14 20 4M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>`;
@@ -194,13 +192,8 @@ export function install(app) {
 
   // --- the edition underneath (when not home) and the way to the world from it -------------------------------------
   const picker = document.getElementById("country-picker");
-  const builtinEditions = picker
-    ? [...picker.querySelectorAll("option")]
-        .filter((o) => o.value && o.value !== "__ports__")
-        .map((o) => ({ id: o.value, name: o.textContent.trim() || o.value }))
-    : [];
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
-  const editionName = builtinEditions.find((e) => e.id === EDITION_ID)?.name || "the map";
+  const editionName = EDITIONS.find((e) => e.id === EDITION_ID)?.name || "the map";
   const editionEmblem = document.querySelector(".brand-emblem")?.textContent?.trim() || "★";
 
   // The World button's badge: how many maps the world view lists (the catalog's own count once it has loaded).
@@ -273,7 +266,7 @@ export function install(app) {
         }),
       ]).then(([portsDoc, outlinesDoc, figuresDoc]) => {
         figures = figuresDoc;
-        basePorts = syncWithEditions(portsDoc.ports || [], builtinEditions);
+        basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
         return { ports: basePorts, outlines: outlinesDoc };
       });
       catalogP.catch(() => (catalogP = null)); // a failed load is retried the next time
@@ -281,7 +274,7 @@ export function install(app) {
     return catalogP;
   }
 
-  // Every built-in edition offered in #country-picker is represented as status "merged".
+  // Every edition in the index is represented as status "merged".
   function syncWithEditions(list, editions = []) {
     const copy = list.map((p) => ({ ...p }));
     const byEd = new Map(copy.filter((p) => p.editionId).map((p) => [p.editionId, p]));
@@ -294,7 +287,7 @@ export function install(app) {
         existing.embed = true;
       } else {
         copy.unshift({
-          id: ed.id, name: ed.name, emblem: "★", status: "merged", editionId: ed.id, scope: "country", region: "Other",
+          id: ed.id, name: ed.name, emblem: ed.emblem, status: "merged", editionId: ed.id, scope: "country", region: "Other",
           countries: /^[a-z]{2}$/i.test(ed.id) ? [ed.id.toUpperCase()] : [], center: null, languages: ["en"],
           license: "MIT", repo: "earthciv/earthciv", author: "earthciv", url: null, embed: true,
           description: "Built-in EarthCiv edition.",

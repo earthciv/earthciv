@@ -1,0 +1,383 @@
+{
+ "advisor.commerce.blurb": "The great freight routes between provinces, and the busiest ports and airports.",
+ "advisor.commerce.callout": "Freight values come from the Canadian Freight Analysis Framework ({year}, Statistics Canada): air, rail and for-hire truck shipments only, in current Canadian dollars. What moves between places, not what each place produces. Imports {imports} and exports {exports} are counted separately.",
+ "advisor.commerce.cargo_note": "Cargo loaded and unloaded, in tonnes (Statistics Canada table 23-10-0254).",
+ "advisor.commerce.caveats": [
+  "Freight values are the Canadian Freight Analysis Framework's {year} estimates (the latest year it covers) in current Canadian dollars and tonnes, for air, rail and for-hire truck only: water, pipeline and private trucking are not in it. Zones are whole metro areas or the rest of a province, so a route between two cities stands for everything moving between their regions.",
+  "Routes count only flows between zones in different provinces; the drawn line follows mapped highways as a drawing aid (the framework assigns no route).",
+  "Rest-of-province zones are drawn from their largest city, though the flow comes from the whole region.",
+  "Airports are Statistics Canada's annual passenger and cargo counts{airports_part}, placed with OurAirports coordinates; freight is {year}, so the two are years apart.",
+  "Natural Earth roads and rails are map art, not statistics: an older, simplified alignment of the main network."
+ ],
+ "advisor.commerce.pax_note": "Passenger boardings (passengers enplaned, Statistics Canada table 23-10-0253) in the year; change on the year before.",
+ "advisor.commerce.ports_what": "Canada Port Authorities (tonnes)",
+ "advisor.commerce.zone_whole": "The whole province or territory (it has no metro zone).",
+ "advisor.commerce.zones_note": "The Canadian Freight Analysis Framework splits the country into 12 metro areas, the rest of each province and the territories. Value of freight that starts or ends in each zone (domestic), plus its trade with other countries. Hover to outline a zone's cities; click to see its routes and partners.",
+ "advisor.council.note": "All figures are public data: Statistics Canada's 2021 Census, July 1 population estimates, Labour Force Survey, GDP by industry, freight flows, airport traffic, university enrolments and boundary files, Transport Canada's port tonnage, Public Safety Canada's disaster database, the Treasury Board's federal property directory, Natural Resources Canada's land cover, resource sites and place names, the World Resources Institute's power plants (as listed in 2016–17) and Parks Canada's attendance. Each dashboard lists its sources and caveats at the bottom.",
+ "advisor.culture.blurb": "Wonders of the land, faith, and the disasters places endure.",
+ "advisor.culture.caveats": [
+  "Faith is self-identified religion in the 2021 Census, not congregation membership; Catholic and other Christian groups are counted apart.",
+  "Park visits are Parks Canada's fiscal {park_year} attendance; Mount Revelstoke and Glacier are reported together and count as one wonder.",
+  "Universities rank by doctoral students, as Statistics Canada publishes no research spending by institution. Campus points come from Statistics Canada's Open Database of Educational Facilities; UBC, which it does not list, and Memorial, which it lists without coordinates, from Wikidata.",
+  "Historic sites and canals stand at their official place-name points (Canadian Geographical Names Database); the Klondike sites at Dawson's Historical Complex.",
+  "Disasters: {rule} The database ends with events of {last_year}, the latest it publishes.",
+  "There is no census-division disaster count (the database locates events by province, not county), so the U.S. disasters lens and county table are left out, and so is the wellbeing index, which has no Canadian counterpart."
+ ],
+ "advisor.culture.disaster_sources": [
+  "ps_cdd",
+  "statcan_cpi"
+ ],
+ "advisor.culture.disasters_kicker": "Canadian Disaster Database",
+ "advisor.culture.faith_kicker": "2021 Census",
+ "advisor.culture.faith_note": "Province figures are population-weighted means of census division shares (≈). Religion is self-identified in the census.",
+ "advisor.culture.faith_regions": "Provinces by residents reporting a religion, per 100 ≈",
+ "advisor.culture.faith_tile_label": "Report a religion ≈",
+ "advisor.culture.faith_tile_sub": "residents, 2021 Census",
+ "advisor.culture.park_visits_sub": "all national parks and reserves, FY {year}",
+ "advisor.culture.sources": [
+  "statcan_census_divisions"
+ ],
+ "advisor.culture.wonders_note": "Hover a wonder to find it on the map; click to fly there. Parks, other park units and landmarks (national historic sites) are ranked by Parks Canada's fiscal {year} attendance, universities by doctoral students.",
+ "advisor.economy.caveats": [
+  "GDP by industry is {gdp_industry_year} value added at basic prices for the provinces and territories, summed for Canada; its shares are of GDP at basic prices, which leaves out taxes less subsidies on products (so the industries add up to less than GDP at market prices). Cities have no GDP by industry.",
+  "GDP is counted where the work is done; jobs and specialisation are counted where workers live (2021 Census), so a commuter town's workers count in its own urban area.",
+  "GDP is for {gdp_year} for provinces and territories and {metro_gdp_year} for CMAs, the latest year Statistics Canada publishes; per-person GDP divides by the July 1 population of the same year.",
+  "Statistics Canada publishes GDP for census metropolitan areas only (at basic prices, on the GDP table's borders); provinces and territories are at market prices, and census agglomerations have no GDP.",
+  "The unemployment colour is from the {unemployment_vintage}; jobs are from the 2021 Census and population from the July 1, {year} estimates."
+ ],
+ "advisor.economy.gdp_kicker": "Canada · {year}",
+ "advisor.economy.gdp_note": "Value added by each industry at basic prices, where the work is done (the provinces and territories summed). Hover an industry to light up the provinces and territories where it is the biggest share of the economy; click it to rank the cities whose workers specialise in it.",
+ "advisor.economy.sources": [
+  "statcan_gdp",
+  "statcan_gdp_industry",
+  "statcan_metro_gdp",
+  "statcan_census_areas",
+  "statcan_population",
+  "statcan_lfs"
+ ],
+ "advisor.economy.workers_note": "Employed residents by industry, where they live (2021 Census). Statistics Canada publishes no GDP by industry for metro areas, so this dashboard ranks industries by workers. Hover an industry to light up the provinces where it is the biggest share of jobs; click it to rank the metros that specialise in it.",
+ "advisor.energy.caveats": [
+  "Power plants are those of 25 MW or more as listed in 2016–17 (Natural Resources Canada’s August 2017 inventory, via WRI), with their capacity then: plants built or closed since are not reflected.",
+  "Plant coordinates determine the province or territory using Statistics Canada’s digital boundaries, including water.",
+  "The 900A source provides site locations and commodities. Its site counts have no capacity or output measure."
+ ],
+ "advisor.energy.min_note": "The capacity filter only shows power plants.",
+ "advisor.energy.mines_sub": "NRCan inventory",
+ "advisor.energy.oilgas_label": "Oil & gas fields",
+ "advisor.energy.oilgas_sub": "NRCan inventory",
+ "advisor.energy.regions_note": "Mapped capacity per province or territory, by type. Click one to filter everything to it; click it again to clear.",
+ "advisor.energy.sources": [
+  "wri_plants",
+  "statcan_province_digital",
+  "nrcan_mines"
+ ],
+ "advisor.explorer.caveats": [
+  "Columns marked ≈ are population-weighted means of census division values: a fair guide, not the true median of the area.",
+  "Census figures are {census_vintage} (incomes for 2020); population is the July 1, {year} estimate. GDP is Statistics Canada's {gdp_year} GDP for provinces and territories and the latest published year for CMAs, counted where the work is done; per-person GDP divides by the population of the same year. Jobs are counted where people live. Unemployment: {unemployment_vintage} (no census agglomerations); Unemployment (2021 Census) covers every area.",
+  "CMAs and CAs are built from municipalities, not census divisions, so metros have no rolled-up division columns."
+ ],
+ "advisor.explorer.region_example": "e.g. ON",
+ "advisor.explorer.sources_areas": [
+  "statcan_census_areas"
+ ],
+ "advisor.explorer.sources_counties": [
+  "statcan_census_divisions"
+ ],
+ "advisor.knowledge.blurb": "Degrees, incomes and the science workforce.",
+ "advisor.knowledge.caveats": [
+  "Science workers are counted where they live (2021 Census), not where they work, and cover whole industries (a law firm's receptionist counts; a hospital's researcher does not).",
+  "Degrees are for adults aged 25 and over (2021 Census): census divisions from table 98-10-0387, CMAs and CAs from their own figures in table 98-10-0384. Canada's census has no broadband question, so the U.S. edition's broadband charts are left out.",
+  "The Science jobs map colours CMAs and CAs only (grey hexes are outside them)."
+ ],
+ "advisor.knowledge.degrees_note": "Share of adults with a bachelor's degree or more against median household income (2021 Census; incomes for 2020); colour = residents per km². Drag to select; hover the map to find a place.",
+ "advisor.knowledge.sources": [
+  "statcan_census_areas",
+  "statcan_census_divisions",
+  "statcan_census_city_view"
+ ],
+ "advisor.land.caveats": [
+  "Land cover is NRCan's 2020 map, sampled from a 5 km image at 7 points per hex, so small features (a river valley's farms, a small town) blur into their surroundings.",
+  "NRCan has no pasture class: its cropland includes hay and pasture. Other covers the barren land, rock and ice of the north.",
+  "Farm workers are counted where they live (2021 Census) and include forestry and fishing."
+ ],
+ "advisor.land.cover_note": "Share of the land in each cover type (NRCan 2020 land cover, 7 samples per hex, averaged over every hex). Hover a type to light up the hexes where it is the largest cover; click to keep them lit.",
+ "advisor.land.farmland_sub": "cropland, incl. hay & pasture",
+ "advisor.land.kicker": "Canada",
+ "advisor.land.regions_note": "Each province's and territory's land by cover type. Sort by any cover; hover one to outline it, click to open it.",
+ "advisor.land.regions_title": "The provinces' make-up",
+ "advisor.land.sources": [
+  "nrcan_cover",
+  "statcan_census_areas"
+ ],
+ "advisor.military.blurb": "Bases and ranges, and where serving members and veterans live.",
+ "advisor.people.caveats": [
+  "The growth map colours CMAs and CAs by their own change; grey hexes are outside them. Switch the chart to provinces to colour every hex by its province or territory.",
+  "Population is Statistics Canada's July 1, {year} estimate and growth runs from July 1, 2021, both on 2021 census boundaries; density divides by the 2021 land area. Age, immigration and the other census measures are 2021 Census figures.",
+  "Census divisions are the counties, regional municipalities and districts of each province (numbered divisions on the Prairies); the territories are split into regions.",
+  "A division's dot shows its median age; the median of a group of divisions is not the average of their medians."
+ ],
+ "advisor.people.density_note": "Census divisions by residents per km² (log scale). Switch to <i>people</i> to weight each division by its population: most Canadians live in the dense tail. Hover a bar to see those divisions; click to keep them outlined.",
+ "advisor.people.growth_note": "Population change {years} (Statistics Canada's July 1 estimates), on 2021 borders. Metros of {min}+ people.",
+ "advisor.people.growth_sub": "July 1 estimates",
+ "advisor.people.residents_sub": "July 1, {year} estimate",
+ "advisor.people.sources": [
+  "statcan_estimates",
+  "statcan_population",
+  "statcan_divisions",
+  "statcan_census_divisions",
+  "statcan_census_areas"
+ ],
+ "advisor.prosperity.caveats": [
+  "Metro, provincial and division figures are {census_vintage}; incomes are for 2020. Unemployment: {unemployment_vintage}, for provinces, territories and CMAs (the survey does not publish census agglomerations). The Explorer also has the 2021 Census rate for every area.",
+  "Home values are owners' own estimates of what their home would sell for, not sale prices; census divisions have no published home value, so the home-cost chart compares metros.",
+  "Rent is renters' median monthly shelter cost (rent plus utilities). Rent ÷ income compares two medians from different households; it is a rough guide, not the share of renters who are cost-burdened.",
+  "Low income uses the low-income measure after tax (LIM-AT): half the national median adjusted household income. It is the same everywhere and does not adjust for local living costs."
+ ],
+ "advisor.prosperity.poverty_note": "Census divisions by the share of people below the low-income measure after tax (LIM-AT, 2020). Hover a bar to outline those divisions; the table lists them all.",
+ "advisor.prosperity.poverty_rates": "low-income rates",
+ "advisor.prosperity.poverty_title": "Low income",
+ "advisor.prosperity.sources": [
+  "statcan_census_areas",
+  "statcan_census_divisions",
+  "statcan_lfs"
+ ],
+ "advisor.prosperity.unemployment_note": "Unemployed ÷ labour force aged 15+ ({unemployment_vintage}). Metros of {min}+ people, all of them census metropolitan areas.",
+ "almanac.about": "<p>This is the real Canada, drawn like a strategy game. Every tile, city and number comes from public data, listed\nunder <i>Sources</i>.</p>\n<h4>How it's built</h4>\n<p>The ten provinces and three territories are projected (Canada Atlas Lambert) and cut into\n{cols}×{rows} hexes, each {hex_km} km corner to corner. Each hex\nbelongs to the province or territory and census division covering most of it.</p>\n<p><b>Cities</b> are the 2021 Census metropolitan areas and census agglomerations. Their numbers cover the whole urban\narea: population is Statistics Canada's July 1, {year} estimate on those boundaries, and every other\nfigure is labelled with its year. Each banner shows the first-named city, at a named settlement when Natural Earth has one and otherwise at the\narea's core population centre, and every city gets its own hex.</p>\n<h4>Controls</h4>\n<p>Drag or arrow keys / WASD to pan · scroll, +/– or double-click to zoom · click a city for its City View, or a\nprovince or territory for its profile · / or ⌘K to search · L to cycle lenses · R to show or hide resources · ? for\nall shortcuts · Esc to close.</p>\n<p>The address bar always holds a link to what you're looking at (lens, selection and view); use <i>Share</i> to copy it\nor to download a picture.</p>\n<h4>Data</h4>\n<p>Statistics Canada (2021 Census boundaries, population centres and tables, July 1 population estimates, GDP and GDP by\nindustry, Labour Force Survey unemployment, the Canadian Freight Analysis Framework, airport traffic, the consumer\nprice index, university enrolments and the Open Database of Educational Facilities),\nNatural Resources Canada (2020 land cover; Map 900A mines, oil sands and oil and gas fields; official place names of\nhistoric sites), Parks Canada (park boundaries and 2025–26 attendance), Transport Canada (port tonnage), Public Safety\nCanada (Canadian Disaster Database), the Treasury Board (federal property directory: Canadian Forces bases), NOAA (ETOPO1\nrelief), Natural Earth (neighbouring land, lakes, rivers, settlements, roads, railways and ports), the World Resources\nInstitute (power plants, as listed in 2016–17), OurAirports (airport positions) and Wikidata (two campus locations). <i>Sources</i> lists every file with its address, size and\nretrieval date.</p>",
+ "almanac.amenities": "<p>Each figure is labelled with its year. Population is Statistics Canada's July 1, {year}\nestimate, with growth since July 1, 2021. Workers by industry, rent and home value are from the 2021 Census (incomes\nare for 2020). GDP is for {gdp_year} for Canada, the provinces and the territories and for\n{metro_gdp_vintage} for CMAs, the latest year\npublished; per-person GDP divides by the population of the same year. Unemployment = unemployed ÷ labour force aged 15+, the Labour\nForce Survey's {unemployment_year} annual average for Canada, the provinces\nand territories and the census metropolitan areas (tables 14-10-0464 and 14-10-0461; its Canada total covers the ten\nprovinces). The survey does not publish census agglomerations, so they show their 2021 Census rate, labelled as such\nand compared with Canada's 2021 rate: the census week, in May 2021, fell during COVID-19 restrictions, which raised\nit. Rent = renters' median monthly shelter cost, rent plus utilities (98-10-0253); home value = owners' median estimate\n(98-10-0256). Rent ÷ income = median rent × 12 ÷ median household income (98-10-0061): a rough affordability signal,\nnot a household-level burden rate. Some urban areas have no published GDP figure.</p>",
+ "almanac.beyond_borders": "Neighbouring land is shaded for geographic context.",
+ "almanac.lenses_intro": "<p>Lenses show census division figures: population density and change from Statistics Canada's July 1 estimates (2021 to {year}), and 2021 Census measures. The hex uses the division found at most of its samples within the owning province or territory.</p>",
+ "almanac.regions": "<p>Click a land hex to see its province or territory. Population is the July 1, {year} estimate; the\nother numbers are totals and medians from the same 2021 Census tables as the cities. GDP comes from Statistics Canada's\n{gdp_year} expenditure-based tables, at market prices in current Canadian dollars. Ranks are\namong the 13 provinces and territories (1 = largest).</p>\n<p>A census metropolitan area or agglomeration that crosses a provincial border appears under each province it spans.</p>",
+ "almanac.resources_intro": "<p>Resource markers show named sites from Natural Resources Canada and power plants of 25 MW or more as\nlisted in 2016–17 (Natural Resources Canada's August 2017 inventory, via WRI), with their installed capacity then:\nplants built or closed since are not reflected. A site on water snaps to the nearest land hex of its\nprovince. Zoom in to see more sites. Press <b>R</b> to show or hide them.</p>",
+ "citizens.born_abroad": "Residents born outside Canada (2021 Census generation status, table 98-10-0324)",
+ "citizens.degree": "Adults 25+ with a bachelor's degree or higher (2021 Census, table 98-10-0384)",
+ "citizens.fields": [
+  [
+   "workforce",
+   "executive",
+   "Managers & finance"
+  ],
+  [
+   "workforce",
+   "engineer",
+   "Engineers & scientists"
+  ],
+  [
+   "workforce",
+   "healer",
+   "Health workers"
+  ],
+  [
+   "workforce",
+   "service",
+   "Service workers"
+  ],
+  [
+   "workforce",
+   "farmer",
+   "Farm & resource workers"
+  ],
+  [
+   "workforce",
+   "builder",
+   "Trades"
+  ],
+  [
+   "workforce",
+   "maker",
+   "Factory & transport workers"
+  ],
+  [
+   "age",
+   "child",
+   "Children"
+  ],
+  [
+   "age",
+   "young",
+   "Young adults"
+  ],
+  [
+   "age",
+   "elder",
+   "Elders 65+"
+  ],
+  [
+   "commute",
+   "drove_alone",
+   "Drive alone"
+  ],
+  [
+   "commute",
+   "transit",
+   "Public transit"
+  ],
+  [
+   "commute",
+   "walk",
+   "Walk to work"
+  ],
+  [
+   "commute",
+   "home",
+   "Work from home"
+  ],
+  [
+   "education",
+   "graduate",
+   "Graduate degrees"
+  ],
+  [
+   "nativity",
+   "third_plus",
+   "Third generation or more"
+  ],
+  [
+   "nativity",
+   "first",
+   "Born abroad"
+  ]
+ ],
+ "citizens.median_age": "Median age (2021 Census, table 98-10-0020)",
+ "citizens.none": "Statistics Canada published none of the citizen tables for {name}, so there are no citizen figures here.",
+ "citizens.note": "{vintage}, tables 98-10-0449 (occupation, NOC 2021), 98-10-0020 (age), 98-10-0457 and 98-10-0455 (commute, work from home), 98-10-0384 (education) and 98-10-0324 (generation status). Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share. ▲▼ = at least 1.5× or at most 0.67× Canada's share. Commute counts workers, not all residents; the census week, in May 2021, fell during COVID-19 restrictions, when many worked from home.",
+ "citizens.origins_sub": "born in Canada or abroad, and their parents",
+ "citizens.phrases": {
+  "workforce": {
+   "executive": [
+    "is a manager or business and finance professional",
+    "are managers or business and finance professionals"
+   ],
+   "farmer": [
+    "farms, fishes, logs or mines",
+    "farm, fish, log or mine"
+   ],
+   "builder": [
+    "works in a skilled trade (building, installing or repairing)",
+    "work in skilled trades (building, installing or repairing)"
+   ]
+  },
+  "education": {
+   "less_than_hs": [
+    "has no certificate, diploma or degree",
+    "have no certificate, diploma or degree"
+   ],
+   "high_school": [
+    "finished high school but has no further certificate",
+    "finished high school but have no further certificate"
+   ],
+   "some_college": [
+    "has a trades, college or CEGEP certificate (below a bachelor's)",
+    "have a trades, college or CEGEP certificate (below a bachelor's)"
+   ],
+   "graduate": [
+    "has a master's, doctorate, medical degree or other degree above a bachelor's",
+    "have a master's, doctorate, medical degree or other degree above a bachelor's"
+   ]
+  },
+  "nativity": {
+   "third_plus": [
+    "was born in Canada to parents born in Canada",
+    "were born in Canada to parents born in Canada"
+   ],
+   "second": [
+    "was born in Canada with a parent born abroad",
+    "were born in Canada with a parent born abroad"
+   ],
+   "first": [
+    "was born outside Canada",
+    "were born outside Canada"
+   ]
+  }
+ },
+ "citizens.row_missing": "Statistics Canada did not publish this table for {name}, so this row is left out.",
+ "citizens.short": {
+  "workforce": {
+   "executive": "Managers & finance",
+   "farmer": "Farm & resources",
+   "builder": "Trades"
+  },
+  "education": {
+   "less_than_hs": "No certificate",
+   "some_college": "Trades & college"
+  },
+  "nativity": {
+   "third_plus": "3rd generation+",
+   "second": "2nd generation",
+   "first": "Born abroad"
+  }
+ },
+ "cv.districts_counting": "The census counts employed people aged 15 and over where they live, not where the jobs are, including the self-employed and members of the Canadian Armed Forces who live in private households.",
+ "cv.districts_note": "{vintage}, table 98-10-0448 (NAICS 2017). ×N = location quotient against Canada.",
+ "cv.economy_note": "Statistics Canada GDP at basic prices, {gdp_year} (the latest year it publishes for CMAs), current Canadian dollars, counted where the work is done. Per person divides by the July 1, {gdp_year} population.",
+ "cv.economy_note.no_gdp": "Statistics Canada publishes GDP for census metropolitan areas only, not for census agglomerations.",
+ "cv.foot": "Sources: Statistics Canada: {census_vintage}; population estimates (July 1, {year}); GDP (CMAs {gdp_year}); {unemployment_vintage}; NRCan and WRI sites. Ranks are among all {count} CMAs and CAs on the map.",
+ "cv.growth_source": "Statistics Canada's July 1 population estimates",
+ "cv.legend_districts_counted": "workers",
+ "cv.legend_districts_source": "2021 Census",
+ "cv.no_districts": "Statistics Canada publishes no industry counts for {name}, so it has no industry districts.",
+ "cv.no_gdp_industries": "Statistics Canada publishes city GDP as a total, without an industry breakdown. Workforce shows the industries residents work in.",
+ "cv.panel_link": "These are 2021 Census industry sectors. The city's specialised districts, from the same census's detailed industries, are in the City View.",
+ "cv.population_note": "Statistics Canada's July 1 population estimates, on 2021 Census boundaries.",
+ "cv.rent": "Median rent incl. utilities / month",
+ "cv.spread_like": "Canada's",
+ "cv.workforce_compare": "Canada's share",
+ "cv.workforce_note": "2021 Census, table 98-10-0448: employed people aged 15 and over by NAICS sector, counted where they live. The map's districts use the same table's detailed industries: see Districts.",
+ "fields.area_bachelors": "Adults 25+ with a bachelor's degree or higher: the city's own 2021 Census figure (table 98-10-0384).",
+ "fields.area_kind": "Census metropolitan area (CMA: 100,000+ people, 50,000+ in the core) or census agglomeration (CA: 10,000+ in the core).",
+ "fields.census_workers": "Employed people aged 15 and over who live in the city, all industries ({vintage}, table 98-10-0448).",
+ "fields.citizens_missing": "Blank where Statistics Canada published no figure.",
+ "fields.cz_degree": "Adults 25+ with a bachelor's degree or higher ({vintage}, table 98-10-0384).",
+ "fields.cz_degree_label": "Bachelor's or more (25+)",
+ "fields.cz_median_age": "Median age of residents ({vintage}, table 98-10-0020): the city's own median, unlike the census-division roll-up.",
+ "fields.cz_median_age_label": "Median age (city)",
+ "fields.division_metro": "None: CMAs and CAs are built from municipalities, not census divisions.",
+ "fields.energy": "Capacity of the mapped power plants of 25 MW or more, as listed in 2016–17 (Natural Resources Canada's inventory, via WRI): close to, but not exactly, the total generating capacity then.",
+ "fields.gdp": "GDP in current Canadian dollars: {year} for provinces and territories (market prices); {metro_year}, the latest year published, for CMAs (basic prices, on the GDP table's borders).",
+ "fields.gdp_pc": "GDP ÷ the July 1 population of the same year ({year} for provinces and territories, {metro_year} for CMAs).",
+ "fields.growth": "Population change {years} (Statistics Canada's July 1 estimates, on 2021 borders).",
+ "fields.home_value": "Median owner-estimated value of dwellings ({census_vintage}).",
+ "fields.land_source": "NRCan 2020 land cover",
+ "fields.population": "Residents: {population_vintage}.",
+ "fields.rent": "Renters' median monthly shelter cost, rent plus utilities ({census_vintage}).",
+ "fields.rent_unit": "median rent incl. utilities / month",
+ "fields.unemployment": "Unemployed ÷ labour force aged 15+, {unemployment_vintage} (tables 14-10-0464 and 14-10-0461). The survey does not publish census agglomerations; see Unemployment (2021 Census).",
+ "fields.unemployment_census": "Unemployed ÷ labour force aged 15+ in the 2021 Census (table 98-10-0448), for every area. The census week, in May 2021, fell during COVID-19 restrictions, so these rates run well above the Labour Force Survey's.",
+ "layers.airport_cargo": "Cargo airport (under 10,000 boardings)",
+ "layers.airport_source": "Statistics Canada annual airport traffic; hub classes use the FAA's shares of national boardings.",
+ "layers.fort_area": "Land",
+ "layers.fort_source": "Directory of Federal Real Property (DND). Sized by land area: no per-base headcount is published.",
+ "layers.port_source": "Canada Port Authorities, Transport Canada table M17; placed at {placed}.",
+ "layers.range_source": "One of the largest DND properties (100 km² or more), drawn on the hexes of its parcel points: no boundaries are published.",
+ "layers.route_note": "Both directions summed; air, rail and for-hire truck only. Drawn between each zone's largest city along mapped roads and rails: the framework records where freight starts and ends, not its route.",
+ "layers.route_value": "<b>{value}</b> of freight in {year}, {tons} tonnes (Canadian Freight Analysis Framework)",
+ "layers.toggle.hubs": "Canada Port Authorities by tonnage (Transport Canada), airports by boardings and cargo (Statistics Canada)",
+ "layers.toggle.military": "Canadian Forces bases as forts, the largest DND lands as restricted ground (Directory of Federal Real Property)",
+ "layers.toggle.rail": "Rail lines from Natural Earth",
+ "layers.toggle.roads": "Major highways from Natural Earth",
+ "layers.toggle.trade": "The 40 largest freight flows between provinces (Canadian Freight Analysis Framework, 2017)",
+ "layers.toggle.wonders": "Most-visited parks, canals and historic sites (Parks Canada) and the universities with the most doctoral students",
+ "load.error_hint": "See the Canada rebuild command in the README.",
+ "panel.city_foot": "Population: {population_vintage} (table 17-10-0148). Census figures: {census_vintage} (tables 98-10-0448, 98-10-0061, 98-10-0253, 98-10-0256). Unemployment: {unemployment} {gdp} Green ×N = this industry's share of jobs is N× the Canadian share.",
+ "panel.city_foot.gdp": "GDP at basic prices, {gdp_year} (the latest year published), on the boundaries in Statistics Canada table 36-10-0468-01; per person divides by the July 1, {gdp_year} population.",
+ "panel.city_foot.no_gdp": "The metro GDP table has no figure for this area.",
+ "panel.city_foot.unemployment_census": "2021 Census. The Labour Force Survey does not publish census agglomerations, and the census week, in May 2021, fell during COVID-19 restrictions.",
+ "panel.city_foot.unemployment_survey": "{unemployment_vintage} (table 14-10-0461).",
+ "panel.city_industries": "Industries · where people work",
+ "panel.geography": "Census geography",
+ "panel.growth_source": "Statistics Canada July 1 estimates",
+ "panel.no_cities": "No census metropolitan areas or census agglomerations.",
+ "panel.region_foot": "Population: {population_vintage} (table 17-10-0152). Census figures: {census_vintage}. GDP: {gdp_vintage} (table 36-10-0222). Unemployment: {unemployment_vintage} (table 14-10-0464). Ranks are among the {count} mapped provinces and territories (1 = largest).",
+ "panel.rent": "Median rent incl. utilities / mo",
+ "report.gdp_breakdown_note": "{year} GDP at basic prices, by province and territory summed (table 36-10-0711); shares of GDP at basic prices, which leaves out taxes less subsidies on products.",
+ "report.gdp_industry_credit": "Statistics Canada, {year} GDP by industry at basic prices",
+ "report.gdp_per_person_hint": "{regions}: {year} GDP ÷ July 1, {year} residents.",
+ "report.gdp_per_person_hint.metros": " Metros: {metro_year} GDP ÷ July 1, {metro_year} residents; CMAs of {min}+ people.",
+ "report.gdp_years_hint": "{regions}: {year} GDP. Metros: {metro_year}, the latest year Statistics Canada publishes.",
+ "report.growth_source": "July 1 estimates",
+ "report.population.description": "Residents on July 1, {year}: Statistics Canada's population estimate, on 2021 Census boundaries.",
+ "report.unemployment.description": "Unemployed ÷ labour force aged 15+, the Labour Force Survey's annual average (tables 14-10-0464 and 14-10-0461). The survey's Canada total covers the ten provinces. It does not publish census agglomerations, so the rankings cover provinces, territories and CMAs.",
+ "search.aria": "Search cities, provinces and territories (/ or Ctrl K)",
+ "search.placeholder": "Search cities & provinces",
+ "share.credit": "Data: StatCan, NRCan, Parks Canada, NOAA, WRI, Natural Earth",
+ "share.local_label": "Canada edition"
+}

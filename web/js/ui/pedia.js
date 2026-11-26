@@ -1,5 +1,16 @@
 // The Almanac: what every number means and exactly where it comes from.
-import { ANNOUNCEMENT_URL, ORIGINAL_URL, canada } from "../app/country.js";
+import { ANNOUNCEMENT_URL, ORIGINAL_URL } from "../app/project.js";
+import { edition } from "../app/edition.js";
+import { TERMS, defaults, rich } from "../app/text.js";
+
+defaults({
+  "almanac.about": "<p>A real country drawn like a strategy game. Every tile, city and number comes from public data, listed under <i>Sources</i>.</p><h4>How it's built</h4><p>The country is cut into {cols}×{rows} hexes, each {hex_km} km corner to corner.</p>",
+  "almanac.amenities": "<p>Rent ÷ income = median rent × 12 ÷ median household income: a rough affordability signal, not a household-level burden rate.</p>",
+  "almanac.regions": "<p>Click a land hex to see its region. Its numbers are the region's own totals and medians, not the sum of its cities.</p>",
+  "almanac.beyond_borders": "Neighbouring land is shaded for geographic context.",
+  "almanac.lenses_intro": "<p>Lenses recolour the map by one measure, built from division data.</p>",
+  "almanac.resources_intro": "<p>Resources mark power plants, mines and oil &amp; gas fields on the tiles where they are. Press <b>R</b> to show or hide them.</p>",
+});
 import { resolveTables } from "../terrain.js";
 import { esc } from "../format.js";
 import { parseHex, luminance } from "../color.js";
@@ -28,49 +39,9 @@ export function initPedia(data) {
   const h2 = (ic, fb, text) => `<h2>${icon(ic, fb, { size: 24 })}<span>${esc(text)}</span></h2>`;
 
   const pages = {
-    "About this map": () => canada ? `
+    "About this map": () => `
       ${h2("pedia", "📖", "About this map")}
-      <p>This is the real Canada, drawn like a strategy game. Every tile, city and number comes from public data, listed
-      under <i>Sources</i>.</p>
-      <h4>How it's built</h4>
-      <p>The ten provinces and three territories are projected (Canada Atlas Lambert) and cut into
-      ${data.world.grid.cols}×${data.world.grid.rows} hexes, each ${data.world.grid.radius * 2} km corner to corner. Each hex
-      belongs to the province or territory and census division covering most of it.</p>
-      <p><b>Cities</b> are the 2021 Census metropolitan areas and census agglomerations. Their numbers cover the whole urban
-      area: population is Statistics Canada's July 1, ${esc(data.nation.year)} estimate on those boundaries, and every other
-      figure is labelled with its year. Each banner shows the first-named city, at a named settlement when Natural Earth has one and otherwise at the
-      area's core population centre, and every city gets its own hex.</p>
-      <h4>Controls</h4>
-      <p>Drag or arrow keys / WASD to pan · scroll, +/– or double-click to zoom · click a city for its City View, or a
-      province or territory for its profile · / or ⌘K to search · L to cycle lenses · R to show or hide resources · ? for
-      all shortcuts · Esc to close.</p>
-      <p>The address bar always holds a link to what you're looking at (lens, selection and view); use <i>Share</i> to copy it
-      or to download a picture.</p>
-      <h4>Data</h4>
-      <p>Statistics Canada (2021 Census boundaries, population centres and tables, July 1 population estimates, GDP and GDP by
-      industry, Labour Force Survey unemployment, the Canadian Freight Analysis Framework, airport traffic, the consumer
-      price index, university enrolments and the Open Database of Educational Facilities),
-      Natural Resources Canada (2020 land cover; Map 900A mines, oil sands and oil and gas fields; official place names of
-      historic sites), Parks Canada (park boundaries and 2025–26 attendance), Transport Canada (port tonnage), Public Safety
-      Canada (Canadian Disaster Database), the Treasury Board (federal property directory: Canadian Forces bases), NOAA (ETOPO1
-      relief), Natural Earth (neighbouring land, lakes, rivers, settlements, roads, railways and ports), the World Resources
-      Institute (power plants, as listed in 2016–17), OurAirports (airport positions) and Wikidata (two campus locations). <i>Sources</i> lists every file with its address, size and
-      retrieval date.</p>
-      ${CREDIT}` : `
-      ${h2("pedia", "📖", "About this map")}
-      <p>This is the real United States, drawn like a strategy game. Nothing is invented: every tile, city and
-      number comes from public data, listed under <i>Sources</i>.</p>
-      <h4>How it's built</h4>
-      <p>The lower 48 states are projected (Albers equal-area) and cut into ${data.world.grid.cols}×${data.world.grid.rows}
-      hexes, each ${data.world.grid.radius * 2} km corner to corner. Each hex belongs to the state and county under its centre.
-      Terrain comes from elevation samples inside each hex.</p>
-      <p><b>Cities</b> are the metropolitan and micropolitan areas published in the ACS 1-year estimates (the Census Bureau
-      includes areas of roughly 65,000+ people, so a few now fall slightly below that), placed at their principal city. Their numbers cover the whole metro area, not just the city proper.</p>
-      <h4>Controls</h4>
-      <p>Drag or arrow keys / WASD to pan · scroll, +/– or double-click to zoom · click a city or a state to open it ·
-      / or ⌘K to search · L to cycle lenses · R to show or hide resources · ? for all shortcuts · Esc to close.</p>
-      <p>The address bar always holds a link to what you're looking at (lens, selection and view); use <i>Share</i> to copy it
-      or to download a picture.</p>
+      ${rich("almanac.about", { cols: data.world.grid.cols, rows: data.world.grid.rows, hex_km: data.world.grid.radius * 2, year: data.nation.year ?? "" })}
       ${CREDIT}`,
     Yields: () => `
       ${h2("y-production", "⚙️", "Yields")}
@@ -78,34 +49,13 @@ export function initPedia(data) {
       (where workers live, not where they work). <b>Gold is GDP</b>: output per year, counted where the work is done.</p>
       <table>${data.nation.yields.map((y) => `<tr><td class="ic" style="color:${esc(y.color)}">${glyph(y, 26)}</td><td><b style="color:${esc(y.color)}">${esc(y.label)}${y.key === "gold" ? " (GDP)" : ""}</b><br>${esc(y.description)}</td></tr>`).join("")}</table>
       <h4>Amenities &amp; housing</h4>
-      ${canada ? `<p>Each figure is labelled with its year. Population is Statistics Canada's July 1, ${esc(data.nation.year)}
-      estimate, with growth since July 1, 2021. Workers by industry, rent and home value are from the 2021 Census (incomes
-      are for 2020). GDP is for ${esc(data.nation.nation.gdp_year)} for Canada, the provinces and the territories and for
-      ${esc(data.sources?.find((s) => s.id === "statcan_metro_gdp")?.vintage || "an earlier year")} for CMAs, the latest year
-      published; per-person GDP divides by the population of the same year. Unemployment = unemployed ÷ labour force aged 15+, the Labour
-      Force Survey's ${esc(String(data.nation.nation.unemployment_year ?? "latest"))} annual average for Canada, the provinces
-      and territories and the census metropolitan areas (tables 14-10-0464 and 14-10-0461; its Canada total covers the ten
-      provinces). The survey does not publish census agglomerations, so they show their 2021 Census rate, labelled as such
-      and compared with Canada's 2021 rate: the census week, in May 2021, fell during COVID-19 restrictions, which raised
-      it. Rent = renters' median monthly shelter cost, rent plus utilities (98-10-0253); home value = owners' median estimate
-      (98-10-0256). Rent ÷ income = median rent × 12 ÷ median household income (98-10-0061): a rough affordability signal,
-      not a household-level burden rate. Some urban areas have no published GDP figure.</p>` : `<p>Unemployment = unemployed ÷ civilian labour force (B23025). Rent ÷ income = median gross rent × 12 ÷ median household
-      income: a rough affordability signal, not a household-level burden rate.</p>`}`,
-    [canada ? "Provinces & territories" : "States"]: () => canada ? `
-      ${h2("terrain", "🗺️", "Provinces & territories")}
-      <p>Click a land hex to see its province or territory. Population is the July 1, ${esc(data.nation.year)} estimate; the
-      other numbers are totals and medians from the same 2021 Census tables as the cities. GDP comes from Statistics Canada's
-      ${esc(data.nation.nation.gdp_year)} expenditure-based tables, at market prices in current Canadian dollars. Ranks are
-      among the 13 provinces and territories (1 = largest).</p>
-      <p>A census metropolitan area or agglomeration that crosses a provincial border appears under each province it spans.</p>` : `
-      ${h2("terrain", "🗺️", "States")}
-      <p>Click any land hex without a city to open its state. A state's numbers are the state totals and medians from the
-      same tables as the cities (${esc(data.nation.vintage)}${data.nation.gdp_vintage ? `; GDP from ${esc(data.nation.gdp_vintage)}` : ""}),
-      not the sum of its cities, so rural areas count too.</p>
-      <p><b>Ranks</b> ("#3 of 49") compare the 48 contiguous states and the District of Columbia; 1 is the largest. Alaska,
-      Hawaii and the territories are not mapped yet, so they are not ranked.</p>
-      <p>Metro areas that cross state lines (New York–Newark, Kansas City, Philadelphia…) are listed under every state they
-      touch, with their whole-metro numbers.</p>
+      ${rich("almanac.amenities", { year: data.nation.year ?? "", gdp_year: data.nation.nation.gdp_year ?? "",
+        metro_gdp_vintage: data.sources?.find((s) => s.id === edition.sources?.roles?.metro_gdp)?.vintage || "an earlier year",
+        unemployment_year: data.nation.nation.unemployment_year ?? "latest" })}`,
+    [TERMS.region.many]: () => `
+      ${h2("terrain", "🗺️", TERMS.region.many)}
+      ${rich("almanac.regions", { year: data.nation.year ?? "", gdp_year: data.nation.nation.gdp_year ?? "", vintage: data.nation.vintage ?? "",
+        gdp_part: data.nation.gdp_vintage ? `; GDP from ${data.nation.gdp_vintage}` : "" })}
       ${data.states ? "" : `<p class="muted">This data build has no states.json, so state panels show names and cities only.</p>`}`,
     Terrain: () => {
       const t = data.w?.tables || resolveTables(data.world.tables);
@@ -129,11 +79,11 @@ export function initPedia(data) {
       <h4>${icon("r-hydro", "💧", { size: 16 })} Water</h4>
       <table>${t.water.filter((x) => x.id > 0).map(row).join("")}</table>
       <h4>Beyond the borders</h4>
-      <p class="muted">${canada ? "Neighbouring land is shaded for geographic context." : "Foreign land (Canada, Mexico, and in the Caribbean Cuba and the Bahamas) is drawn under a light fog: it is shown for context and not mapped in detail."}</p>`;
+      <p class="muted">${rich("almanac.beyond_borders")}</p>`;
     },
     Lenses: () => `
       ${h2("layers", "▤", "Lenses")}
-      ${canada ? `<p>Lenses show census division figures: population density and change from Statistics Canada's July 1 estimates (2021 to ${esc(data.nation.year)}), and 2021 Census measures. The hex uses the division found at most of its samples within the owning province or territory.</p>` : `<p>Lenses recolour the map by one measure, built from county data (${esc(data.lenses.vintage)}). Each hex is sampled at 7 points. A county covering some of them is assumed to cover that share of the hex. Small dense counties that no sample hits (Manhattan, Virginia's independent cities) are added to the hex containing their centre. Income and home value are averaged over the counties in a hex, weighted by population.</p>`}
+      ${rich("almanac.lenses_intro", { year: data.nation.year ?? "", vintage: data.lenses.vintage ?? "" })}
       <p>The legend shows how many hexes fall at each value. Hover or drag on it to show only that range on the map.</p>
       ${(data.lenses.groups || [{ id: null, name: "" }]).map((g) => {
         const ls = data.lenses.lenses.filter((l) => !g.id || l.group === g.id);
@@ -153,12 +103,7 @@ export function initPedia(data) {
       const cats = [...new Set(r.types.map((t) => t.category || "other"))];
       return `
       ${h2("resources", "⛏️", "Resources")}
-      ${canada ? `<p>Resource markers show named sites from Natural Resources Canada and power plants of 25 MW or more as
-      listed in 2016–17 (Natural Resources Canada's August 2017 inventory, via WRI), with their installed capacity then:
-      plants built or closed since are not reflected. A site on water snaps to the nearest land hex of its
-      province. Zoom in to see more sites. Press <b>R</b> to show or hide them.</p>` : `<p>Resources mark the country's biggest power plants, mines and oil &amp; gas fields on the tiles where they are.
-      Only meaningful sites are shown: each type's threshold is in its description. When zoomed out, a hex shows its
-      highest-ranked resource; zoom in to see more. Press <b>R</b> to show or hide them.</p>`}
+      ${rich("almanac.resources_intro")}
       ${cats.map((c) => `<h4>${esc(CATEGORY[c] || c)}</h4><table class="res-table">
         <tr><th></th><th>Type</th><th>What counts</th><th>Sites</th></tr>
         ${r.types.filter((t) => (t.category || "other") === c).map((t) => `<tr>

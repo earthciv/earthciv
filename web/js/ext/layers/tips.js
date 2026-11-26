@@ -2,7 +2,20 @@
 // from and the caveat that matters for it (FAF values are model estimates; bases have no published headcount; the
 // trade arc is a drawing aid; curated landmarks are an editorial pick).
 import { esc, compact, int, pct } from "../../format.js";
-import { canada } from "../../app/country.js";
+import { CURRENCY, defaults, rich, txt } from "../../app/text.js";
+
+defaults({
+  "layers.port_unit": "tonnes",
+  "layers.port_source": "Placed at {placed}.",
+  "layers.airport_nonhub": "Nonhub airport",
+  "layers.airport_cargo": "Cargo airport",
+  "layers.airport_source": "Annual airport traffic.",
+  "layers.fort_area": "Area",
+  "layers.fort_source": "Sized by area: no per-base headcount is published.",
+  "layers.range_source": "One of the largest military properties.",
+  "layers.route_value": "<b>{value}</b> of freight in {year}, {tons} tonnes",
+  "layers.route_note": "Both directions summed. Drawn between each zone's largest city: the data records where freight starts and ends, not its route.",
+});
 import { FORT_KINDS, fortKind, WONDER_KINDS } from "../../render/art/sites.js";
 import { MODE_STYLE } from "../../render/art/improvements.js";
 
@@ -13,10 +26,10 @@ const sign = (x) => (x > 0 ? "+" : x < 0 ? "−" : "±");
 function usd(n) {
   if (n == null || !Number.isFinite(n)) return "–";
   const a = Math.abs(n);
-  if (a >= 1e12) return `$${(n / 1e12).toFixed(2)} trillion`;
-  if (a >= 1e9) return `$${(n / 1e9).toFixed(a >= 1e10 ? 1 : 2)} billion`;
-  if (a >= 1e6) return `$${(n / 1e6).toFixed(1)} million`;
-  return `$${int(n)}`;
+  if (a >= 1e12) return `${CURRENCY}${(n / 1e12).toFixed(2)} trillion`;
+  if (a >= 1e9) return `${CURRENCY}${(n / 1e9).toFixed(a >= 1e10 ? 1 : 2)} billion`;
+  if (a >= 1e6) return `${CURRENCY}${(n / 1e6).toFixed(1)} million`;
+  return `${CURRENCY}${int(n)}`;
 }
 
 const HUB_NAME = { L: "Large hub", M: "Medium hub", S: "Small hub", N: "Nonhub primary airport" };
@@ -25,26 +38,19 @@ const PORT_TYPE = { coastal: "Coastal port", great_lakes: "Great Lakes port", in
 export const tips = {
   port(p, m) {
     const yr = p.year ?? "";
-    if (canada) {
-      return [
-        `<b>${esc(p.name)}</b> ${muted(`${esc(PORT_TYPE[p.type] || "Port")}, ${esc(p.state || "")}`)}`,
-        `#${esc(p.rank)} by tonnage · <b>${num(p.tons)}</b> tonnes (${esc(yr)}${p.preliminary ? ", preliminary" : ""})`,
-        muted(`Canada Port Authorities, Transport Canada table M17; placed at ${p.placed_at === "place name" ? "the town's official place name" : "Natural Earth's port point"}.`),
-      ].join("<br>");
-    }
     const lines = [
       `<b>${esc(p.name)}</b> ${muted(`${esc(PORT_TYPE[p.type] || "Port")}, ${esc(p.state || "")}`)}`,
-      `#${esc(p.rank)} by tonnage · <b>${num(p.tons)}</b> short tons (${esc(yr)})`,
+      `#${esc(p.rank)} by tonnage · <b>${num(p.tons)}</b> ${esc(txt("layers.port_unit"))} (${esc(yr)}${p.preliminary ? ", preliminary" : ""})`,
     ];
     if (p.foreign != null || p.domestic != null) lines.push(`Foreign ${num(p.foreign)} · domestic ${num(p.domestic)}`);
     if (p.imports != null || p.exports != null) lines.push(`Imports ${num(p.imports)} · exports ${num(p.exports)}`);
-    lines.push(muted("USACE principal ports; placed at the port area's centre (long river ports are approximate)."));
+    const placed = p.placed_at === "place name" ? "the town's official place name" : p.placed_at ? "Natural Earth's port point" : "";
+    lines.push(muted(rich("layers.port_source", { placed })));
     return lines.join("<br>");
   },
   airport(a) {
     const lines = [`<b>${esc(a.id)} · ${esc(a.name)}</b> ${muted(esc([a.city, a.state].filter(Boolean).join(", ")))}`];
-    if (canada) lines.push(a.hub ? esc({ ...HUB_NAME, N: "Nonhub airport" }[a.hub] || a.hub) : "Cargo airport (under 10,000 boardings)");
-    else lines.push(a.hub ? esc(HUB_NAME[a.hub] || a.hub) : "All-cargo airport (not a primary passenger airport)");
+    lines.push(a.hub ? esc({ ...HUB_NAME, N: txt("layers.airport_nonhub") }[a.hub] || a.hub) : esc(txt("layers.airport_cargo")));
     if (a.enplanements != null) {
       let ch = "";
       if (a.enplanements_prev > 0) {
@@ -55,7 +61,7 @@ export const tips = {
     }
     if (a.cargo_lbs != null) lines.push(`All-cargo landed weight ${num(a.cargo_lbs)} lb`);
     if (a.cargo_t != null) lines.push(`Cargo ${num(a.cargo_t)} tonnes loaded and unloaded`);
-    lines.push(muted(canada ? "Statistics Canada annual airport traffic; hub classes use the FAA's shares of national boardings." : "FAA CY enplanements and all-cargo data."));
+    lines.push(muted(rich("layers.airport_source")));
     return lines.join("<br>");
   },
   fort(f, m) {
@@ -67,8 +73,8 @@ export const tips = {
       `<b>${esc(f.name)}</b> ${muted(esc(f.state || ""))}`,
       `${esc(name)}${f.joint ? " · joint base" : ""} · ${esc(tier)}${esc(status)}`,
     ];
-    if (f.area_km2 != null) lines.push(`${canada ? "Land" : "Boundary"} ${int(f.area_km2)} km²`);
-    lines.push(muted(canada ? "Directory of Federal Real Property (DND). Sized by land area: no per-base headcount is published." : "DoD MIRTA. Sized by boundary area: no per-base headcount is published."));
+    if (f.area_km2 != null) lines.push(`${esc(txt("layers.fort_area"))} ${int(f.area_km2)} km²`);
+    lines.push(muted(rich("layers.fort_source")));
     return lines.join("<br>");
   },
   range(r, m) {
@@ -76,7 +82,7 @@ export const tips = {
     return [
       `<b>${esc(r.name)}</b> ${muted(esc(r.state || ""))}`,
       `Restricted ground · ${esc(comp?.name || "")} · ${int(r.area_km2)} km²`,
-      muted(canada ? "One of the largest DND properties (100 km² or more), drawn on the hexes of its parcel points: no boundaries are published." : "One of the 30 largest DoD boundaries (MIRTA), drawn on the hexes it covers."),
+      muted(rich("layers.range_source")),
     ].join("<br>");
   },
   wonder(x, m) {
@@ -84,16 +90,15 @@ export const tips = {
     const rule = m.data.wonders?.rules?.find((r) => r.id === x.rule);
     const mt = x.metrics || {};
     const lines = [`<b>${esc(x.name)}</b> ${muted(esc([x.state].filter(Boolean).join("")))}`];
-    if (canada) { // Parks Canada attendance (parks, canals, marine parks, historic sites); doctoral students (universities)
-      if (x.kind === "university") {
-        lines.push(`${esc(k)} · #${esc(x.rank)} by doctoral students`);
-        lines.push(`<b>${int(mt.doctoral)}</b> doctoral students of ${int(mt.enrollment)} enrolled (${esc(mt.year)})`);
-      } else {
-        const among = { national_park: "national parks", park_unit: "marine parks and historic canals", landmark: "national historic sites" }[x.rule];
-        lines.push(`${esc(mt.unit_type || k)} · #${esc(x.rank)} by attendance${among ? ` among ${among}` : ""}`);
-        lines.push(`<b>${num(mt.visits)}</b> visits (FY ${esc(mt.year)})`);
-        if (mt.note) lines.push(muted(esc(mt.note)));
-      }
+    // A rule says what it ranks by (wonders.json rules[].measure; Canada's: fiscal-year attendance and doctoral
+    // students); without it, the U.S. rules (recreation visits, research spending, curated landmarks).
+    if (rule?.measure === "doctoral") {
+      lines.push(`${esc(k)} · #${esc(x.rank)} by doctoral students`);
+      lines.push(`<b>${int(mt.doctoral)}</b> doctoral students of ${int(mt.enrollment)} enrolled (${esc(mt.year)})`);
+    } else if (rule?.measure === "attendance") {
+      lines.push(`${esc(mt.unit_type || k)} · #${esc(x.rank)} by attendance${rule.among ? ` among ${esc(rule.among)}` : ""}`);
+      lines.push(`<b>${num(mt.visits)}</b> visits (FY ${esc(mt.year)})`);
+      if (mt.note) lines.push(muted(esc(mt.note)));
     } else if (x.kind === "university") {
       lines.push(`${esc(k)} · #${esc(x.rank)} by research spending`);
       if (mt.rd_usd != null) lines.push(`R&amp;D ${usd(mt.rd_usd)} (FY${esc(mt.year)})${mt.federal_usd != null ? `, ${pct(mt.federal_usd / mt.rd_usd, 0)} federal` : ""}`);
@@ -119,15 +124,11 @@ export const tips = {
     const com = t.commodities?.[r.top_commodity];
     const lines = [
       `<b>${esc(a)} ⇄ ${esc(b)}</b> ${muted(`trade route #${esc(r.rank)}`)}`,
-      canada
-        ? `<b>CA${usd(r.value_musd * 1e6)}</b> of freight in ${esc(t.year ?? "")}, ${num(r.tons_k * 1e3)} tonnes (Canadian Freight Analysis Framework)`
-        : `<b>${usd(r.value_musd * 1e6)}</b> of freight a year, ${num(r.tons_k * 1e3)} short tons (FAF ${esc(t.year ?? "")} estimate)`,
+      rich("layers.route_value", { value: usd(r.value_musd * 1e6), tons: num(r.tons_k * 1e3), year: t.year ?? "" }),
     ];
     if (modes) lines.push(modes);
     if (com) lines.push(`Top commodity: ${esc(com)}`);
-    lines.push(muted(canada
-      ? "Both directions summed; air, rail and for-hire truck only. Drawn between each zone's largest city along mapped roads and rails: the framework records where freight starts and ends, not its route."
-      : "Both directions summed. Drawn as an arc between each zone's largest city: FAF records where freight starts and ends, not its route."));
+    lines.push(muted(rich("layers.route_note")));
     return lines.join("<br>");
   },
 };
