@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-default-country="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>usaciv — Canada as a strategy game</title>
+  <meta name="description" content="The real Canada drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data. Switch to the United States edition from the country menu.">
+  <meta name="theme-color" content="#131e2a">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23120d06'/%3E%3Ccircle cx='32' cy='32' r='29' fill='%23c9a45c'/%3E%3Ccircle cx='32' cy='32' r='24' fill='%232a4d8f'/%3E%3Cpath fill='%23f8f0d8' d='M32 14l4.9 11.3 12.2 1.1-9.3 8.1 2.8 12-10.6-6.4-10.6 6.4 2.8-12-9.3-8.1 12.2-1.1z'/%3E%3C/svg%3E">
+  <!-- This deployment opens on the Canada edition (data-default-country above; ?country=us shows the U.S. edition, and
+       js/app/country.js reads both). Social cards: crawlers need absolute URLs. If you host your own copy, change
+       https://usaciv-canada.pages.dev/ to its address (og:url, og:image, twitter:image, canonical).
+       og-image-ca.png is the app's share image of the Canadian home view (composed at 1600x840, scaled to 1200x630), as
+       og-image.png is of the U.S. one. -->
+  <link rel="canonical" href="https://usaciv-canada.pages.dev/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="usaciv">
+  <meta property="og:title" content="Canada as a strategy-game map">
+  <meta property="og:description" content="The real Canada drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data (Statistics Canada, Natural Resources Canada, Parks Canada, NOAA, Natural Earth, WRI). A U.S. edition is one click away.">
+  <meta property="og:url" content="https://usaciv-canada.pages.dev/">
+  <meta property="og:image" content="https://usaciv-canada.pages.dev/og-image-ca.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Hex map of Canada with city banners, in the style of a strategy game">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Canada as a strategy-game map">
+  <meta name="twitter:description" content="The real Canada drawn like a 4X strategy map, from public data. A U.S. edition is one click away.">
+  <meta name="twitter:image" content="https://usaciv-canada.pages.dev/og-image-ca.png">
+  <meta name="twitter:image:alt" content="Hex map of Canada with city banners, in the style of a strategy game">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">
+      <span class="brand-emblem" aria-hidden="true">🍁</span>
+      <select id="country-picker" aria-label="Country" title="Switch country">
+        <option value="ca">Canada</option>
+        <option value="us">United States</option>
+      </select>
+    </div>
+    <div id="yields" class="yields" aria-label="National yields"></div>
+    <div class="spacer"></div>
+    <div class="search" role="search">
+      <span class="search-ic" aria-hidden="true"></span>
+      <input id="search-input" type="search" placeholder="Search cities &amp; states" autocomplete="off" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results" aria-label="Search cities and states (/ or Ctrl K)">
+      <kbd class="search-kbd" aria-hidden="true">/</kbd>
+    </div>
+    <div id="turn" class="turn"></div>
+    <div class="tb-buttons">
+      <button id="btn-share" class="btn" aria-haspopup="dialog" aria-expanded="false" aria-label="Share this view" title="Share: copy a link or download an image"></button>
+      <button id="btn-help" class="btn btn-icon" aria-label="Keyboard and mouse help" title="Help (?)"></button>
+      <button id="btn-pedia" class="btn" aria-label="Open the Almanac" title="What every number means and where it comes from"></button>
+    </div>
+  </header>
+
+  <canvas id="map" role="img" aria-label="Hex map of Canada"></canvas>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+  <aside id="city-panel" class="panel" hidden role="region" aria-label="Details"></aside>
+
+  <div id="lens-area">
+    <div id="lens-picker" class="panel lens-picker" hidden role="dialog" aria-label="Choose a lens"></div>
+    <div id="legend" class="panel legend" hidden role="group" aria-label="Lens legend"></div>
+    <div id="lens-dock" class="panel lens-dock" role="toolbar" aria-label="Map lenses">
+      <button id="btn-res" class="lens-btn res-toggle" aria-pressed="true" aria-label="Resources on tiles (R)" title="Show or hide resources on tiles (R)" hidden></button>
+      <div id="lens-quick" class="lens-quick"></div>
+      <button id="btn-lenses" class="lens-btn lens-more" aria-haspopup="dialog" aria-expanded="false" aria-controls="lens-picker"></button>
+    </div>
+  </div>
+
+  <div id="minimap-wrap" class="panel"><canvas id="minimap" aria-label="Minimap: click to jump" role="img"></canvas></div>
+  <button id="btn-minimap" class="panel minimap-toggle" aria-pressed="false" aria-controls="minimap-wrap" aria-label="Show the minimap"></button>
+
+  <div id="search-results" class="panel search-results" role="listbox" aria-label="Search results" hidden></div>
+  <div id="share-pop" class="panel share-pop" role="dialog" aria-label="Share" hidden></div>
+  <div id="yield-report" class="panel yield-report" role="dialog" aria-label="National report" tabindex="-1" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="announce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="pedia" class="modal" hidden>
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-label="Almanac">
+      <button class="close icon-btn" data-close aria-label="Close the Almanac">✕</button>
+      <nav id="pedia-nav" aria-label="Almanac pages"></nav>
+      <article id="pedia-body"></article>
+    </div>
+  </div>
+
+  <div id="help" class="modal" hidden>
+    <div class="help-card panel" role="dialog" aria-modal="true" aria-labelledby="help-title"></div>
+  </div>
+
+  <div id="loading">Surveying the land…</div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
