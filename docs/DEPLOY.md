@@ -33,6 +33,8 @@ deployment records the commit.
 
 ## Checks after a deploy
 
-- https://earthciv.org/ opens on the United States, and the country switcher switches to Canada (`?country=ca`) or opens the World Atlas.
+- https://earthciv.org/ opens on the world map. Clicking a country opens its card; the Play buttons open the United
+  States (`?country=us`) and Canada (`?country=ca`), and the World button in each edition brings the world map back.
+- An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
 - The browser console shows no errors on either edition.
