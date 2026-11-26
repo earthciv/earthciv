@@ -28,9 +28,10 @@ A difference between two editions comes from one of three places:
 
 ## Choosing the edition
 
-`?country=<id>` picks an edition. Without it, the page's default applies: `<html data-default-country="us">` in
-`index.html`, then `default` in `editions.json`, then the first edition listed. A link to the default edition carries
-no parameter.
+`?country=<id>` opens any edition in `editions.json`. The main page opens on the world map, and legacy links with
+edition state in the hash (such as `/#city=35620`) open the default edition. Links from the main page always carry
+`?country=<id>` for an edition. Pages without `data-home="world"` open on their default edition, determined by
+`data-default-country`, then `default` in `editions.json`, then the first edition listed.
 
 ## editions.json
 

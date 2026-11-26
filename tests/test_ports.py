@@ -98,5 +98,40 @@ class PortsCatalogTest(unittest.TestCase):
         self.assertEqual(int(m.group(1)), len(self.ports_doc["ports"]))
 
 
+class WorldHomeTest(unittest.TestCase):
+    """The deployed page opens on the world map; the editions live at ?country=<id>."""
+
+    def read(self, *parts):
+        return (ROOT.joinpath("web", *parts)).read_text(encoding="utf-8")
+
+    def test_index_opens_on_the_world_map(self):
+        html = self.read("index.html")
+        self.assertIn('data-home="world"', html)
+        # The default edition stays declared: old links without ?country= (/#city=…) still open it.
+        self.assertIn('data-default-country="us"', html)
+        self.assertIn('<script type="module" src="js/boot.js"></script>', html)
+        self.assertNotIn('src="js/main.js"', html)
+
+    def test_boot_loads_either_the_world_map_or_an_edition(self):
+        boot = self.read("js", "boot.js")
+        self.assertIn('import { OPENS_ON_WORLD } from "./app/home.js"', boot)
+        self.assertIn('import("./ext/ports/home.js")', boot)
+        self.assertIn('import("./main.js")', boot)
+        # The world map must not pull in an edition's code: boot.js imports main.js only on the edition path.
+        self.assertNotIn('from "./main.js"', boot)
+
+    def test_only_the_world_views_own_hash_keys_keep_the_home_page(self):
+        home = self.read("js", "app", "home.js")
+        self.assertIn('export const WORLD_HASH_KEYS = ["ports", "country"];', home)
+        ports = self.read("js", "ext", "ports", "index.js")
+        for key in ("ports", "country"):
+            self.assertIn(f'app.hash.register("{key}"', ports)
+
+    def test_edition_links_always_name_their_edition(self):
+        main = self.read("js", "main.js")
+        self.assertIn("pinEditionInUrl(EDITION_ID)", main)
+        self.assertIn("editionUrl(picker.value, DEFAULT_EDITION)", main)
+
+
 if __name__ == "__main__":
     unittest.main()

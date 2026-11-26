@@ -5,9 +5,7 @@
 // goes into HTML, and `rich()` returns HTML reduced to a few safe tags, with its {placeholders} filled by escaped
 // values.
 import { edition, EDITION_ID, TEXT } from "./edition.js";
-
-const esc = (s) =>
-  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+import { esc } from "./escape.js";
 
 // --- the nation's name in the forms sentences need ---------------------------------------------------------------
 const name = edition.name;

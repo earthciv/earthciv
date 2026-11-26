@@ -762,8 +762,11 @@ saved by `download_prefix()` has a `partial` note in the manifest, and its `sha2
 
 ## Browser extension API (window.__app; main.js "extension API", app/api.js)
 
-Extensions live in `web/js/ext/<name>/index.js` and export `install(app)`; `ext/index.js` loads `cityView`, `advisors` and
-`layers` (roads, rail, forts, ports, airports, wonders and trade routes). The API:
+Extensions live in `web/js/ext/<name>/index.js` and export `install(app)`; `ext/index.js` loads `cityView`, `advisors`,
+`layers` (roads, rail, forts, ports, airports, wonders and trade routes) and `ports` (the world map, app mode `"ports"`).
+With `<html data-home="world">`, `boot.js` opens the bare address on that world map without loading an edition
+(`app/home.js`, `ext/ports/home.js`): there `ports` runs on a stand-in `app` with `worldHome: true` and the same modes,
+hash and events, and each edition opens as `?country=<id>`. The API:
 
 **Data.**
 * `app.data.<name>`: the core files (`world`, `cities`, `states`, `nation`, `lenses`, `resources`, `sources`) are loaded

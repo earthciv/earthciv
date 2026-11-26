@@ -29,5 +29,4 @@ export function popShort(n) {
   return Math.round(n / 1e3) + "K";
 }
 
-export const esc = (s) =>
-  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export { esc } from "./app/escape.js";

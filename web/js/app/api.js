@@ -11,7 +11,7 @@
 import { parseHash, formatHash } from "./urlstate.js";
 import { icon } from "../ui/icon.js";
 import { hasIcon } from "../icons.js";
-import { esc } from "../format.js";
+import { esc } from "./escape.js";
 
 // --- events ------------------------------------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ const DEBOUNCE_MS = 350;
  *   get() → string | null   the key's current value (null = leave it out of the hash)
  *   set(value | null)       apply a value from the URL (on load, Back/Forward, a pasted link); null = absent.
  *   A key registered after the page loaded gets set(value) once, right away (in a microtask), if the current
- *   hash has it.
+ *   hash has it. Until then, writes keep the key's value from the URL as it is (see `unclaimed`).
  */
 export function createHashState(opts) {
   const extras = new Map(); // key -> {get, set}
@@ -85,6 +85,10 @@ export function createHashState(opts) {
     }
     return out;
   };
+  // Keys in the URL that nothing has registered yet, such as ports=all while the ports extension is still loading.
+  // Writes carry them along unchanged, so a link's destination survives until its owner registers and reads it. (The
+  // U.S. edition writes the hash before the extensions finish installing, which used to drop #ports=all.)
+  const unclaimed = () => [...params(location.hash)].filter(([k, v]) => v !== "" && !CORE_KEYS.has(k) && !extras.has(k));
   const format = (core, ex) => {
     const base = formatHash(core);
     const tail = ex.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
@@ -105,7 +109,7 @@ export function createHashState(opts) {
     if (!force && opts.busy?.()) return schedule(); // wait for the camera to settle
     const core = opts.read();
     const ex = readExtras();
-    const hash = format(core, ex);
+    const hash = format(core, [...ex, ...unclaimed()]);
     if (hash === location.hash || (!hash && !location.hash)) {
       lastWritten = location.hash;
       return;

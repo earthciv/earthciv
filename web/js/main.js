@@ -1,4 +1,5 @@
 import { DEFAULT_EDITION, EDITIONS, EDITION_ID, dataURL, declares, edition } from "./app/edition.js";
+import { editionUrl, pinEditionInUrl } from "./app/home.js";
 import { VIEW, defaults, txt } from "./app/text.js";
 import { Camera } from "./camera.js";
 import { prepareWorld, applyLens, stateIndex } from "./world.js";
@@ -75,14 +76,8 @@ async function main() {
   }
   sizePicker();
   document.fonts?.ready?.then(sizePicker);
-  picker.onchange = () => {
-    // The page's default edition needs no parameter; another one carries ?country= (kept in shared links).
-    const target = new URL(location.href);
-    if (picker.value === DEFAULT_EDITION) target.searchParams.delete("country");
-    else target.searchParams.set("country", picker.value);
-    target.hash = "";
-    location.assign(target.href);
-  };
+  pinEditionInUrl(EDITION_ID);
+  picker.onchange = () => location.assign(editionUrl(picker.value, DEFAULT_EDITION));
   document.title = edition.title || edition.name;
   document.querySelector(".brand-emblem").textContent = edition.emblem || "";
   document.getElementById("map").setAttribute("aria-label", edition.map_label || `Hex map of ${edition.name}`);

@@ -2,6 +2,7 @@
 import { drawIcon, hasIcon } from "../icons.js";
 import { icon } from "../ui/icon.js";
 import { DEFAULT_EDITION, EDITION_ID, edition } from "./edition.js";
+import { WORLD_HOME } from "./home.js";
 import { TERMS, VIEW, defaults, txt } from "./text.js";
 
 import { SITE_URL } from "./project.js";
@@ -12,7 +13,7 @@ export { SITE_URL };
 defaults({ "share.local_label": "{name} edition", "share.credit": "Data: public sources" });
 
 export function siteLabel() {
-  if (SITE_URL) return EDITION_ID === DEFAULT_EDITION ? SITE_URL : `${SITE_URL}/?country=${EDITION_ID}`;
+  if (SITE_URL) return EDITION_ID === DEFAULT_EDITION && !WORLD_HOME ? SITE_URL : `${SITE_URL}/?country=${EDITION_ID}`;
   try {
     const { hostname, host, pathname } = location;
     const local = !hostname || /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(hostname) || /\.(localhost|test|local)$/.test(hostname);

@@ -4,8 +4,9 @@ This copy extends [usaciv](https://karpathy.ai/usaciv), the original project by 
 ([announcement](https://x.com/karpathy/status/2125779541952246039)), with a Canada edition. It is live at
 [usaciv-canada.pages.dev/?country=ca](https://usaciv-canada.pages.dev/?country=ca).
 
-The deployed site opens on the United States edition (`data-default-country="us"` in `web/index.html`), and the
-country switcher at the top left switches to Canada (`?country=ca`) or opens the World Atlas of all countries. The country parameter is kept in shared links.
+The deployed site opens on the world map (`data-home="world"` in `web/index.html`); Canada's Play button there opens
+`?country=ca`. Inside an edition, the country switcher at the top left switches between Canada and the United States
+(`?country=us`), and the World button beside it opens the world map. The country parameter is kept in shared links.
 
 Run `uv run python -m pipeline serve` from the project root and open [the local site](http://127.0.0.1:8765/).
 The Canadian data files are bundled under `web/data/ca/` and load from the same static site as the U.S. edition.

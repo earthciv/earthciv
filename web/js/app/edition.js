@@ -5,21 +5,10 @@
 // the older data-default-country), then the index's default. All data addresses resolve from this module's own
 // address, so the dev pages under web/dev/ load the same files as the site.
 
-export const DATA_URL = new URL("../../data/", import.meta.url);
+import { DATA_URL, DEFAULT_EDITION, EDITIONS, loadJSON } from "./edition-index.js";
 
-async function loadJSON(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`${url.pathname}: HTTP ${r.status}`);
-  return r.json();
-}
-
-const index = await loadJSON(new URL("editions.json", DATA_URL));
-/** The editions this site offers, in menu order: [{id, name, emblem}]. */
-export const EDITIONS = index.editions;
+export { DATA_URL, DEFAULT_EDITION, EDITIONS };
 const ids = EDITIONS.map((e) => e.id);
-const html = typeof document !== "undefined" ? document.documentElement : null;
-const declared = html?.dataset?.defaultEdition || html?.dataset?.defaultCountry;
-export const DEFAULT_EDITION = ids.includes(declared) ? declared : ids.includes(index.default) ? index.default : ids[0];
 const requested = typeof location !== "undefined" ? new URLSearchParams(location.search).get("country") : null;
 /** The id of the edition on this page. */
 export const EDITION_ID = ids.includes(requested) ? requested : DEFAULT_EDITION;
