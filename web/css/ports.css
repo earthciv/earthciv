@@ -43,6 +43,11 @@
   background: #091a2c; color: var(--ink);
   display: flex; flex-direction: column; overflow: hidden;
 }
+/* A port open inside has its own top bar, so EarthCiv's top bar (the edition underneath) is hidden and the viewer's
+   bar takes its place: one EarthCiv bar above the port's own, not two headers. Hidden rather than covered, so its
+   controls also leave the tab order and the "/" search shortcut. */
+body.ports-viewing #topbar { visibility: hidden; }
+body.ports-viewing .ports-overlay { top: 0; }
 
 /* ---------- atlas split layout ---------- */
 .ports-atlas {
@@ -286,7 +291,8 @@
   flex: 1; min-height: 0; display: flex; flex-direction: column;
 }
 .ports-vbar {
-  display: flex; align-items: center; gap: 10px; padding: 6px 12px; flex: none; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 10px; padding: 5px 12px; flex: none; /* one row: the port's name shortens */
+  min-height: var(--topbar-h); /* sits where EarthCiv's top bar was, at the same height */
   background: linear-gradient(180deg, #213245, #14202e); border-bottom: 1px solid var(--gold);
 }
 .ports-vtitle { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -348,6 +354,17 @@
   .ports-overlay[data-mtab="map"] .ports-map-pane { grid-row: 1 / 3; }
   .ports-overlay[data-mtab="list"] .ports-canvas-wrap { display: none; }
   .ports-legend { font-size: 10px; gap: 4px 8px; }
-  .pv-name { max-width: 140px; }
-  #ports-vswitch { max-width: 180px; }
+  /* The switcher already names the open port, so on narrower screens the separate title gives way to it. */
+  .ports-vtitle { display: none; }
+  .ports-vswitch-wrap { flex: 1; min-width: 0; }
+  #ports-vswitch { width: 100%; max-width: none; }
+}
+@media (max-width: 700px) {
+  /* Phones: Back and New tab show as icons (the words stay for screen readers); GitHub stays on the port's card. */
+  .ports-vbar { gap: 6px; padding: 5px 8px; }
+  .ports-vbar .ports-btn { height: 26px; }
+  .ports-vbar .ports-vlbl {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .ports-vgh { display: none; }
 }

@@ -370,7 +370,7 @@ export function install(app) {
 
       <div class="ports-viewer" id="ports-viewer" hidden>
         <div class="ports-vbar">
-          <button type="button" class="ports-btn" data-act="back-atlas" title="Back to World Atlas (Esc)">← All Countries</button>
+          <button type="button" class="ports-btn" data-act="back-atlas" title="Back to World Atlas (Esc)">← <span class="ports-vlbl">All Countries</span></button>
           <div class="ports-vtitle" id="ports-vtitle"></div>
           <label class="ports-vswitch-wrap">
             <span class="sr-only">Switch port</span>
@@ -812,6 +812,12 @@ export function install(app) {
   }
 
   // --- embedded viewer for unmerged live ports -------------------------------------------------------------------
+  // A port brings its own top bar, and EarthCiv's top bar describes the edition underneath (e.g. U.S. figures above a
+  // map of Germany), so EarthCiv's bar steps aside while a port is open and the viewer's bar takes its place.
+  function setViewing(on) {
+    document.body.classList.toggle("ports-viewing", !!on);
+  }
+
   function populateViewerSwitcher(activeId) {
     const sel = overlay.querySelector("#ports-vswitch");
     const all = allPorts();
@@ -883,13 +889,14 @@ export function install(app) {
       const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
       overlay.querySelector("#ports-vactions").innerHTML = `
         <button type="button" class="ports-btn ports-btn-ghost" data-act="reload-frame" title="Reload frame">↻</button>
-        ${repoUrl ? `<a class="ports-btn ports-btn-ghost" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer">GitHub ${EXT_SVG}</a>` : ""}
-        <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab">New tab ${EXT_SVG}</a>
+        ${repoUrl ? `<a class="ports-btn ports-btn-ghost ports-vgh" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer">GitHub ${EXT_SVG}</a>` : ""}
+        <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
         <button type="button" class="icon-btn" data-act="close" aria-label="Close All Ports (Esc)" title="Close">${icon("close", "✕", { size: 12 })}</button>
       `;
       populateViewerSwitcher(port.id);
       atlas.hidden = true;
       viewer.hidden = false;
+      setViewing(true);
       loadIframeForPort(port);
       app.hash.soon();
       return;
@@ -910,6 +917,7 @@ export function install(app) {
     if (iframe) iframe.src = "about:blank";
     overlay.querySelector("#ports-viewer").hidden = true;
     overlay.querySelector(".ports-atlas").hidden = false;
+    setViewing(false); // before the resize: the atlas sits below EarthCiv's top bar again
     map?.resize();
     app.hash.soon();
     return true;
@@ -925,6 +933,7 @@ export function install(app) {
       overlay.hidden = false;
       overlay.querySelector(".ports-atlas").hidden = false;
       overlay.querySelector("#ports-viewer").hidden = true;
+      setViewing(false);
       syncMobileTabs();
 
       try {
@@ -999,6 +1008,7 @@ export function install(app) {
       overlay.querySelector("#ports-viewer").hidden = true;
       overlay.querySelector(".ports-atlas").hidden = false;
       overlay.hidden = true;
+      setViewing(false);
       showMapTip(null);
     },
     onEscape() {
