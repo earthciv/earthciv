@@ -220,6 +220,12 @@ files, URLs, checksums and caveats.
 | Disaster Declarations Summaries | FEMA (OpenFEMA) | Disasters lens |
 | Billion-Dollar Weather and Climate Disasters | NOAA NCEI | Billion-dollar disasters by state |
 
+The world atlas (the globe button in the top bar) lists every EarthCiv edition and community port in
+`web/data/ports.json`. Clicking a country also shows its population, GDP per person and life expectancy from the World
+Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
+is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
+rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures).
+
 ### Reading the map honestly
 
 The map is drawn to be fun, but the numbers are real, so it is worth knowing where the game metaphor stops:

@@ -4,7 +4,8 @@
 //
 //   * Top-bar button: "Ports" (globe icon) + entry in the top-left country menu ("All ports & atlas…")
 //   * App mode: "ports", URL hash: #ports=all or #ports=<port-id>
-//   * Lazy-loads web/data/ports.json and web/data/world-outlines.json only when opened (0 startup overhead).
+//   * Lazy-loads web/data/ports.json, web/data/world-outlines.json and web/data/world-figures.json only when opened
+//     (0 startup overhead). Clicking a country filters the directory and shows that country's World Bank figures.
 
 import { esc } from "../../format.js";
 import { icon } from "../../ui/icon.js";
@@ -131,6 +132,7 @@ export function install(app) {
   let catalogP = null;
   let basePorts = [];
   let outlines = null;
+  let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
   let customPorts = loadCustomPorts();
   let overlay = null;
   let map = null;
@@ -222,8 +224,14 @@ export function install(app) {
       catalogP = Promise.all([
         fetchJson(new URL("ports.json", DATA_URL)),
         fetchJson(new URL("world-outlines.json", DATA_URL)),
-      ]).then(([portsDoc, outlinesDoc]) => {
+        // Headline figures per country (pipeline/build_world_figures.py). The atlas works without them.
+        fetchJson(new URL("world-figures.json", DATA_URL)).catch((err) => {
+          console.error("could not load world-figures.json", err);
+          return null;
+        }),
+      ]).then(([portsDoc, outlinesDoc, figuresDoc]) => {
         outlines = outlinesDoc;
+        figures = figuresDoc;
         basePorts = syncWithEditions(portsDoc.ports || [], builtinEditions);
         return { ports: basePorts, outlines };
       });
@@ -682,12 +690,43 @@ export function install(app) {
     `;
   }
 
+  // The selected country's headline figures from the World Bank, each labelled with its own year (a figure is the
+  // newest the World Bank has for that country, so years can differ between figures and between countries). Shown
+  // for every country, whether or not anyone has made a map of it yet.
+  function countryFactsHtml(iso2, cname) {
+    if (!figures) return "";
+    const src = figures.source || {};
+    const srcUrl = parseSafeUrl(src.url);
+    const srcName = `${src.publisher || ""}, ${src.title || ""}`;
+    const cite = `<span class="pcf-src">${srcUrl ? `<a href="${esc(srcUrl.href)}" target="_blank" rel="noopener noreferrer">${esc(srcName)}</a>` : esc(srcName)}${src.license ? ` (${esc(src.license)})` : ""}${src.updated ? `, <span class="pcf-date">updated ${esc(src.updated)}</span>` : ""}</span>`;
+    const row = figures.countries?.[iso2];
+    const items = (figures.figures || [])
+      .filter((f) => Array.isArray(row?.[f.key]))
+      .map((f) => {
+        const [year, value] = row[f.key];
+        return `<span class="pcf" title="${esc(f.unit || "")}"><small>${esc(f.label)} (${esc(year)})</small> <b>${esc(formatFigure(f.key, value))}</b></span>`;
+      });
+    if (!items.length) items.push(`<span class="muted">No World Bank figures for ${esc(cname)}.</span>`);
+    return `<div class="ports-country-facts">${items.join("")}${cite}</div>`;
+  }
+
+  function formatFigure(key, v) {
+    if (key === "population") {
+      if (v >= 1e9) return `${(v / 1e9).toFixed(2)} billion`;
+      if (v >= 1e6) return `${(v / 1e6).toFixed(1)} million`;
+      return Math.round(v).toLocaleString("en-US");
+    }
+    if (key === "gdp_pc") return `US$${Math.round(v).toLocaleString("en-US")}`;
+    if (key === "life") return `${Number(v).toFixed(1)} years`;
+    return String(v);
+  }
+
   function renderDirectory() {
     const bar = overlay.querySelector("#ports-country-bar");
     if (ui.selectedCountry) {
       bar.hidden = false;
       const cname = ui.selectedCountryName || map?.getCountryName(ui.selectedCountry) || ui.selectedCountry;
-      bar.innerHTML = `<span>Filtered to <b>${esc(cname)}</b></span><button type="button" class="ports-btn ports-btn-ghost" data-act="clear-country">Show all ×</button>`;
+      bar.innerHTML = `<span>Filtered to <b>${esc(cname)}</b></span><button type="button" class="ports-btn ports-btn-ghost" data-act="clear-country">Show all ×</button>${countryFactsHtml(ui.selectedCountry, cname)}`;
     } else {
       bar.hidden = true;
     }
