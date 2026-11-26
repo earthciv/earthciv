@@ -3,8 +3,12 @@
 The site is static. `python -m pipeline package` writes it to `dist/usaciv/`: everything in `web/` except the dev
 pages, plus `usaciv-source.zip`, a copy of this project that the in-app help links to.
 
+One thing runs on the server: the Pages Function in `functions/`, which keeps the star ratings people give the maps
+in the world view. It needs a database and a secret, set up once ([RATINGS.md](RATINGS.md)). Without them the site
+deploys and works the same, and shows no stars.
+
 Production is the Cloudflare Pages project `usaciv-canada`, created by direct upload. It answers at
-https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org.
+https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org. Its settings are in `wrangler.toml`.
 
 ## Before a deploy
 
@@ -31,10 +35,16 @@ npx --yes wrangler@4.168.0 pages deploy dist/usaciv --project-name=usaciv-canada
 Wrangler 4.168 needs Node 22.12 or newer, and uses the login saved by `wrangler login`. Deploy committed work, so the
 deployment records the commit.
 
+Run both commands in the project's root folder. Wrangler reads `wrangler.toml` and compiles `functions/` from the
+folder it is run in; from anywhere else the site would upload without its Function, and the ratings would turn off.
+
 ## Checks after a deploy
 
 - https://earthciv.org/ opens on the world map. Clicking a country opens its card; the Play buttons open the United
   States (`?country=us`) and Canada (`?country=ca`), and the World button in each edition brings the world map back.
 - An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
+- https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up (`"open": false` is the
+  static file: no database is bound, or the Function was not uploaded), and a map's card on the world map shows its
+  stars.
 - The browser console shows no errors on either edition.

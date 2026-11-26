@@ -1,0 +1,12 @@
+# Cloudflare Pages settings for the deployed site (docs/DEPLOY.md). The site is static; its one Function,
+# functions/data/ratings.json.js, keeps the ratings people give the maps in the world view (docs/RATINGS.md).
+name = "usaciv-canada"
+pages_build_output_dir = "dist/usaciv"
+compatibility_date = "2026-11-26"
+
+# The ratings database. Until this block names one, the Function hands requests to the static file
+# web/data/ratings.json and the site shows no stars.
+# [[d1_databases]]
+# binding = "RATINGS_DB"
+# database_name = "earthciv-ratings"
+# database_id = "<the id that `wrangler d1 create earthciv-ratings` prints>"
