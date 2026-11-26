@@ -2,6 +2,7 @@
 import { drawIcon, hasIcon } from "../icons.js";
 import { icon } from "../ui/icon.js";
 import { DEFAULT_COUNTRY, canada, country, regionName } from "./country.js";
+import { WORLD_HOME } from "./home.js";
 
 // The address printed on shared images. Set it to the published site (e.g. "example.com/us-atlas"); when left
 // empty, the page's own host and path are used, except on a local dev server, where SITE_FALLBACK is printed.
@@ -9,7 +10,8 @@ export const SITE_URL = "usaciv-canada.pages.dev";
 const SITE_FALLBACK = "usaciv";
 
 export function siteLabel() {
-  if (SITE_URL) return country === DEFAULT_COUNTRY ? SITE_URL : `${SITE_URL}/?country=${country}`;
+  // Where the bare address is the world map (app/home.js), the default edition is at ?country= too.
+  if (SITE_URL) return country === DEFAULT_COUNTRY && !WORLD_HOME ? SITE_URL : `${SITE_URL}/?country=${country}`;
   try {
     const { hostname, host, pathname } = location;
     const local = !hostname || /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/.test(hostname) || /\.(localhost|test|local)$/.test(hostname);

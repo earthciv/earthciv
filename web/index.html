@@ -1,14 +1,16 @@
 <!doctype html>
-<html lang="en" data-default-country="us">
+<html lang="en" data-default-country="us" data-home="world">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>EarthCiv — The real world, mapped like a strategy game</title>
-  <meta name="description" content="The real United States drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data. Switch countries or browse all 40+ editions from the country switcher.">
+  <meta name="description" content="Start on a world map and click any country: play the United States or Canada drawn like a 4X strategy map from public data, open community maps of dozens more countries, and see each country's World Bank figures.">
   <meta name="theme-color" content="#131e2a">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23120d06'/%3E%3Ccircle cx='32' cy='32' r='29' fill='%23c9a45c'/%3E%3Ccircle cx='32' cy='32' r='24' fill='%232a4d8f'/%3E%3Cpath fill='%23f8f0d8' d='M32 14l4.9 11.3 12.2 1.1-9.3 8.1 2.8 12-10.6-6.4-10.6 6.4 2.8-12-9.3-8.1 12.2-1.1z'/%3E%3C/svg%3E">
-  <!-- This deployment opens on the United States edition (data-default-country above; ?country=ca shows Canada, and
-       js/app/country.js reads both). Social cards: crawlers need absolute URLs. If you host your own copy, change
+  <!-- This deployment opens on the world map (data-home="world": js/app/home.js, js/ext/ports/), where any country can
+       be clicked. The editions live at ?country=us and ?country=ca; data-default-country names the edition that old
+       links without ?country= (such as /#city=35620) still open (js/app/country.js). Without data-home the page opens
+       on that edition. Social cards: crawlers need absolute URLs. If you host your own copy, change
        https://earthciv.org/ to its address (og:url, og:image, twitter:image, canonical).
        og-image.png is the app's share image of the U.S. home view (composed at 1600x840, scaled to 1200x630), as
        og-image-ca.png is of the Canadian one. -->
@@ -93,6 +95,6 @@
   </div>
 
   <div id="loading">Surveying the land…</div>
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/boot.js"></script>
 </body>
 </html>

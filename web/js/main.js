@@ -1,4 +1,5 @@
 import { DEFAULT_COUNTRY, canada, country, countryName } from "./app/country.js";
+import { editionUrl, pinEditionInUrl } from "./app/home.js";
 import { Camera } from "./camera.js";
 import { prepareWorld, applyLens, stateIndex } from "./world.js";
 import * as mapRender from "./render/map.js";
@@ -68,14 +69,10 @@ async function main() {
   }
   sizePicker();
   document.fonts?.ready?.then(sizePicker);
-  picker.onchange = () => {
-    // The page's default edition needs no parameter; another one carries ?country= (kept in shared links).
-    const target = new URL(location.href);
-    if (picker.value === DEFAULT_COUNTRY) target.searchParams.delete("country");
-    else target.searchParams.set("country", picker.value);
-    target.hash = "";
-    location.assign(target.href);
-  };
+  // Where the bare address is the world map (app/home.js), every edition carries ?country=, also when an old link
+  // without it opened this one; otherwise the page's default edition needs no parameter. Kept in shared links.
+  pinEditionInUrl(country);
+  picker.onchange = () => location.assign(editionUrl(picker.value, DEFAULT_COUNTRY));
   document.title = canada ? "EarthCiv — Canada" : "EarthCiv — The real world, mapped like a strategy game";
   document.querySelector(".brand-emblem").textContent = canada ? "🍁" : "★";
   document.getElementById("map").setAttribute("aria-label", canada ? "Hex map of Canada" : "Hex map of the contiguous United States");
