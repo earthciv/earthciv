@@ -17,7 +17,7 @@ power plants, mines and shale plays. Roads, railroads, ports, forts and wonders 
 a City View with citizens and districts, and a council of Advisors for slicing the data. Every number traces back
 to a public source in the in-app **Almanac**.
 
-It is a static site: plain ES modules and Canvas 2D, with no framework, no npm and no build step. The data is built
+It is a static site built with plain ES modules and Canvas 2D, with no framework or npm. The data is built
 by a small Python pipeline that uses only the standard library, from public downloads that need no API keys.
 
 <table>
@@ -109,11 +109,12 @@ you can upload to any static host (Netlify, S3, GitHub Pages…).
 To make a deploy package:
 
 ```bash
-uv run python -m pipeline package      # → usaciv.zip: one file to upload
+uv run --group harness python -m playwright install chromium-headless-shell  # once
+uv run --group harness python -m pipeline package                            # → usaciv.zip
 ```
 
-`usaciv.zip` unzips to a `usaciv/` folder: `web/` without the dev pages, plus `usaciv-source.zip`: this whole project, minus downloads and
-caches, which the in-app help links to. If you publish your own copy, change the address `earthciv.org` in
+`usaciv.zip` contains the static site, generated city and lens share pages, and `usaciv-source.zip` for the in-app
+help download. If you publish your own copy, change the address `earthciv.org` in
 `web/index.html` (the social-card tags), in `SITE_URL` in `web/js/app/project.js` (printed on share images) and in
 `web/dev/trailer/storyboard.js`.
 
@@ -213,7 +214,7 @@ uv run python -m pipeline all [--offline]             # fetch + process + build 
 uv run --group build python -m pipeline.canada        # rebuild web/data/ca (--force refreshes its downloads)
 uv run python -m pipeline.build_world_figures         # rebuild web/data/world-figures.json (--refresh downloads again)
 uv run python -m pipeline serve [--port 8765]         # serve web/
-uv run python -m pipeline package                     # usaciv.zip: the site to upload, with the source inside
+uv run --group harness python -m pipeline package     # usaciv.zip: the site to upload, with the source inside
 uv run python -m unittest discover -s tests           # tests
 uv run --group harness python -m harness record       # record every view of both editions (docs/HARNESS.md)
 ```

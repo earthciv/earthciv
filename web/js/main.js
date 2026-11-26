@@ -20,7 +20,7 @@ import { createEmitter, createHashState, createModes, createUi, createMapToggles
 import { drawHighlight, drawOverlays, invalidateHighlight, highlightBounds } from "./render/overlays.js";
 import { resourceFilterSig, layerActive, layerError, Z as LAYER_Z } from "./render/map.js";
 import { installExtensions } from "./ext/index.js";
-import { initShare } from "./app/share.js";
+import { initShare, shareLink } from "./app/share.js";
 import { initHelp } from "./app/help.js";
 import { createTapCard } from "./ui/tapCard.js";
 import { initMobile } from "./ui/mobile.js";
@@ -842,7 +842,13 @@ async function main() {
   const share = initShare({
     button: document.getElementById("btn-share"),
     getInfo: shareInfo,
-    beforeCopy: () => url.flush(),
+    getLink: () => {
+      url.flush();
+      const city = state.selectedCity;
+      const lens = state.lens;
+      const card = city ? ["city", city.id] : lensById.has(lens?.id) ? ["lens", lens.id] : null;
+      return shareLink(EDITION_ID, card);
+    },
     fileName: () => {
       const sel = shareInfo().selection;
       return `${slug(edition.name)}-${state.lens?.id || "terrain"}${sel ? "-" + slug(sel.name) : ""}.png`;

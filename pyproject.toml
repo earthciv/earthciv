@@ -6,10 +6,10 @@ requires-python = ">=3.11"
 dependencies = []  # standard library only, on purpose
 
 # Building an edition's data (python -m pipeline.canada) may use these, pinned to the versions that produced the
-# committed data. Serving, checking, packaging and the tests stay standard library only.
+# committed data. Serving, checking and the tests stay standard library only.
 [dependency-groups]
 build = ["numpy==2.4.6", "pillow==13.0.0", "pyproj==3.7.2", "shapely==2.2.0"]
-# The browser harness (python -m harness, docs/HARNESS.md): dev-only, never needed to run or build the site.
+# Headless browser support for the test harness and packaging social cards.
 harness = ["pillow==13.0.0", "playwright==1.65.2"]
 
 [tool.uv]

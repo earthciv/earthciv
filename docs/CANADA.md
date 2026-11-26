@@ -147,5 +147,5 @@ The `build` dependency group pins numpy, Pillow, pyproj and shapely to the versi
 so a rebuild from the same cached inputs gives byte-identical files. The rebuild downloads public source files without
 API keys and caches them under `data/raw/canada/`. Pass `--force`
 to refresh those files. The publisher URLs, SHA-256 fingerprints and retrieval dates are logged in
-`data/raw/canada/manifest.json` and listed in the Canadian Almanac. The existing `python -m pipeline package` command
-bundles both editions and the source archive.
+`data/raw/canada/manifest.json` and listed in the Canadian Almanac. The [deploy package](DEPLOY.md) bundles both
+editions, their social previews, and the source archive.
