@@ -20,6 +20,7 @@ export function createTable(host, opts) {
   let cols = visibleCols();
   let all = opts.rows || [];
   let view = [];
+  let indexByKey = new Map();
   let sort = opts.sort || null;
   let query = "";
   let hot = null, sel = null;
@@ -60,14 +61,20 @@ export function createTable(host, opts) {
     if (c) {
       const dir = sort.dir === "asc" ? 1 : -1;
       const val = c.value || ((r) => r[c.key]);
-      view.sort((a, b) => {
-        const va = val(a), vb = val(b);
-        const na = va == null || (typeof va === "number" && !fin(va)), nb = vb == null || (typeof vb === "number" && !fin(vb));
-        if (na || nb) return na === nb ? 0 : na ? 1 : -1; // nulls last either way
-        if (typeof va === "string" || typeof vb === "string") return dir * String(va).localeCompare(String(vb));
-        return dir * (va - vb);
+      // Precompute sort values once per row instead of O(N log N) times inside the comparator.
+      const keyed = view.map((r) => {
+        const v = val(r);
+        return { r, v, nul: v == null || (typeof v === "number" && !fin(v)) };
       });
+      keyed.sort((a, b) => {
+        if (a.nul || b.nul) return a.nul === b.nul ? 0 : a.nul ? 1 : -1; // nulls last either way
+        if (typeof a.v === "string" || typeof b.v === "string") return dir * String(a.v).localeCompare(String(b.v));
+        return dir * (a.v - b.v);
+      });
+      view = keyed.map((k) => k.r);
     }
+    indexByKey = new Map();
+    for (let i = 0; i < view.length; i++) indexByKey.set(String(keyOf(view[i])), i);
     if (cnt) cnt.textContent = `${view.length.toLocaleString("en-US")} of ${all.length.toLocaleString("en-US")}`;
     const maxH = opts.maxHeight || 340;
     const h = Math.min(maxH, Math.max(rowH * 2, view.length * rowH + 2));
@@ -157,16 +164,18 @@ export function createTable(host, opts) {
   body.addEventListener("blur", () => { if (!hovered) { setHotKey(null, false); opts.onHover?.(null); } });
 
   function setHotKey(key, scroll) {
+    if (key === hot && !scroll) return;
     hot = key;
     space.querySelectorAll(".adv-tr.hot").forEach((n) => n.classList.remove("hot"));
     if (key == null) return;
-    const i = view.findIndex((r) => String(keyOf(r)) === String(key));
-    if (i < 0) return;
+    const i = indexByKey.get(String(key));
+    if (i == null) return;
     if (scroll) {
       const top = i * rowH, h = body.clientHeight;
-      if (top < body.scrollTop) body.scrollTop = top;
-      else if (top + rowH > body.scrollTop + h) body.scrollTop = top + rowH - h;
-      renderRows(true);
+      const prev = body.scrollTop;
+      if (top < prev) body.scrollTop = top;
+      else if (top + rowH > prev + h) body.scrollTop = top + rowH - h;
+      if (body.scrollTop !== prev) renderRows(true);
     }
     space.querySelector(`.adv-tr[data-i="${i}"]`)?.classList.add("hot");
   }

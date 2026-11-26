@@ -106,19 +106,35 @@ export const RAMPS = {
   heat: ["#3b1f4a", "#7a2c62", "#bb3f5a", "#e8774a", "#f6b94a", "#fbe8a6"],
 };
 
+const rgbCache = new Map();
 const hex2rgb = (h) => {
-  const n = parseInt(h.replace("#", "").replace(/^(.)(.)(.)$/, "$1$1$2$2$3$3"), 16);
-  return [n >> 16, (n >> 8) & 255, n & 255];
+  let c = rgbCache.get(h);
+  if (c) return c;
+  const s = h.startsWith("#") ? h.slice(1) : h;
+  const n = parseInt(s.length === 3 ? s[0] + s[0] + s[1] + s[1] + s[2] + s[2] : s, 16);
+  c = [n >> 16, (n >> 8) & 255, n & 255];
+  rgbCache.set(h, c);
+  return c;
 };
+function rampColorRGB(stops, t) {
+  if (!fin(t)) return "#7d7466";
+  t = clamp(t, 0, 1) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(t)), f = t - i;
+  const a = stops[i], b = stops[i + 1];
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+}
 export function rampColor(ramp, t) {
   if (!fin(t)) return "#7d7466";
   t = clamp(t, 0, 1) * (ramp.length - 1);
   const i = Math.min(ramp.length - 2, Math.floor(t)), f = t - i;
   const a = hex2rgb(ramp[i]), b = hex2rgb(ramp[i + 1]);
-  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(",")})`;
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)},${Math.round(a[1] + (b[1] - a[1]) * f)},${Math.round(a[2] + (b[2] - a[2]) * f)})`;
 }
 export function withAlpha(color, a) {
-  if (color.startsWith("#")) return `rgba(${hex2rgb(color).join(",")},${a})`;
+  if (color.startsWith("#")) {
+    const c = hex2rgb(color);
+    return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  }
   const m = /rgba?\(([^)]+)\)/.exec(color);
   if (!m) return color;
   const p = m[1].split(",").slice(0, 3);
@@ -132,16 +148,16 @@ export function colorScale(spec) {
     const m = spec.categories instanceof Map ? spec.categories : new Map(Object.entries(spec.categories || {}));
     return (v) => m.get(v) || spec.other || "#8b8070";
   }
-  const ramp = spec.ramp || (spec.type === "div" ? RAMPS.div : RAMPS.seq);
+  const stops = (spec.ramp || (spec.type === "div" ? RAMPS.div : RAMPS.seq)).map(hex2rgb);
   if (spec.type === "div") {
     const m = Math.max(Math.abs(spec.domain[0]), Math.abs(spec.domain[1])) || 1;
     const mid = spec.mid ?? 0;
-    return (v) => (fin(v) ? rampColor(ramp, 0.5 + (v - mid) / (2 * m)) : "#6d665a");
+    return (v) => (fin(v) ? rampColorRGB(stops, 0.5 + (v - mid) / (2 * m)) : "#6d665a");
   }
   const s = scale(spec.domain, [0, 1], { log: !!spec.log, clampOut: true });
   return (v) => {
     const t = s(v);
-    return t == null ? "#6d665a" : rampColor(ramp, t);
+    return t == null ? "#6d665a" : rampColorRGB(stops, t);
   };
 }
 
@@ -181,10 +197,13 @@ export function onWidth(node, fn) {
 /** Set up a canvas for the device pixel ratio; returns the 2D context in css px. */
 export function sizeCanvas(cv, w, h) {
   const dpr = window.devicePixelRatio || 1;
-  cv.width = Math.max(1, Math.round(w * dpr));
-  cv.height = Math.max(1, Math.round(h * dpr));
-  cv.style.width = `${w}px`;
-  cv.style.height = `${h}px`;
+  const pw = Math.max(1, Math.round(w * dpr));
+  const ph = Math.max(1, Math.round(h * dpr));
+  if (cv.width !== pw) cv.width = pw;
+  if (cv.height !== ph) cv.height = ph;
+  const sw = `${w}px`, sh = `${h}px`;
+  if (cv.style.width !== sw) cv.style.width = sw;
+  if (cv.style.height !== sh) cv.style.height = sh;
   const c = cv.getContext("2d");
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   return c;

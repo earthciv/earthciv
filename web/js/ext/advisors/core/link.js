@@ -191,16 +191,16 @@ const padBox = (b, k) => ({ x0: b.x0 - k, y0: b.y0 - k, x1: b.x1 + k, y1: b.y1 +
  * Radii are in screen px and grow gently with zoom, so circles stay readable at every scale.
  */
 export function createBubbles(app, id, opts = {}) {
-  let items = [], hot = null, sel = null;
+  let items = [], byKey = new Map(), hot = null, sel = null;
   let o = { rMax: 22, minR: 2.5, alpha: 0.55, ...opts };
   const zoomK = () => {
     const fs = app.cam.fitScale || app.cam.scale;
     return Math.max(0.75, Math.min(2.4, Math.sqrt(app.cam.scale / fs)));
   };
-  const radius = (it) => {
+  const baseR = (it) => {
     const vmax = o.vMax || 1;
     const t = fin(it.value) && it.value > 0 ? Math.sqrt(it.value / vmax) : 0;
-    return Math.max(o.minR, o.rMax * t) * zoomK();
+    return Math.max(o.minR, o.rMax * t);
   };
   const overlay = {
     id, z: o.z ?? 20, space: "world", snapshot: true,
@@ -208,9 +208,10 @@ export function createBubbles(app, id, opts = {}) {
       if (!items.length) return;
       const s = cam.scale;
       const v = cam.view();
+      const zk = zoomK();
       ctx.lineWidth = 1.2 / s;
       for (const it of items) {
-        const rpx = radius(it);
+        const rpx = it._r0 * zk;
         const r = rpx / s;
         if (it.x + r < v.x0 || it.x - r > v.x1 || it.y + r < v.y0 || it.y - r > v.y1) continue;
         const faded = sel && !sel.has(it.key);
@@ -228,9 +229,9 @@ export function createBubbles(app, id, opts = {}) {
         }
       }
       if (hot) {
-        const it = items.find((x) => x.key === hot);
+        const it = byKey.get(hot);
         if (it) {
-          const r = radius(it) / s;
+          const r = (it._r0 * zk) / s;
           ctx.beginPath();
           ctx.arc(it.x, it.y, r + 3 / s, 0, Math.PI * 2);
           ctx.strokeStyle = "rgba(10,8,4,.9)";
@@ -244,30 +245,36 @@ export function createBubbles(app, id, opts = {}) {
     },
   };
   const off = app.registerOverlay(overlay);
+  const recomputeRadii = () => { for (const it of items) it._r0 = baseR(it); };
   return {
     set(list, opt = {}) {
       items = [...list].sort((a, b) => (b.value || 0) - (a.value || 0)); // big ones underneath
       o = { ...o, ...opt };
       if (!o.vMax) o.vMax = Math.max(1, ...items.map((x) => x.value || 0));
+      byKey = new Map(items.map((x) => [x.key, x]));
+      recomputeRadii();
       app.requestDraw();
     },
-    setOpts(opt) { o = { ...o, ...opt }; app.requestDraw(); },
+    setOpts(opt) { o = { ...o, ...opt }; recomputeRadii(); app.requestDraw(); },
     setHot(key) { if (key !== hot) { hot = key; app.requestDraw(); } },
     setSelected(set) { sel = set && set.size ? set : null; app.requestDraw(); },
     /** The item under a screen point (css px), smallest first. */
     hit(sx, sy) {
       const [x, y] = app.cam.toWorld(sx, sy);
       const s = app.cam.scale;
+      const zk = zoomK();
+      const pad = 2 / s;
       let best = null, br = Infinity;
       for (const it of items) {
-        const r = radius(it) / s + 2 / s;
-        const d = Math.hypot(it.x - x, it.y - y);
-        if (d <= r && r < br) { best = it; br = r; }
+        const r = (it._r0 * zk) / s + pad;
+        if (r >= br) continue;
+        const dx = it.x - x, dy = it.y - y;
+        if (dx * dx + dy * dy <= r * r) { best = it; br = r; }
       }
       return best;
     },
     get items() { return items; },
-    destroy() { off(); items = []; },
+    destroy() { off(); items = []; byKey.clear(); },
   };
 }
 
@@ -277,22 +284,38 @@ export function createMapTip() {
   tip.className = "adv-maptip";
   tip.hidden = true;
   document.body.appendChild(tip);
+  let lastHtml = null, boxW = 0, boxH = 0;
+  const onResize = () => { boxW = 0; boxH = 0; };
+  window.addEventListener("resize", onResize);
   return {
     show(x, y, html) {
-      tip.innerHTML = html;
-      tip.hidden = false;
-      document.body.classList.add("adv-tip-on");
-      const r = tip.getBoundingClientRect();
-      const left = Math.min(innerWidth - r.width - 8, x + 14);
-      const top = y + 16 + r.height > innerHeight ? y - r.height - 12 : y + 16;
+      if (tip.hidden || html !== lastHtml) {
+        tip.innerHTML = html;
+        tip.hidden = false;
+        document.body.classList.add("adv-tip-on");
+        lastHtml = html;
+        boxW = 0;
+      }
+      if (!boxW) {
+        // Measured at the corner, so a tip last shown near the right edge isn't measured (and kept) squeezed.
+        tip.style.left = "0px";
+        tip.style.top = "0px";
+        const r = tip.getBoundingClientRect();
+        boxW = r.width;
+        boxH = r.height;
+      }
+      const left = Math.min(innerWidth - boxW - 8, x + 14);
+      const top = y + 16 + boxH > innerHeight ? y - boxH - 12 : y + 16;
       tip.style.left = `${Math.max(8, left)}px`;
       tip.style.top = `${Math.max(44, top)}px`;
     },
     hide() {
       if (tip.hidden) return;
       tip.hidden = true;
+      lastHtml = null;
+      boxW = 0;
       document.body.classList.remove("adv-tip-on");
     },
-    destroy() { tip.remove(); document.body.classList.remove("adv-tip-on"); },
+    destroy() { window.removeEventListener("resize", onResize); tip.remove(); document.body.classList.remove("adv-tip-on"); },
   };
 }

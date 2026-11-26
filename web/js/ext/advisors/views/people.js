@@ -100,6 +100,7 @@ export function mount(ctx) {
   const usDensity = counties.rows.reduce((a, r) => a + (r.v.population || 0), 0) / counties.rows.reduce((a, r) => a + (r.v.land_km2 || 0), 0);
   const cByKey = counties.byKey;
   const densRamp = RAMPS.heat;
+  const densColor = colorScale({ type: "seq", domain: [0, 1], ramp: densRamp });
   function drawHist() {
     histHost.innerHTML = "";
     const vals = counties.rows.map((r) => ({ key: r.key, v: r.v.density, w: r.v.population }));
@@ -108,7 +109,7 @@ export function mount(ctx) {
       values: vals, log: true, bins: 30, domain: dom, weighted, height: 130,
       fmt: (v) => fmtShort("float", v), unitLabel: CO.many, weightFmt: (w) => `${count3(w)} people`,
       label: `Histogram of ${CO.one} population density`,
-      colorOf: (_, t) => colorScale({ type: "seq", domain: [0, 1], ramp: densRamp })(t),
+      colorOf: (_, t) => densColor(t),
       markers: [{ v: usDensity, label: "Lower-48 average" }],
       onHover: (bin) => link.hover(bin ? rowsHighlight(counties, bin.keys.map((k) => cByKey.get(k)), { dim: true }) : null),
       onClick: (bin) => {

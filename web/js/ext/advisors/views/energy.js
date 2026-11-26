@@ -35,8 +35,10 @@ export function mount(ctx) {
   const types = res.types;
   const typeById = new Map(types.map((t) => [t.id, t]));
   const items = res.items.map((it, i) => ({ ...it, idx: i, key: String(i) }));
+  const itemByRaw = new Map(res.items.map((raw, i) => [raw, items[i]]));
   const nat = res.summary?.national || {};
   const isMW = (t) => typeById.get(t)?.unit === "MW";
+  const vMax = Math.max(1, ...items.filter((it) => isMW(it.type) && fin(it.value)).map((it) => it.value));
   const mwTypes = types.filter((t) => t.unit === "MW");
   const states = app.data.states || [];
   const stateIdx = new Map(states.map((s, i) => [s.abbr, i]));
@@ -68,9 +70,9 @@ export function mount(ctx) {
   const mixParts = mwTypes.map((t) => ({ key: t.id, label: t.name, value: nat[t.id]?.value || 0, color: t.color, text: mw(nat[t.id]?.value), icon: glyph(t, 14) })).sort((a, b) => b.value - a.value);
   const mixHover = (p) => {
     if (!p) { link.hover(null); bubbles.setSelected(null); return; }
-    const set = new Set(visible().filter((it) => it.type === p.key).map((it) => it.idx));
-    link.hover({ resources: set, dimOthers: true });
-    bubbles.setSelected(new Set(visible().filter((it) => it.type === p.key).map((it) => it.key)));
+    const matching = visible().filter((it) => it.type === p.key);
+    link.hover({ resources: new Set(matching.map((it) => it.idx)), dimOthers: true });
+    bubbles.setSelected(new Set(matching.map((it) => it.key)));
   };
   const solo = (typeId) => {
     const only = st.on.size === 1 && st.on.has(typeId);
@@ -227,7 +229,6 @@ export function mount(ctx) {
     const vis = visible();
     table.setRows(vis);
     const mwVis = vis.filter((it) => isMW(it.type) && fin(it.value));
-    const vMax = Math.max(1, ...items.filter((it) => isMW(it.type) && fin(it.value)).map((it) => it.value));
     bubbles.set(mwVis.map((it) => ({ key: it.key, x: it.x, y: it.y, value: it.value, color: typeById.get(it.type).color, it })), { vMax });
     const sIdx = st.state ? stateIdx.get(st.state) : null;
     link.base({ dimOthers: true, states: sIdx != null ? new Set([sIdx]) : undefined });
@@ -243,7 +244,7 @@ export function mount(ctx) {
   return {
     onMapHover(h) {
       if (h.resource) {
-        const it = items[res.items.indexOf(h.resource)];
+        const it = itemByRaw.get(h.resource);
         if (it) table.setHot(it.key);
       }
     },

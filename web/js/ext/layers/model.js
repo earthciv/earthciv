@@ -84,7 +84,7 @@ export const SITE_RULES = {
 export function createModel(w) {
   const m = {
     w, version: 0, data: {},
-    net: null, ports: [], airports: [], installations: [], ranges: [], parks: [], wonders: [], routes: [],
+    net: null, ports: [], airports: [], hubs: [], installations: [], ranges: [], parks: [], wonders: [], routes: [],
     rangeById: new Map(),
     _vis: new Map(),
   };
@@ -100,6 +100,7 @@ export function createModel(w) {
         const tier = airportTier(a);
         return { kind: "airport", data: a, cell: a.cell, tier, prio: 400 + tier * 1000 + k, minRpx: SITE_RULES.airport.minRpx(tier), pref: towards(w, a, 30) };
       });
+      m.hubs = [...m.ports, ...m.airports];
     } else if (name === "military") {
       m.installations = (data?.installations || []).filter(okCell(w)).map((f, k) => ({
         kind: "fort", data: f, cell: f.cell, tier: f.tier, fort: fortKind(f.component), prio: 200 + k,
@@ -284,16 +285,33 @@ export function visibleSites(m, layerId, items, Rpx) {
   const s = b / m.w.grid.R; // css px per km
   const cand = items.filter((it) => b >= it.minRpx).sort((p, q) => p.prio - q.prio);
   out = [];
-  const kept = [];
+  let maxR = 0;
+  for (const it of cand) {
+    const r = siteSize(it, b) / 2;
+    if (r > maxR) maxR = r;
+  }
+  const invCell = 1 / Math.max(12, maxR * 2 * 0.62 + 1);
+  const buckets = new Map();
   for (const it of cand) {
     const r = siteSize(it, b) / 2;
     const x = it.x * s, y = it.y * s;
+    const gx = Math.floor(x * invCell), gy = Math.floor(y * invCell);
     let ok = true;
-    for (const [kx, ky, kr] of kept) {
-      if ((kx - x) ** 2 + (ky - y) ** 2 < ((kr + r) * 0.62) ** 2) { ok = false; break; }
+    outer: for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const list = buckets.get(`${gx + dx},${gy + dy}`);
+        if (!list) continue;
+        for (let q = 0; q < list.length; q += 3) {
+          const ddx = list[q] - x, ddy = list[q + 1] - y, lim = (list[q + 2] + r) * 0.62;
+          if (ddx * ddx + ddy * ddy < lim * lim) { ok = false; break outer; }
+        }
+      }
     }
     if (!ok) continue;
-    kept.push([x, y, r]);
+    const bkey = `${gx},${gy}`;
+    let list = buckets.get(bkey);
+    if (!list) buckets.set(bkey, (list = []));
+    list.push(x, y, r);
     out.push(it);
   }
   if (m._vis.size > 400) m._vis.clear();

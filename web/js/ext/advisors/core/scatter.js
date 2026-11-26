@@ -32,9 +32,13 @@ export function createScatter(host, opts) {
   let o = opts;
   let W = 0, H = o.height || 300;
   let pts = []; // [{p, px, py, r}]
+  let byKey = new Map();
   let sx = null, sy = null;
   let hot = null, sel = null, brush = null, drag = null;
   let kept = null; // the last brush rectangle (data coordinates), drawn dashed while its selection stands
+  // Cached static plot (axes, grid, reference lines, all points and labels) so hover/brush moves cost one drawImage.
+  const baseCv = document.createElement("canvas");
+  let baseDirty = true, baseDpr = 0;
 
   function layout() {
     W = Math.max(220, Math.round(root.clientWidth || host.clientWidth || 400));
@@ -54,9 +58,11 @@ export function createScatter(host, opts) {
       py: clamp(sy(p.y), M.t, H - M.b),
       r: o.size ? rmin + (rmax - rmin) * Math.sqrt(clamp((fin(p.s) ? p.s : 0) / smax, 0, 1)) : o.radius || 3,
     })).sort((a, b) => b.r - a.r);
+    byKey = new Map(pts.map((q) => [q.p.key, q]));
     root._count = valid.length;
     cv.setAttribute("aria-label", o.ariaLabel || `Scatter plot of ${valid.length} points: ${o.y?.label || "y"} against ${o.x?.label || "x"}`);
     hint.textContent = o.brush === false ? "" : `${valid.length.toLocaleString("en-US")} points · drag to select`;
+    baseDirty = true;
     draw();
   }
 
@@ -65,8 +71,8 @@ export function createScatter(host, opts) {
     return log ? logTicks(d0, d1) : ticks(d0, d1, W < 330 && s === sx ? 4 : 5);
   }
 
-  function draw() {
-    const c = sizeCanvas(cv, W, H);
+  function drawBase() {
+    const c = sizeCanvas(baseCv, W, H);
     c.clearRect(0, 0, W, H);
     // frame
     c.fillStyle = "rgba(0,0,0,.22)";
@@ -160,8 +166,23 @@ export function createScatter(host, opts) {
     // labels
     if (o.labels?.length) drawLabels(c);
     c.restore();
+    baseDirty = false;
+    baseDpr = window.devicePixelRatio || 1;
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    if (baseDirty || baseDpr !== dpr) drawBase();
+    const c = sizeCanvas(cv, W, H);
+    c.clearRect(0, 0, W, H);
+    // Both canvases have the same backing size: copy pixel for pixel. Drawing it at W×H through the dpr transform
+    // would resample the whole plot whenever W·dpr isn't a whole number (125%, 150%, 175% display scaling).
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(baseCv, 0, 0);
+    c.restore();
     // hot point
-    const h = hot != null ? pts.find((q) => q.p.key === hot) : null;
+    const h = hot != null ? byKey.get(hot) || null : null;
     if (h) {
       c.beginPath();
       c.arc(h.px, h.py, h.r + 3, 0, Math.PI * 2);
@@ -200,7 +221,6 @@ export function createScatter(host, opts) {
     c.font = "600 10px -apple-system, system-ui, sans-serif";
     c.textAlign = "left";
     c.textBaseline = "middle";
-    const byKey = new Map(pts.map((q) => [q.p.key, q]));
     const placed = [];
     const list = o.labels.map((k) => byKey.get(k)).filter((q) => q && (!sel || sel.has(q.p.key)));
     // The labelled dots themselves are obstacles too, so a label never sits on top of another named point.
@@ -240,14 +260,30 @@ export function createScatter(host, opts) {
     for (let i = pts.length - 1; i >= 0; i--) {
       const q = pts[i];
       if (sel && !sel.has(q.p.key)) continue;
-      const d = Math.hypot(q.px - mx, q.py - my);
-      if (d <= q.r + 4 && d - q.r < bd) { best = q; bd = d - q.r; }
+      const lim = q.r + 4;
+      const dx = q.px - mx;
+      if (dx > lim || dx < -lim) continue;
+      const dy = q.py - my;
+      if (dy > lim || dy < -lim) continue;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= lim * lim) {
+        const d = Math.sqrt(d2);
+        if (d - q.r < bd) { best = q; bd = d - q.r; }
+      }
     }
     if (!best && sel) {
       for (let i = pts.length - 1; i >= 0; i--) {
         const q = pts[i];
-        const d = Math.hypot(q.px - mx, q.py - my);
-        if (d <= q.r + 3 && d - q.r < bd) { best = q; bd = d - q.r; }
+        const lim = q.r + 3;
+        const dx = q.px - mx;
+        if (dx > lim || dx < -lim) continue;
+        const dy = q.py - my;
+        if (dy > lim || dy < -lim) continue;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= lim * lim) {
+          const d = Math.sqrt(d2);
+          if (d - q.r < bd) { best = q; bd = d - q.r; }
+        }
       }
     }
     return best;
@@ -316,6 +352,7 @@ export function createScatter(host, opts) {
       const s = new Set(pts.filter((q) => q.px >= x0 && q.px <= x1 && q.py >= y0 && q.py <= y1).map((q) => q.p.key));
       sel = s.size ? s : null;
       kept = sel ? { x0: sx.invert(x0), x1: sx.invert(x1), y0: sy.invert(y0), y1: sy.invert(y1) } : null;
+      baseDirty = true;
       draw();
       o.onBrush?.(sel);
       return;
@@ -326,6 +363,7 @@ export function createScatter(host, opts) {
       o.onClick?.(q.p);
     } else if (sel) {
       sel = null;
+      baseDirty = true;
       draw();
       o.onBrush?.(null);
     }
@@ -338,7 +376,7 @@ export function createScatter(host, opts) {
     const byX = [...pts].sort((a, b) => a.px - b.px);
     let i = byX.findIndex((q) => q.p.key === hot);
     if (e.key === "Enter") { if (i >= 0) o.onClick?.(byX[i].p); e.preventDefault(); return; }
-    if (e.key === "Escape") { if (hot != null || sel) { setHotInternal(null); if (sel) { sel = null; draw(); o.onBrush?.(null); } e.preventDefault(); e.stopPropagation(); } return; }
+    if (e.key === "Escape") { if (hot != null || sel) { setHotInternal(null); if (sel) { sel = null; baseDirty = true; draw(); o.onBrush?.(null); } e.preventDefault(); e.stopPropagation(); } return; }
     i = e.key === "ArrowRight" ? Math.min(byX.length - 1, i + 1) : Math.max(0, (i < 0 ? byX.length : i) - 1);
     setHotInternal(byX[i]);
     e.preventDefault();
@@ -355,9 +393,9 @@ export function createScatter(host, opts) {
       if (key === hot) return;
       hot = key ?? null;
       draw();
-      showTip(hot != null ? pts.find((q) => q.p.key === hot) || null : null);
+      showTip(hot != null ? byKey.get(hot) || null : null);
     },
-    setSelected(set) { sel = set && set.size ? new Set(set) : null; kept = null; draw(); },
+    setSelected(set) { sel = set && set.size ? new Set(set) : null; kept = null; baseDirty = true; draw(); },
     get selected() { return sel; },
     destroy() { stopW(); root.remove(); },
   };

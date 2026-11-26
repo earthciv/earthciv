@@ -90,6 +90,13 @@ class PortsCatalogTest(unittest.TestCase):
                 val = p.get(field) or ""
                 self.assertIsNone(HTML_RE.search(val), f"HTML found in {pid}.{field}")
 
+    def test_launch_pill_count_matches_the_catalog(self):
+        # The top-bar pill shows this count until ports.json loads, then the catalog's own length.
+        js = (ROOT / "web" / "js" / "ext" / "ports" / "index.js").read_text(encoding="utf-8")
+        m = re.search(r"const CATALOG_PORT_COUNT = (\d+);", js)
+        self.assertIsNotNone(m, "CATALOG_PORT_COUNT not found in web/js/ext/ports/index.js")
+        self.assertEqual(int(m.group(1)), len(self.ports_doc["ports"]))
+
 
 if __name__ == "__main__":
     unittest.main()
