@@ -1,0 +1,8 @@
+{
+  "contract": 3,
+  "default": "us",
+  "editions": [
+    {"id": "ca", "name": "Canada", "emblem": "🍁"},
+    {"id": "us", "name": "United States", "emblem": "★"}
+  ]
+}

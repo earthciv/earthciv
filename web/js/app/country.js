@@ -1,15 +1,13 @@
-// Which edition the page shows. `?country=ca` or `?country=us` picks one; without it, the page's default edition
-// applies: index.html declares it as <html data-default-country="…"> (this deployment opens on Canada). Pages that
-// declare none, such as the dev tools, and anything running outside a browser, use the U.S. edition.
-const COUNTRIES = ["us", "ca"];
-const declared = typeof document !== "undefined" ? document.documentElement?.dataset?.defaultCountry : null;
-export const DEFAULT_COUNTRY = COUNTRIES.includes(declared) ? declared : "us";
-const requested = typeof location !== "undefined" ? new URLSearchParams(location.search).get("country") : null;
-export const country = COUNTRIES.includes(requested) ? requested : DEFAULT_COUNTRY;
-export const canada = country === "ca";
-export const countryName = canada ? "Canada" : "United States";
-export const regionName = canada ? "Province or territory" : "State";
-export const regionsName = canada ? "Provinces & territories" : "States";
+// Temporary shim over app/edition.js while the browser code stops asking which country it is (docs/GLOBAL_PLAN.md,
+// phase 2). Every export here is to be replaced by what the edition's manifest says; then this file goes.
+import { DEFAULT_EDITION, EDITION_ID, edition } from "./edition.js";
+
+export const DEFAULT_COUNTRY = DEFAULT_EDITION;
+export const country = EDITION_ID;
+export const canada = EDITION_ID === "ca";
+export const countryName = edition.name;
+export const regionName = edition.terms.region.one;
+export const regionsName = edition.terms.region.many;
 // The project this copy extends, credited in the Almanac and the help.
 export const ORIGINAL_URL = "https://karpathy.ai/usaciv";
 export const ANNOUNCEMENT_URL = "https://x.com/karpathy/status/2125779541952246039";

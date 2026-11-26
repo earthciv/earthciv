@@ -1,4 +1,4 @@
-import { canada } from "../app/country.js";
+import { LABEL_YEARS } from "../app/text.js";
 import { esc, int, popShort, compact } from "../format.js";
 import { formatLensValue } from "./lenses.js";
 import { glyph } from "./icon.js";
@@ -12,8 +12,8 @@ export function showCellTooltip(mx, my, w, i, lens, showResources = true) {
   const raw = w.raw;
   const lines = [];
   const city = w.cityByCell.get(i);
-  // Canada: a July 1 population estimate, whose year ends growth_years.
-  if (city) lines.push(`<b>${esc(city.name)}</b> <span class="muted">· ${popShort(city.population)} people${canada && city.growth_years ? ` (${esc(city.growth_years[1])})` : ""}</span>`);
+  // An edition that labels years names the population's: the year that ends growth_years (a July 1 estimate).
+  if (city) lines.push(`<b>${esc(city.name)}</b> <span class="muted">· ${popShort(city.population)} people${LABEL_YEARS && city.growth_years ? ` (${esc(city.growth_years[1])})` : ""}</span>`);
 
   const wt = w.water[i];
   if (wt) {

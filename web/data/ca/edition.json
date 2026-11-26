@@ -1,0 +1,20 @@
+{
+  "contract": 3,
+  "id": "ca",
+  "name": "Canada",
+  "emblem": "🍁",
+  "title": "usaciv — Canada as a strategy game",
+  "map_label": "Hex map of Canada",
+  "nation": {"vs": "Canada", "code": "CA", "short": "Canada", "the": "Canada", "in": "in Canada", "poss": "Canada's", "the_poss": "Canada's", "adj": "Canadian"},
+  "currency": {"code": "CAD", "symbol": "CA$"},
+  "label_years": true,
+  "terms": {
+    "region": {"one": "Province or territory", "many": "Provinces & territories", "short": "Province", "column": "Prov./terr."},
+    "division": {"one": "census division", "many": "census divisions", "One": "Census division", "Many": "Divisions"},
+    "area": {"one": "city", "many": "cities", "areas": "CMAs and CAs", "metro": "CMA", "micro": "CA"}
+  },
+  "files": ["world", "cities", "nation", "states", "lenses", "resources", "sources", "counties", "citizens", "districts",
+            "infrastructure", "wonders", "trade", "military", "disasters"],
+  "text": "text.json",
+  "view": {"home_dock_band": 30, "banner_floor_scale": 0.12}
+}

@@ -1,5 +1,5 @@
 // Shared building blocks for the city and state panels (both render into #city-panel).
-import { canada, regionName, regionsName } from "../app/country.js";
+import { LABEL_YEARS, NATION, TERMS, defaults, txt } from "../app/text.js";
 import { compact, dollars, esc, int, money, pct, yieldValue } from "../format.js";
 import { icon, glyph } from "./icon.js";
 
@@ -24,7 +24,7 @@ export function yieldGrid(nation, yields, ranks = null, rankOf = 0) {
         <div class="ico" style="color:${esc(y.color)}">${glyph(y, 20)}</div>
         <div class="val" style="color:${esc(y.color)}">${yieldValue(y, v)}</div>
         <div class="lbl">${esc(label)}</div>
-        ${r ? `<div class="rank" title="Rank among the ${rankOf} mapped ${regionsName.toLowerCase()} (1 = largest)">#${r} of ${rankOf}</div>` : ""}</div>`;
+        ${r ? `<div class="rank" title="Rank among the ${rankOf} mapped ${TERMS.region.many.toLowerCase()} (1 = largest)">#${r} of ${rankOf}</div>` : ""}</div>`;
     })
     .join("");
 }
@@ -38,36 +38,47 @@ export function statRow(ic, fallback, label, v, nv, fmt, higherIsGood, note = ""
     const cls = Math.abs(ratio - 1) < 0.03 || higherIsGood == null ? "" : (higherIsGood ? ratio >= 1 : ratio <= 1) ? "good" : "bad";
     // Within 3% of the U.S. value reads as level: no arrow, no colour (the colour uses the same band).
     const arrow = Math.abs(ratio - 1) < 0.03 ? "≈" : ratio > 1 ? "▲" : "▼";
-    cmp = `<span class="cmp ${cls}">${arrow} ${canada ? "Canada" : "US"} ${fmt(nv)}</span>`;
+    cmp = `<span class="cmp ${cls}">${arrow} ${NATION.vs} ${fmt(nv)}</span>`;
   }
   const text = note ? `<span>${esc(label)} <span class="sl-yr">${esc(note)}</span></span>` : esc(label);
   return `<div class="stat-row"><span class="sl">${icon(ic, fallback, { size: 14 })}${text}</span><span><b>${fmt(v)}</b>${cmp}</span></div>`;
 }
 
-// Canadian figures name their year: census counts describe 2021 and incomes 2020 (the year before the census).
-const CENSUS_YEAR = 2021;
-const yr = (y) => (canada && y ? `(${y})` : "");
+defaults({
+  "panel.rent": "Median rent / mo",
+  "panel.geography": "Geography",
+  "panel.growth_source": "population estimates",
+});
 
-export function amenities(o, n) {
-  // Canada: unemployment is the Labour Force Survey's annual average. The survey does not publish census
-  // agglomerations, which show their 2021 Census rate instead, compared with Canada's rate in the same census.
-  const jobless = !canada || Number.isFinite(o.unemployment)
+// An edition that labels years names each figure's (manifest label_years). Census counts describe the census year
+// and census incomes the year nation.json gives (income_year); the other years travel with the rows.
+const yr = (y) => (LABEL_YEARS && y ? `(${y})` : "");
+
+/** `nation` is nation.json (its census_year and income_year), `n` its national row. */
+export function amenities(o, n, nation = {}) {
+  const census = nation.census_year ?? null, income = nation.income_year ?? null;
+  // Where the main survey publishes no unemployment rate for an area (Canada's Labour Force Survey and its census
+  // agglomerations), the census rate stands in, compared with the nation's rate in the same census.
+  const jobless = Number.isFinite(o.unemployment) || !Number.isFinite(o.unemployment_census)
     ? statRow("unemployment", "😐", "Unemployment", o.unemployment, n.unemployment, (x) => pct(x), false, yr(o.unemployment_year))
-    : statRow("unemployment", "😐", "Unemployment", o.unemployment_census, n.unemployment_census, (x) => pct(x), false, `(${CENSUS_YEAR} Census)`);
+    : statRow("unemployment", "😐", "Unemployment", o.unemployment_census, n.unemployment_census, (x) => pct(x), false, `(${census} Census)`);
   return `
     ${jobless}
-    ${statRow("l-income", "💵", "Median household income", o.median_income, n.median_income, dollars, true, yr(CENSUS_YEAR - 1))}
-    ${statRow("l-home", "🏠", "Median home value", o.home_value, n.home_value, dollars, null, yr(CENSUS_YEAR))}
-    ${statRow("l-homeownership", "🔑", canada ? "Median rent incl. utilities / mo" : "Median gross rent / mo", o.median_rent, n.median_rent, dollars, false, yr(CENSUS_YEAR))}
-    ${statRow(null, "⚖️", "Rent ÷ income", o.rent_burden, n.rent_burden, (x) => pct(x), false, yr(CENSUS_YEAR))}`;
+    ${statRow("l-income", "💵", "Median household income", o.median_income, n.median_income, dollars, true, yr(income))}
+    ${statRow("l-home", "🏠", "Median home value", o.home_value, n.home_value, dollars, null, yr(census))}
+    ${statRow("l-homeownership", "🔑", txt("panel.rent"), o.median_rent, n.median_rent, dollars, false, yr(census))}
+    ${statRow(null, "⚖️", "Rent ÷ income", o.rent_burden, n.rent_burden, (x) => pct(x), false, yr(census))}`;
 }
 
-// Section titles for the Canadian panels, with the years of their figures.
-export const yieldsTitle = (o) => `Yields · ${CENSUS_YEAR} Census${o.gdp != null && o.gdp_year ? `, GDP ${o.gdp_year}` : ""}`;
-export const censusTitle = (title) => `${title}, ${CENSUS_YEAR}`;
+// Section titles for an edition that labels years, with the years of their figures.
+export const yieldsTitle = (o, nation) => `Yields · ${nation.census_year} Census${o.gdp != null && o.gdp_year ? `, GDP ${o.gdp_year}` : ""}`;
+export const censusTitle = (title, nation) => `${title}, ${nation.census_year}`;
+
+/** True when a row has its own density or land area (the panels then show them). */
+export const hasGeography = (o) => Number.isFinite(o?.density) || Number.isFinite(o?.land_km2);
 
 export function censusGeography(o) {
-  return statRow("l-people", "👥", "Residents per km²", o.density, null, (v) => v?.toLocaleString("en-CA") ?? "–", null, yr(popYear(o)))
+  return statRow("l-people", "👥", "Residents per km²", o.density, null, (v) => v?.toLocaleString("en-US") ?? "–", null, yr(popYear(o)))
     + statRow("terrain", "🗺️", "Land area (km²)", o.land_km2, null, int, null);
 }
 
@@ -110,19 +121,19 @@ export function growthSpan(o, n = null) {
   const yrs = Array.isArray(o.growth_years) && o.growth_years.length === 2 ? o.growth_years : null;
   const p = (g) => `${g >= 0 ? "+" : "−"}${Math.abs(g * 100).toFixed(1)}%`;
   const period = yrs ? `${yrs[0]}–${yrs[1]}` : "the last few years";
-  const us = Number.isFinite(n?.growth) ? ` (${canada ? "Canada" : "U.S."} ${p(n.growth)})` : "";
-  const tip = `Population change ${period}, ${canada ? "Statistics Canada July 1 estimates" : "Census population estimates"}: ${p(o.growth)}${us}`;
+  const us = Number.isFinite(n?.growth) ? ` (${NATION.short} ${p(n.growth)})` : "";
+  const tip = `Population change ${period}, ${txt("panel.growth_source")}: ${p(o.growth)}${us}`;
   const cls = o.growth >= 0 ? "good" : "bad";
   return ` · <span class="growth ${cls}" title="${esc(tip)}">${o.growth >= 0 ? "▲" : "▼"} ${Math.abs(o.growth * 100).toFixed(1)}%${
     yrs ? ` <span class="since">since ${yrs[0]}</span>` : ""}</span>`;
 }
 
-// Canada: population is a July 1 estimate, whose year ends growth_years; the employed are 2021 Census counts.
+// With labelled years: population is a July 1 estimate, whose year ends growth_years; the employed are census counts.
 function popYear(o) {
   return o?.growth_years?.[1] ?? null;
 }
-export const popLine = (o, extra = "") =>
-  `<div class="cp-pop">${icon("pop", "👥", { size: 16 })} <b>${int(o.population)}</b> people${canada && popYear(o) ? ` in ${popYear(o)}` : ""}${canada && !Number.isFinite(o.employed) ? "" : ` · ${int(o.employed)} employed${canada ? ` in ${CENSUS_YEAR}` : ""}`}${extra}</div>`;
+export const popLine = (o, extra = "", nation = {}) =>
+  `<div class="cp-pop">${icon("pop", "👥", { size: 16 })} <b>${int(o.population)}</b> people${LABEL_YEARS && popYear(o) ? ` in ${popYear(o)}` : ""} · ${int(o.employed)} employed${LABEL_YEARS && nation.census_year ? ` in ${nation.census_year}` : ""}${extra}</div>`;
 
 /**
  * Fill and show the panel.
@@ -131,13 +142,13 @@ export const popLine = (o, extra = "") =>
 export function showPanel(spec) {
   const panel = panelEl();
   panel.dataset.kind = spec.kind;
-  panel.setAttribute("aria-label", `${spec.kind === "state" ? regionName : "City"}: ${spec.title}`);
+  panel.setAttribute("aria-label", `${spec.kind === "state" ? TERMS.region.one : "City"}: ${spec.title}`);
   panel.innerHTML = `
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="cp-head">
       <div class="stripe" style="background:${spec.stripe}"></div>
       <button class="icon-btn cp-close" aria-label="Close panel (Esc)" title="Close (Esc)">${icon("close", "✕", { size: 13 })}</button>
-      <div class="cp-kind">${spec.kind === "state" ? regionName : "City"}</div>
+      <div class="cp-kind">${spec.kind === "state" ? esc(TERMS.region.one) : "City"}</div>
       <h2 class="cp-name">${spec.titleHtml ?? esc(spec.title)}</h2>
       ${spec.sub ? `<div class="cp-full">${spec.sub}</div>` : ""}
       ${spec.headExtra || ""}

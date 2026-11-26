@@ -1,4 +1,4 @@
-"""Validate web/data/*.json against docs/DATA_CONTRACTS.md (v2) and report data quality.
+"""Validate web/data/us/*.json against docs/DATA_CONTRACTS.md (v2) and report data quality.
 
     uv run python -m pipeline check
 

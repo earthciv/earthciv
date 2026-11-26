@@ -1,10 +1,15 @@
 // Top-bar search over cities and states: prefix matches first, then word-prefix, then substring; ties by population.
-import { canada, regionName } from "./country.js";
+import { regionName } from "./country.js";
+import { defaults, txt } from "./text.js";
 import { esc, popShort } from "../format.js";
 import { icon } from "../ui/icon.js";
 
 const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const MAX = 8;
+defaults({
+  "search.placeholder": "Search cities & regions",
+  "search.aria": "Search cities and regions (/ or Ctrl K)",
+});
 
 /**
  * opts: {cities, states (list of {name, abbr, population?}), onPick({kind:'city'|'state', city?, index?})}
@@ -15,8 +20,8 @@ export function initSearch(opts) {
   if (!input || !box) return { focus() {}, close() {}, get isOpen() { return false; } };
   // The full placeholder only fits the wide search box; narrower ones say just "Search".
   const narrow = matchMedia("(max-width: 1120px)");
-  const label = canada ? "Search cities & provinces" : "Search cities & states";
-  if (canada) input.setAttribute("aria-label", "Search cities, provinces and territories (/ or Ctrl K)");
+  const label = txt("search.placeholder");
+  input.setAttribute("aria-label", txt("search.aria"));
   const setPlaceholder = () => (input.placeholder = narrow.matches ? "Search" : label);
   setPlaceholder();
   narrow.addEventListener?.("change", setPlaceholder);

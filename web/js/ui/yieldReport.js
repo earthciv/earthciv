@@ -4,7 +4,7 @@
 // The first half is pure data (statDefs, buildReport): plain objects from nation.json, states.json, cities.json and
 // lenses.json, no DOM, so it is easy to check from the console (`window.__app.reports`). The second half renders.
 import { canada, countryName, regionsName } from "../app/country.js";
-import { cad, cadFull, compact, dollars, esc, int, money, pct } from "../format.js";
+import { compact, dollars, esc, int, isMoney, money, pct } from "../format.js";
 import { hasIcon } from "../icons.js";
 import { icon, glyph } from "./icon.js";
 import { DISTRICT_ICON } from "./infoPanel.js";
@@ -48,8 +48,7 @@ export function count3(n) {
 // Formats a value of a stat ("usd" → $, "rate" → %, anything else → compact count).
 export function fmtStat(def, v) {
   if (!fin(v)) return "–";
-  if (def.unit === "cad") return cad(v);
-  if (def.unit === "usd") return money(v);
+  if (isMoney(def.unit)) return money(v);
   if (def.unit === "rate") return pct(v);
   return compact(v);
 }
@@ -176,7 +175,7 @@ export function buildReport(key, { nation, states, cities, lenses, lensVintage }
 
   if (key === "population") reportPopulation(rep, n, st, metros);
   else if (key === "unemployment") reportUnemployment(rep, n, st, metros);
-  else if (def.unit === "usd" || def.unit === "cad") reportGold(rep, nation, n, st, metros);
+  else if (isMoney(def.unit)) reportGold(rep, nation, n, st, metros);
   else reportJobs(rep, def, nation, n, st, metros);
   return rep;
 }
@@ -240,8 +239,8 @@ function reportUnemployment(rep, n, st, metros) {
 }
 
 function reportGold(rep, nation, n, st, metros) {
-  const currency = canada ? cad : money;
-  const exactCurrency = canada ? cadFull : dollars;
+  const currency = money;
+  const exactCurrency = dollars;
   const gdp = (o) => o.gdp ?? o.yields?.gold ?? null;
   // gdp_population (Canada) is the population in the GDP year, so per-person GDP divides numbers from one year.
   const pp = ratio(rep.total, n.gdp_population ?? n.population);
@@ -293,7 +292,7 @@ function reportJobs(rep, def, nation, n, st, metros) {
   if (inds.length && gdpOf.every(fin) && fin(n.gdp)) {
     const sum = gdpOf.reduce((a, b) => a + b, 0);
     const gYear = n.gdp_industry_year ?? n.gdp_year;
-    rep.context.push(`${inds.length > 1 ? "These industries produce" : "The industry produces"} ${(canada ? cad : money)(sum)} of GDP (${pct(sum / (n.gdp_basic ?? n.gdp))}${gYear ? `, ${gYear}` : ""}${canada ? ", at basic prices" : ""})`);
+    rep.context.push(`${inds.length > 1 ? "These industries produce" : "The industry produces"} ${money(sum)} of GDP (${pct(sum / (n.gdp_basic ?? n.gdp))}${gYear ? `, ${gYear}` : ""}${canada ? ", at basic prices" : ""})`);
   }
   // Worker counts are ACS (where people live); the GDP figures are BEA (where the work is done): credit both.
   const gdpCredit = canada ? `Statistics Canada, ${n.gdp_industry_year ?? ""} GDP by industry at basic prices` : nation.gdp_vintage;
@@ -307,7 +306,7 @@ function reportJobs(rep, def, nation, n, st, metros) {
       const { label, full } = industryLabel(nation, k);
       const s = ratio(v, n.employed);
       const g = n.gdp_by_industry?.[k];
-      const sub = [s != null ? `${pct(s)} of all jobs` : "", fin(g) ? `GDP ${(canada ? cad : money)(g)}` : ""].filter(Boolean).join(" · ");
+      const sub = [s != null ? `${pct(s)} of all jobs` : "", fin(g) ? `GDP ${money(g)}` : ""].filter(Boolean).join(" · ");
       return { label, full, iconId: industryIcon(k), emoji: DISTRICT_ICON[k] || "•", value: v, text: compact(v), sub };
     })
     .filter(Boolean)

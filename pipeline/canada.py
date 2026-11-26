@@ -1383,6 +1383,8 @@ def build():
     write("nation", dict(country="Canada", year=year, vintage=f"StatCan {year} estimates, {CENSUS_YEAR} Census",
                          population_vintage=f"Statistics Canada population estimates, July 1, {year} (2021 boundaries)",
                          census_vintage=CENSUS, census_year=CENSUS_YEAR,
+                         # Census incomes describe the year before the census (contract v3: a figure may carry its year).
+                         income_year=CENSUS_YEAR - 1,
                          gdp_vintage=f"Statistics Canada, {gdp_year} GDP (CAD; CMAs {metro_gdp_year})",
                          unemployment_vintage=INPUTS["statcan_lfs"][0]["vintage"],
                          nation={**economy(pop[canada], year, gdp["Canada"], gdp_year, areas.get(canada), lfs[canada],

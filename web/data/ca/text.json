@@ -1,0 +1,16 @@
+{
+ "load.error_hint": "See the Canada rebuild command in the README.",
+ "panel.city_foot": "Population: {population_vintage} (table 17-10-0148). Census figures: {census_vintage} (tables 98-10-0448, 98-10-0061, 98-10-0253, 98-10-0256). Unemployment: {unemployment} {gdp} Green ×N = this industry's share of jobs is N× the Canadian share.",
+ "panel.city_foot.gdp": "GDP at basic prices, {gdp_year} (the latest year published), on the boundaries in Statistics Canada table 36-10-0468-01; per person divides by the July 1, {gdp_year} population.",
+ "panel.city_foot.no_gdp": "The metro GDP table has no figure for this area.",
+ "panel.city_foot.unemployment_census": "2021 Census. The Labour Force Survey does not publish census agglomerations, and the census week, in May 2021, fell during COVID-19 restrictions.",
+ "panel.city_foot.unemployment_survey": "{unemployment_vintage} (table 14-10-0461).",
+ "panel.city_industries": "Industries · where people work",
+ "panel.geography": "Census geography",
+ "panel.growth_source": "Statistics Canada July 1 estimates",
+ "panel.no_cities": "No census metropolitan areas or census agglomerations.",
+ "panel.region_foot": "Population: {population_vintage} (table 17-10-0152). Census figures: {census_vintage}. GDP: {gdp_vintage} (table 36-10-0222). Unemployment: {unemployment_vintage} (table 14-10-0464). Ranks are among the {count} mapped provinces and territories (1 = largest).",
+ "panel.rent": "Median rent incl. utilities / mo",
+ "search.aria": "Search cities, provinces and territories (/ or Ctrl K)",
+ "search.placeholder": "Search cities & provinces"
+}

@@ -1,0 +1,18 @@
+{
+  "contract": 3,
+  "id": "us",
+  "name": "United States",
+  "emblem": "★",
+  "title": "usaciv — the United States as a strategy game",
+  "map_label": "Hex map of the contiguous United States",
+  "nation": {"vs": "US", "code": "US", "short": "U.S.", "the": "the U.S.", "in": "in the U.S.", "poss": "U.S.", "the_poss": "the U.S.", "adj": "U.S."},
+  "currency": {"code": "USD", "symbol": "$"},
+  "terms": {
+    "region": {"one": "State", "many": "States", "short": "State", "column": "State"},
+    "division": {"one": "county", "many": "counties", "One": "County", "Many": "Counties"},
+    "area": {"one": "metro", "many": "metros", "areas": "metro and micro areas", "metro": "Metro", "micro": "Micro"}
+  },
+  "files": ["world", "cities", "nation", "states", "lenses", "resources", "sources", "counties", "citizens", "districts",
+            "infrastructure", "wonders", "trade", "military", "disasters"],
+  "text": "text.json"
+}

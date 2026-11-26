@@ -21,7 +21,7 @@ SOURCE_ZIP = f"{NAME}-source.zip"
 
 # What goes into the source zip (relative to ROOT). Downloads, caches and build output are left out: anyone can
 # recreate them with `uv run python -m pipeline all`.
-SOURCE_ITEMS = ["README.md", "LICENSE", "pyproject.toml", "uv.lock", ".gitignore", "docs", "pipeline", "tests", "web"]
+SOURCE_ITEMS = ["README.md", "LICENSE", "pyproject.toml", "uv.lock", ".gitignore", "docs", "harness", "pipeline", "tests", "web"]
 SKIP_NAMES = {"__pycache__", ".DS_Store"}
 SKIP_SUFFIXES = {".pyc", ".part"}
 # Dev-only pages (art gallery, trailer maker) ship in the source zip but not on the public site.
@@ -55,7 +55,7 @@ def _zip(path: Path, files, base: Path, prefix: str) -> int:
 
 
 def cmd_package() -> None:
-    missing = [p for p in ("data/cities.json", "data/world.json", "index.html") if not (WEB / p).exists()]
+    missing = [p for p in ("data/us/cities.json", "data/us/world.json", "index.html") if not (WEB / p).exists()]
     if missing:
         raise SystemExit(f"web/ is incomplete ({', '.join(missing)} missing): run `uv run python -m pipeline all` first")
     if SITE.exists():

@@ -1,4 +1,4 @@
-import { canada } from "./app/country.js";
+import { CURRENCY, CURRENCY_CODE } from "./app/text.js";
 
 export function compact(n) {
   if (n == null || Number.isNaN(n)) return "–";
@@ -10,17 +10,17 @@ export function compact(n) {
   return String(Math.round(n));
 }
 
-// The Canadian edition's money is all Canadian dollars.
-export const CURRENCY = canada ? "CA$" : "$";
+// Money is in the edition's currency (its manifest's `currency`). A money figure's unit is the currency code in lower
+// case ("usd", "cad") or "money".
+export { CURRENCY };
+export const isMoney = (unit) => unit === "money" || unit === "usd" || unit === CURRENCY_CODE;
 export const money = (n) => (n == null ? "–" : CURRENCY + compact(n));
 export const dollars = (n) => (n == null ? "–" : CURRENCY + Math.round(n).toLocaleString("en-US"));
-export const cad = (n) => (n == null ? "–" : "CA$" + compact(n));
-export const cadFull = (n) => (n == null ? "–" : "CA$" + Math.round(n).toLocaleString("en-US"));
 export const int = (n) => (n == null ? "–" : Math.round(n).toLocaleString("en-US"));
 export const pct = (x, d = 1) => (x == null ? "–" : (x * 100).toFixed(d) + "%");
 
 export function yieldValue(y, v) {
-  return y.unit === "cad" ? cad(v) : y.unit === "usd" ? money(v) : compact(v);
+  return isMoney(y.unit) ? money(v) : compact(v);
 }
 
 export function popShort(n) {

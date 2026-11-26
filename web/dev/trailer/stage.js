@@ -29,7 +29,7 @@ async function json(base, name) {
   return r.json();
 }
 
-export async function loadStage(base = "../data/") {
+export async function loadStage(base = "../data/us/") {
   const names = ["world", "cities", "nation", "lenses", "sources", "resources", "states", "infrastructure", "military",
     "wonders", "trade", "districts", "citizens"];
   const vals = await Promise.all(names.map((n) => json(base, n)));

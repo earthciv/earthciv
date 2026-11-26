@@ -1,0 +1,11 @@
+{
+ "load.error_hint": "Run \"uv run python -m pipeline all\" and serve web/ over HTTP.",
+ "panel.city_foot": "Source: {vintage} (tables C24030, B19025, B19013, B25064, B25077, B23025); GDP: {gdp_vintage}. Green ×N = this industry's share of jobs is N× the U.S. share.",
+ "panel.city_industries": "Districts · where people work",
+ "panel.growth_source": "Census population estimates",
+ "panel.no_cities": "No metro or micro areas in this state's data.",
+ "panel.region_foot": "Source: {vintage}; GDP: {gdp_vintage}. Ranks are among the {count} mapped states + DC (1 = largest).",
+ "panel.rent": "Median gross rent / mo",
+ "search.aria": "Search cities and states (/ or Ctrl K)",
+ "search.placeholder": "Search cities & states"
+}

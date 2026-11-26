@@ -56,4 +56,4 @@ def load_interim(name: str) -> Any:
 def write_web(name: str, data: Any) -> None:
     text = json.dumps(data, separators=(",", ":"), allow_nan=False)
     atomic_write_text(WEB_DATA / name, text)
-    print(f"    → web/data/{name} ({len(text) / 1e3:.0f} kB)")
+    print(f"    → web/data/us/{name} ({len(text) / 1e3:.0f} kB)")

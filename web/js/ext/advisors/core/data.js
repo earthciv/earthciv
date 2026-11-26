@@ -7,6 +7,7 @@
 //   field = {key, label, format, unit, higher_is, source, description, lens?, group, derived?}
 import { canada } from "../../../app/country.js";
 import { fin, ratio } from "./util.js";
+import { isMoney } from "../../../format.js";
 import { frameBox } from "./frame.js";
 
 const COUNTY_LENS = {
@@ -65,7 +66,7 @@ export function buildData(app) {
     ? { areas: "statcan_census_areas", growth: "statcan_estimates", gdp: "statcan_gdp", land: "statcan_divisions", cover: "nrcan_cover", power: "wri_plants" }
     : { areas: "acs_1yr", growth: "pep_population", gdp: "bea_gdp", land: "census_gazetteer", cover: "nlcd", power: "eia_860m" };
   const countyWord = canada ? "census divisions" : "counties";
-  const workerYields = (nation.yields || []).filter((y) => y.unit !== "usd" && y.unit !== "cad");
+  const workerYields = (nation.yields || []).filter((y) => !isMoney(y.unit));
   const nat = nation.nation || {};
   const vintage = nation.vintage || "ACS 1-year";
   const countyVintage = counties?.vintage || "ACS 5-year";
