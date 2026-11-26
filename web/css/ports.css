@@ -400,6 +400,10 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 /* in the bar above an open map */
 .rt-bar { flex-wrap: nowrap; gap: 10px; margin: 0 4px 0 0; padding: 0; border: 0; }
 .rt-bar:not(.is-rated) .rt-avg { display: none; }
+/* Until the window is wide enough for the map's whole name beside them, the bar shows the five stars only. */
+@media (max-width: 1240px) {
+  .rt-bar .rt-avg, .rt-bar .rt-lbl { display: none; }
+}
 
 /* shared buttons */
 .ports-btn {
@@ -525,7 +529,6 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .ports-vtitle { display: none; }
   .ports-vswitch-wrap { flex: 1; min-width: 0; }
   #ports-vswitch { width: 100%; max-width: none; }
-  .rt-bar .rt-avg, .rt-bar .rt-lbl { display: none; } /* the bar has room for the five stars only */
 }
 @media (max-width: 700px) {
   .wv-bar { gap: 8px; padding: 0 8px; }
