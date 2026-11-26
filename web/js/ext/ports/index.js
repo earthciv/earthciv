@@ -14,6 +14,7 @@ const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
+const CATALOG_PORT_COUNT = 43; // shown in the launch pill before ports.json is lazily loaded
 
 // Read the active/default edition directly from the page & URL so this extension works both on the current main
 // branch (country.js) and with the Phase 2 edition manifest loader (edition.js).
@@ -148,17 +149,43 @@ export function install(app) {
     viewerNotice: "",
   };
 
-  // --- top-bar button & country-picker hook ----------------------------------------------------------------------
-  const btn = app.ui.addTopButton({
-    id: "btn-ports",
-    label: "Ports",
-    title: "All Ports & World Atlas: browse and view every edition & unmerged community port inside",
-    onClick: () => (app.mode === MODE ? app.setMode(null) : app.setMode(MODE, { id: null })),
-  });
-  if (btn) {
-    btn.innerHTML = `${GLOBE_SVG}<span class="lbl">Ports</span>`;
+  // --- prominent top-bar launch button & country-picker hook -----------------------------------------------------
+  // Place a high-visibility "All Ports" button right beside the top-left country picker so it is immediately
+  // discoverable at every screen width (desktop, laptop and phone) instead of collapsing to an unlabeled icon.
+  let btn = null;
+  const topbar = document.getElementById("topbar");
+  const brand = topbar?.querySelector(".brand");
+  const launchHtml = () => `${GLOBE_SVG}<span class="ports-launch-lbl">All Ports</span><span class="ports-launch-count">${basePorts.length ? allPorts().length : CATALOG_PORT_COUNT + customPorts.length}</span>`;
+  if (topbar && brand) {
+    document.getElementById("btn-ports")?.remove();
+    btn = document.createElement("button");
+    btn.id = "btn-ports";
+    btn.type = "button";
+    btn.className = "ports-launch";
+    btn.title = "All Ports & World Atlas: browse and open merged & unmerged country ports inside EarthCiv";
+    btn.setAttribute("aria-label", "All Ports: browse and open merged and unmerged country ports");
     btn.setAttribute("aria-pressed", "false");
+    btn.innerHTML = launchHtml();
+    btn.addEventListener("click", () => (app.mode === MODE ? app.setMode(null) : app.setMode(MODE, { id: null })));
+    brand.after(btn);
+  } else {
+    btn = app.ui.addTopButton({
+      id: "btn-ports",
+      label: "All Ports",
+      title: "All Ports & World Atlas: browse and open merged & unmerged country ports inside EarthCiv",
+      onClick: () => (app.mode === MODE ? app.setMode(null) : app.setMode(MODE, { id: null })),
+    });
+    if (btn) {
+      btn.classList.add("ports-launch");
+      btn.innerHTML = launchHtml();
+      btn.setAttribute("aria-pressed", "false");
+    }
   }
+  const syncLaunchCount = () => {
+    const badge = btn?.querySelector(".ports-launch-count");
+    if (!badge) return;
+    badge.textContent = String(basePorts.length ? allPorts().length : CATALOG_PORT_COUNT + customPorts.length);
+  };
   app.on("mode", ({ name }) => btn?.setAttribute("aria-pressed", String(name === MODE)));
 
   // Read the merged editions already populated in #country-picker before appending the atlas shortcut.
@@ -690,6 +717,7 @@ export function install(app) {
   }
 
   function renderAll() {
+    syncLaunchCount();
     renderStats();
     renderFilters();
     renderDirectory();
