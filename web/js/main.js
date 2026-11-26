@@ -76,7 +76,7 @@ async function main() {
     target.hash = "";
     location.assign(target.href);
   };
-  document.title = canada ? "EarthCiv — Canada as a strategy game" : "EarthCiv — the United States as a strategy game";
+  document.title = canada ? "EarthCiv — Canada" : "EarthCiv — The real world, mapped like a strategy game";
   document.querySelector(".brand-emblem").textContent = canada ? "🍁" : "★";
   document.getElementById("map").setAttribute("aria-label", canada ? "Hex map of Canada" : "Hex map of the contiguous United States");
   const [world, cities, nation, lenses, sources, resources, statesData] = await Promise.all([
