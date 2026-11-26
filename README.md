@@ -72,19 +72,23 @@ by a small Python pipeline that uses only the standard library, from public down
 
 ## Canada edition
 
-This copy's site opens on the world map (`data-home="world"` in `web/index.html`), where Canada and the United States
-each have a Play button; they live at `?country=ca` and `?country=us`. Inside an edition, the top-left country switcher
-switches between them and the **World** button beside it opens the world map. Old links without `?country=` (such as
-`/#city=35620`) still open the United States (`data-default-country="us"`). The same map renderer covers all 10 provinces and 3 territories, with 2021 Census
-urban areas (population from Statistics Canada's July 1, 2025 estimates), all five yields (GDP and workers by industry), 14 census-division and land-cover lenses, power plants and
-mines, oil and gas fields, highways and railways, ports and airports, freight routes between provinces (Commerce
-advisor), Canadian Forces bases and where serving members and veterans live (Military advisor), wonders (Parks Canada's most-visited parks, canals and historic
-sites, and the universities with the most doctoral students), natural disasters since 1980 (Culture advisor), and
-the City View (click a city for its
-districts, citizens and resource sites, from the 2021 Census). Open **Advisors → Energy & Resources** to search and
-filter the mapped sites, or **Almanac → Sources** to trace the data. It follows the U.S.
-edition's map rules: sites on water snap to land, every city has its own banner hex, and lens colours use the same
-percentile ranges.
+Canada is at [earthciv.org/?country=ca](https://earthciv.org/?country=ca), drawn by the same engine as the United
+States on a 25 km hex grid of its own. It covers all 10 provinces and 3 territories and has 152 cities: the 2021
+Census metropolitan areas and census agglomerations, with population from Statistics Canada's July 1, 2025 estimates.
+Inside an edition, the country switcher at the top left moves between Canada and the United States, and the
+**World** button beside it opens the world map.
+
+The edition has all five yields (GDP and workers by industry), 14 census-division and land-cover lenses, power
+plants and mines, oil and gas fields, highways and railways, ports and airports, freight routes between provinces
+(Commerce advisor), Canadian Forces bases and where serving members and veterans live (Military advisor), wonders
+(Parks Canada's most-visited parks, canals and historic sites, and the universities with the most doctoral
+students), natural disasters since 1980 (Culture advisor), and the City View (click a city for its districts,
+citizens and resource sites, from the 2021 Census). Open **Advisors → Energy & Resources** to search and filter the
+mapped sites, or **Almanac → Sources** to trace the data.
+
+It follows the U.S. edition's map rules: sites on water snap to land, every city has its own banner hex, and lens
+colours use the same percentile ranges. Its figures come from different years (population and unemployment 2025,
+census figures 2021, GDP 2025 or 2022), so the top bar, the reports and the panels show each figure with its year.
 
 The Canadian data ships with the site. For the source tables, geographic conventions, and rebuild command, see
 [Canada edition data and rebuild](docs/CANADA.md).
@@ -98,8 +102,9 @@ installing.
 uv run python -m pipeline serve        # http://127.0.0.1:8765
 ```
 
-The built data (`web/data/`, about 6 MB) is included, so that is all it takes to run it. `web/` is a self-contained
-static site that you can upload to any static host (Netlify, S3, GitHub Pages…).
+The page opens on the world map; add `?country=us` or `?country=ca` to the address for an edition. The built data
+(`web/data/`, about 9 MB) is included, so that is all it takes to run it. `web/` is a self-contained static site that
+you can upload to any static host (Netlify, S3, GitHub Pages…).
 
 To make a deploy package:
 
@@ -115,10 +120,15 @@ caches, which the in-app help links to. If you publish your own copy, change the
 To rebuild the data from the original publishers:
 
 ```bash
-uv run python -m pipeline all          # download (cached) → process → build web/data/*.json → check
+uv run python -m pipeline all                    # U.S.: download (cached) → process → build web/data/us/ → check
+uv run --group build python -m pipeline.canada   # Canada: download (cached) → build web/data/ca/
+uv run python -m pipeline.build_world_figures    # the world map's country figures → web/data/world-figures.json
 ```
 
-The first full run downloads about 500 MB into `data/raw/` (not included in the source zip). Later runs reuse the cache.
+The first full run downloads about 500 MB for the United States and about 300 MB for Canada into `data/raw/` (not
+included in the source zip). Later runs reuse the cache. Canada's build is the only one of the three that needs more
+than the standard library: `--group build` installs numpy, Pillow, pyproj and shapely, pinned to the versions that
+produced the committed data.
 
 ## How it works
 
@@ -126,21 +136,31 @@ The first full run downloads about 500 MB into `data/raw/` (not included in the 
 pipeline/
   core/       shared plumbing: cached downloads with a provenance manifest (fetch.py), the Source base class,
               projection (geo.py), hex grid (hexgrid.py), atomic JSON IO (store.py)
-  sources/    one module per data source: fetch() raw files, process() → data/interim/<id>.json
-  build/      builders that put the sources onto the hex map → web/data/*.json
-  check.py    validates web/data against docs/DATA_CONTRACTS.md and prints a data-quality report
+  sources/    one module per U.S. data source: fetch() raw files, process() → data/interim/<id>.json
+  build/      builders that put the U.S. sources onto the hex map → web/data/us/*.json
+  check.py    validates web/data/us against docs/DATA_CONTRACTS.md and prints a data-quality report
+  canada.py   the Canada edition's build, with its canada_*.py helpers → web/data/ca/*.json
+  build_world_figures.py, build_world_outlines.py
+              the world map's country figures and outlines → web/data/world-*.json
+  package.py  the deploy package
+harness/      records every view of every edition in a headless browser, to compare before and after a change
+              (docs/HARNESS.md)
 tests/        unittest suite (standard library only)
 web/
   js/         boot.js (entry: the world map or an edition), main.js (an edition's app shell), camera, hex grid
               (mirrors pipeline/core/hexgrid.py), render/ (map layers, banners, off-screen snapshots) and render/art/
-              (all the tile art), ui/ (panels, lenses, Almanac, minimap), app/ (app API, search, sharing, URL state,
-              home page), ext/ (extensions: City View, Advisors, map layers, the world map)
-  data/       the generated JSON the browser loads
-  dev/        the art gallery
-docs/         DATA_CONTRACTS.md: the shape of every web/data file, shared by pipeline and browser
+              (all the tile art), ui/ (panels, lenses, Almanac, minimap), app/ (app API, the edition's manifest and
+              text, search, sharing, URL state, home page), ext/ (extensions: City View, Advisors, map layers, the
+              world map)
+  data/       the JSON the browser loads: editions.json, a folder per edition (us/, ca/) with its data files,
+              manifest and text pack, and the world map's files (ports.json, the list of maps; world-outlines.json;
+              world-figures.json)
+  dev/        dev pages, not part of the deployed site: the art gallery, the trailer maker, the harness's views
+docs/         DATA_CONTRACTS.md (the shape of every data file, shared by pipeline and browser), EDITIONS.md (what an
+              edition is and how to add one), CANADA.md (Canada's sources and methods), HARNESS.md, DEPLOY.md
 ```
 
-The flow is always **source → interim → builder → web/data**:
+The United States edition's flow is always **source → interim → builder → web/data/us**:
 
 - **Sources** know nothing about hexes or the UI. Each one turns a publisher's files into tidy JSON. Any `Source`
   subclass with a `SourceInfo` is discovered automatically.
@@ -151,6 +171,11 @@ The flow is always **source → interim → builder → web/data**:
   date of every file). That is the Almanac's bibliography, so provenance stays accurate automatically.
 - **`check`** is the gate: every line is PASS, NOTE, WARN or FAIL, and any FAIL exits 1.
 
+The Canada edition is built by `pipeline/canada.py` and its helper modules. The build downloads and caches its own
+sources, follows the U.S. builders' map rules wherever the data allows and writes the same set of files to
+`web/data/ca/`, on a grid of its own (Canada Atlas Lambert, 25 km hexes). [docs/CANADA.md](docs/CANADA.md) has its
+sources and methods.
+
 The browser side has a small app API (`web/js/app/api.js`, documented in `docs/DATA_CONTRACTS.md`). The City View,
 the Advisors and the map layers are all **extensions** built on it, and so can anything you add:
 - `registerStaticLayer` draws into the cached map.
@@ -160,23 +185,41 @@ the Advisors and the map layers are all **extensions** built on it, and so can a
 - `loadData` lazy-loads a data file.
 - `setHighlight` links a view to the map.
 
+### Editions
+
+Each country that runs on this engine is an edition: a folder `web/data/<id>/` holding its data files, a manifest
+(`edition.json`: the country's names, terms and currency, and which files exist) and a text pack (`text.json`: the
+wording that differs). `web/data/editions.json` lists the editions. The browser code never asks which country it is
+showing. What differs between editions comes from the manifest, the text pack or the shape of the data, and
+`tests/test_editions.py` checks that.
+
+`?country=<id>` opens an edition. The bare address opens the world map, because `web/index.html` sets
+`data-home="world"`; a page without that attribute opens on its default edition. An old link that has no `?country=`
+but carries a view in its hash, such as `/#city=35620`, still opens the United States (`data-default-country="us"`).
+
+[docs/EDITIONS.md](docs/EDITIONS.md) specifies the format and lists the steps for adding a country.
+
 ### Commands
 
 ```bash
-uv run python -m pipeline list                        # sources and builders (in build order)
+uv run python -m pipeline list                        # U.S. sources and builders (in build order)
 uv run python -m pipeline fetch [source …]            # download raw files (cached; --force re-downloads)
 uv run python -m pipeline process [source …]          # raw → data/interim/<source>.json
-uv run python -m pipeline build [builder …]           # interim → web/data; up-to-date builders are skipped
+uv run python -m pipeline build [builder …]           # interim → web/data/us; up-to-date builders are skipped
 uv run python -m pipeline build cities --deps         # …also run the builders `cities` depends on
 uv run python -m pipeline build --force               # rebuild everything
-uv run python -m pipeline check                       # validate web/data + data-quality report (exit 1 on FAIL)
+uv run python -m pipeline check                       # validate web/data/us + data-quality report (exit 1 on FAIL)
 uv run python -m pipeline all [--offline]             # fetch + process + build + check
+uv run --group build python -m pipeline.canada        # rebuild web/data/ca (--force refreshes its downloads)
+uv run python -m pipeline.build_world_figures         # rebuild web/data/world-figures.json (--refresh downloads again)
 uv run python -m pipeline serve [--port 8765]         # serve web/
 uv run python -m pipeline package                     # usaciv.zip: the site to upload, with the source inside
 uv run python -m unittest discover -s tests           # tests
+uv run --group harness python -m harness record       # record every view of both editions (docs/HARNESS.md)
 ```
 
-`--offline` never touches the network: it uses the newest complete cached release of each source.
+The first eight drive the U.S. pipeline. `--offline` never touches the network: it uses the newest complete cached
+release of each source.
 
 ### Adding a data source
 
@@ -190,8 +233,9 @@ uv run python -m unittest discover -s tests           # tests
 
 ## Data sources
 
-All are public and none needs an API key: 31 sources in all. The Almanac (open it from the top bar) lists the exact
-files, URLs, checksums and caveats.
+The United States edition has 31 sources, listed below, and the Canada edition has 31, described in
+[docs/CANADA.md](docs/CANADA.md). All are public and none needs an API key. Each edition's Almanac (open it from the
+top bar) lists the exact files, URLs, checksums and caveats.
 
 | Source | Publisher | Used for |
 |---|---|---|
@@ -230,7 +274,8 @@ map listed in `web/data/ports.json`. Every country can be clicked, on the map, i
 search box: its card has a button that opens its map, and its population, GDP per person and life expectancy from the World
 Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
 is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
-rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures).
+rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures). The country outlines are Natural
+Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
 
 ### Reading the map honestly
 
@@ -249,8 +294,12 @@ The map is drawn to be fun, but the numbers are real, so it is worth knowing whe
 
 ### Credits and terms
 
-The code is MIT-licensed (see [LICENSE](LICENSE)). That licence covers the code only, not the data. Most of the
-data comes from U.S. federal agencies and is in the public domain. Natural Earth is public domain. The faith lenses
+The code is MIT-licensed (see [LICENSE](LICENSE)). That licence covers the code only, not the data; each edition's
+Almanac states the licence of every source. Most of the U.S. data comes from federal agencies and is in the public
+domain. Most of Canada's comes from Statistics Canada and other federal departments, under the
+[Statistics Canada Open Licence](https://www.statcan.gc.ca/en/terms-conditions/open-licence) or the
+[Open Government Licence – Canada](https://open.canada.ca/en/open-government-licence-canada). The world map's country
+figures are the World Bank's, under CC BY 4.0. Natural Earth is public domain. The faith lenses
 are figures derived from the 2020 U.S. Religion Census (© 2022 ASARB). They are used under the ARDA usage terms,
 which ask for credit to the Association of Statisticians of American Religious Bodies and the Association of
 Religion Data Archives. Please keep that credit if you reuse them.
