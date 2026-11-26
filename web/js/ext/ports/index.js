@@ -2,7 +2,7 @@
 // View every built-in EarthCiv edition and unmerged community port from one interactive world atlas and directory,
 // and launch live unmerged community ports (or any custom local/preview URL) right inside EarthCiv without leaving.
 //
-//   * Top-bar button: "Ports" (globe icon) + entry in the top-left country menu ("All ports & atlas…")
+//   * Top-bar "Countries" pill beside the country picker + entry in its menu ("All countries & world atlas…")
 //   * App mode: "ports", URL hash: #ports=all or #ports=<port-id>
 //   * Lazy-loads web/data/ports.json, web/data/world-outlines.json and web/data/world-figures.json only when opened
 //     (0 startup overhead). Clicking a country filters the directory and shows that country's World Bank figures.
@@ -15,7 +15,7 @@ const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
-const CATALOG_PORT_COUNT = 43; // shown in the launch pill before ports.json is lazily loaded
+const CATALOG_PORT_COUNT = 44; // shown in the launch pill before ports.json is lazily loaded (tests/test_ports.py)
 
 // Read the active/default edition directly from the page & URL so this extension works both on the current main
 // branch (country.js) and with the Phase 2 edition manifest loader (edition.js).
