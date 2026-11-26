@@ -6,6 +6,10 @@ A difference has a kind: `missing` (the view is in one run only), `failed` (the 
 
 An allow-list is a JSON list of rules: {"views": "ca/lens-*", "kinds": ["text"], "reason": "..."}. `views` is a glob
 on "<edition>/<view id>"; `kinds` defaults to every kind. A difference is allowed when some rule matches it.
+
+A rule may instead name screen boxes, {"views": "*", "kinds": ["pixels"], "within": [[x0, y0, x1, y1], ...]}: it then
+allows a pixel difference only when every differing pixel lies inside the boxes of the rules that match the view.
+Use it for a known flake that stays in one place, so the rest of the screenshot is still compared.
 """
 
 from __future__ import annotations
@@ -36,20 +40,29 @@ def _text_diff(a: str, b: str, name: str) -> list[str]:
     return lines
 
 
-def pixel_difference(a: Path, b: Path) -> str | None:
-    """None when the images are identical pixel for pixel, else a short description."""
+def pixel_difference(a: Path, b: Path) -> tuple[str, Image.Image | None] | None:
+    """None when the images are identical pixel for pixel, else a short description and the mask of what differs
+    (None when the images cannot be compared pixel for pixel)."""
     if not a.exists() or not b.exists():
-        return "image missing in one run"
+        return "image missing in one run", None
     if a.read_bytes() == b.read_bytes():
         return None
     ia, ib = Image.open(a).convert("RGBA"), Image.open(b).convert("RGBA")
     if ia.size != ib.size:
-        return f"size {ia.size} -> {ib.size}"
+        return f"size {ia.size} -> {ib.size}", None
     mask = ImageChops.difference(ia, ib).convert("L").point(lambda v: 255 if v else 0)
     n = mask.histogram()[255]
     if not n:
         return None
-    return f"{n} px differ ({100 * n / (ia.size[0] * ia.size[1]):.2f}%), within {mask.getbbox()}"
+    return f"{n} px differ ({100 * n / (ia.size[0] * ia.size[1]):.2f}%), within {mask.getbbox()}", mask
+
+
+def _covered(mask: Image.Image, boxes: list[list[int]]) -> bool:
+    """True when every differing pixel of `mask` lies inside one of `boxes` ([x0, y0, x1, y1], x1 and y1 exclusive)."""
+    rest = mask.copy()
+    for x0, y0, x1, y1 in boxes:
+        rest.paste(0, (x0, y0, x1, y1))
+    return rest.getbbox() is None
 
 
 def compare(a: Path, b: Path) -> list[dict]:
@@ -75,7 +88,7 @@ def compare(a: Path, b: Path) -> list[dict]:
             for img in images:
                 d = pixel_difference(a / ed / img, b / ed / img)
                 if d:
-                    out.append({"view": key, "kind": "pixels", "detail": [f"{img}: {d}"]})
+                    out.append({"view": key, "kind": "pixels", "detail": [f"{img}: {d[0]}"], "mask": d[1]})
             for field, kind in (("messages", "messages"), ("requests", "requests")):
                 if x.get(field, []) != y.get(field, []):
                     gone = sorted(set(x.get(field, [])) - set(y.get(field, [])))
@@ -85,9 +98,16 @@ def compare(a: Path, b: Path) -> list[dict]:
 
 
 def allowed(diff: dict, rules: list[dict]) -> str | None:
+    boxes, reasons = [], []
     for r in rules:
-        if fnmatch.fnmatch(diff["view"], r["views"]) and diff["kind"] in r.get("kinds", [diff["kind"]]):
+        if not (fnmatch.fnmatch(diff["view"], r["views"]) and diff["kind"] in r.get("kinds", [diff["kind"]])):
+            continue
+        if "within" not in r:
             return r.get("reason", "allowed")
+        boxes += r["within"]
+        reasons.append(r.get("reason", "allowed"))
+    if boxes and diff.get("mask") is not None and _covered(diff["mask"], boxes):
+        return "; ".join(dict.fromkeys(reasons))
     return None
 
 

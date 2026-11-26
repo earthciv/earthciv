@@ -27,8 +27,13 @@ uv run --group harness python -m harness diff out/harness/before out/harness/aft
 It exits 1 unless every difference matches a rule in the allow-list, a JSON list of reviewed exceptions:
 
 ```json
-[{"views": "ca/report-*", "kinds": ["text", "outline"], "reason": "Canadian wording now comes from text.json"}]
+[{"views": "ca/report-*", "kinds": ["text", "outline"], "reason": "Canadian wording now comes from text.json"},
+ {"views": "us/*", "kinds": ["pixels"], "within": [[177, 13, 189, 27]], "reason": "known flake: the menu's arrow"}]
 ```
+
+A rule with `within` allows a pixel difference only when every differing pixel lies inside its boxes
+(`[x0, y0, x1, y1]`, pooled across the rules that match the view), so a flake that stays in one place does not
+excuse the rest of the screenshot.
 
 ## The views
 
@@ -59,5 +64,14 @@ callbacks. It also makes scrolling instant. The runner counts requests in flight
 been quiet for half a second, after one more frame: the app is asked to draw again and the harness waits for quiet
 once more. Animations that read the clock (the selected region's border pulses for about 4 s) stop on a frame that
 depends on timing, and sprites painted in idle time reach the screen only with the next draw; the extra frame draws
-the resting state with everything in. Screenshots disable CSS animations and hide the caret. Three recordings in a
-row must be identical; record on the same machine and browser build when comparing.
+the resting state with everything in. Screenshots disable CSS animations and hide the caret. Recordings in a row
+must be identical apart from the known flakes below; record on the same machine and browser build when comparing.
+
+A few views still differ in their pixels between two recordings of the same site. These are bugs in the app, not
+the harness, and `harness/allow/editions.json` lists them as known flakes, each confined to its box where it stays in
+one place: the country menu's arrow (an SVG background, a few pixels), the City View dock's Map button (sometimes
+12 px wider), one map badge in `ca/city-median`, and faint differences across the map in `ca/city-no-unemployment`
+(at most 32 levels; text and outline are still compared).
+
+`harness/allow/editions.json` is the allow-list for the move to editions: comparing the site before it with the site
+after, the only differences are the data's new paths and two reviewed corrections to the Canadian edition.

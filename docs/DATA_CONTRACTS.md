@@ -1,9 +1,29 @@
-# Data contracts (v2)
+# Data contracts (v3)
 
-The pipeline (Python) and the browser (web/js) agree on these files in `web/data/`. Change a contract here first, then on
-both sides. All coordinates are **map km**: Albers equal-area, origin top-left, y **down** (see `pipeline/core/geo.py`).
+The pipeline (Python) and the browser (web/js) agree on these files, one set per edition in `web/data/<id>/` (the
+U.S. edition's in `web/data/us/`). Each edition also has a manifest and a text pack, specified in
+[EDITIONS.md](EDITIONS.md). Change a contract here first, then on both sides.
+All coordinates are **map km**: Albers equal-area, origin top-left, y **down** (see `pipeline/core/geo.py`).
 Per-cell arrays have length `grid.cols * grid.rows`, with index `row * cols + col` (pointy-top, odd-r layout, see
 `pipeline/core/hexgrid.py` ⇄ `web/js/hex.js`). `null` always means "no data". Never write `0` as a stand-in for "unknown".
+
+## Version 3
+
+Version 3 keeps every key of version 2: a file valid under v2 is valid under v3 once it is moved into its edition's
+folder. What v3 adds is a way for the data to say what it means, so the browser never has to infer it from the country:
+
+* **Years on figures.** A figure from a year other than the file's main one carries that year next to it:
+  `nation.json` `income_year` (the year incomes refer to), and in `cities.json` and `states.json`
+  `unemployment_year`, `census_population` (the census-year population a census count divides by) and
+  `gdp_population` (the population in the GDP year). An edition whose figures come from several years sets
+  `label_years` in its manifest, and every figure is shown with its year.
+* **Declared rules.** `districts.json` `rule.counts` is `"workers"` when its figures count residents who work rather
+  than jobs, and `rule.military_encampments: false` turns off the Encampment district drawn from military jobs.
+  `wonders.json` `rules[].measure` names what a ranking measures (`"attendance"`, `"doctoral"`) and `among` the set
+  it ranks within.
+* **Optional splits.** Fields an edition's sources do not publish are left out, never zero: ports' `domestic`,
+  `imports` and `exports`; airports' `cargo_lbs` or `cargo_t`; `military.json` `national.personnel`. The browser shows
+  what is there.
 
 ## Pipeline conventions
 
