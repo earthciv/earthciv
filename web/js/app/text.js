@@ -87,15 +87,26 @@ function clean(node, doc) {
 
 /** HTML for `key`, reduced to safe tags; {placeholders} are filled with escaped values from `vars`. */
 export function rich(key, vars) {
-  if (!richCache.has(key)) {
-    const tpl = hasText(key) ? TEXT[key] : DEFAULTS[key];
-    if (tpl == null) console.warn(`text: no wording for "${key}"`);
-    const doc = new DOMParser().parseFromString(`<body>${tpl ?? esc(key)}</body>`, "text/html");
-    clean(doc.body, doc);
-    richCache.set(key, doc.body.innerHTML);
+  const tpl = hasText(key) ? TEXT[key] : DEFAULTS[key];
+  if (tpl == null) {
+    console.warn(`text: no wording for "${key}"`);
+    return esc(key);
   }
-  return fill(richCache.get(key), vars, esc);
+  return richText(String(tpl), vars);
 }
+
+/** The same for a template string taken from the pack (a list entry, say). */
+export function richText(tpl, vars) {
+  if (!richCache.has(tpl)) {
+    const doc = new DOMParser().parseFromString(`<body>${tpl}</body>`, "text/html");
+    clean(doc.body, doc);
+    richCache.set(tpl, doc.body.innerHTML);
+  }
+  return fill(richCache.get(tpl), vars, esc);
+}
+
+/** A list from the edition's text pack (`key` holding an array), else `fallback`. */
+export const textList = (key, fallback = []) => (Array.isArray(TEXT[key]) ? TEXT[key] : fallback);
 
 /** Registers neutral wording (used by modules for the keys they read; an edition's text pack overrides it). */
 export function defaults(map) {

@@ -1,10 +1,19 @@
 // Energy & Resources advisor: the mapped power sites, mines and oil & gas plays.
-import { canada, regionName } from "../../../app/country.js";
+import { edition } from "../../../app/edition.js";
+import { TERMS, defaults, rich, txt } from "../../../app/text.js";
 import { esc, fin } from "../core/util.js";
 import { fmtValue, mw, int, count3 } from "../core/fmt.js";
 import { barList, shareBar, stackedBars, sizeLegend } from "../core/charts.js";
 import { createTable } from "../core/table.js";
-import { section, tiles, chips, sourcesHtml } from "../core/view.js";
+import { section, tiles, chips, editionSources } from "../core/view.js";
+
+defaults({
+  "advisor.energy.mines_sub": "above size thresholds",
+  "advisor.energy.oilgas_label": "Oil & gas",
+  "advisor.energy.oilgas_sub": "mapped sites",
+  "advisor.energy.min_note": "Sites not measured in MW are hidden while a minimum is set.",
+  "advisor.energy.regions_note": "Mapped capacity per region, by type. Click one to filter everything to it; click it again to clear.",
+});
 import { frameBox, focusPoint } from "../core/frame.js";
 import { glyph } from "../../../ui/icon.js";
 
@@ -32,14 +41,9 @@ export function mount(ctx) {
   const states = app.data.states || [];
   const stateIdx = new Map(states.map((s, i) => [s.abbr, i]));
   // Draw groups in GROUPS order, plus any type the groups do not list.
-  // The Canadian edition splits its power plants as the U.S. does: thermal, hydro, wind and solar (no batteries listed).
-  const definitions = canada ? [
-    { id: "thermal", label: "Power plants", types: ["nuclear", "coal_plant", "gas_plant", "oil_plant", "biomass"] },
-    { id: "water", label: "Hydro", types: ["hydro"] },
-    { id: "renew", label: "Wind & solar", types: ["wind", "solar"] },
-    { id: "mines", label: "Mines", types: ["uranium", "gold", "copper", "nickel", "iron", "silver", "platinum", "lead_zinc", "molybdenum", "critical", "potash", "diamonds", "coal_mine", "salt", "industrial", "oil_sands"] },
-    { id: "fields", label: "Oil & gas fields", types: ["oil", "gas", "oil_gas", "bitumen"] },
-  ] : GROUPS;
+  // An edition with other resource types gives its own groups (manifest view.resource_groups; Canada's splits its power
+  // plants as the U.S. does: thermal, hydro, wind and solar, no batteries listed).
+  const definitions = edition.view?.resource_groups || GROUPS;
   const listed = new Set(definitions.flatMap((g) => g.types));
   const groups = definitions.map((g) => ({ ...g, types: g.types.filter((t) => typeById.has(t)) })).filter((g) => g.types.length);
   const extra = types.filter((t) => !listed.has(t.id)).map((t) => t.id);
@@ -55,8 +59,8 @@ export function mount(ctx) {
   const top = el.appendChild(document.createElement("div"));
   top.innerHTML = tiles([
     { label: "Mapped power", value: mw(totalMW), sub: `${int(sites)} sites` },
-    { label: "Mines", value: int(groupCount("mines")), sub: canada ? "NRCan inventory" : "above size thresholds" },
-    { label: canada ? "Oil & gas fields" : "Shale plays", value: int(groupCount(canada ? "fields" : "plays")), sub: canada ? "NRCan inventory" : "oil & gas hexes" },
+    { label: "Mines", value: int(groupCount("mines")), sub: txt("advisor.energy.mines_sub") },
+    { label: txt("advisor.energy.oilgas_label"), value: int(groupCount(groups.some((g) => g.id === "fields") ? "fields" : "plays")), sub: txt("advisor.energy.oilgas_sub") },
   ]) + `<p class="adv-callout">${esc(res.summary?.note || "Totals of the mapped sites only.")}</p>`;
 
   // --- national mix ---------------------------------------------------------------------------------------------
@@ -105,7 +109,7 @@ export function mount(ctx) {
   const slider = document.createElement("div");
   slider.className = "adv-slider";
   slider.innerHTML = `<label><span>Minimum size</span><input type="range" min="0" max="3000" step="100" value="0" aria-label="Minimum power-site capacity in MW"><b>Any size</b></label>
-    <p class="adv-note adv-min-note" hidden>${canada ? "The capacity filter only shows power plants." : "Mines and oil &amp; gas plays are hidden while a minimum is set: they are not measured in MW."}</p>`;
+    <p class="adv-note adv-min-note" hidden>${rich("advisor.energy.min_note")}</p>`;
   fBody.appendChild(slider);
   const range = slider.querySelector("input");
   range.addEventListener("input", () => {
@@ -126,13 +130,13 @@ export function mount(ctx) {
   const sizeSort = (r) => (isMW(r.type) && fin(r.value) ? r.value : null);
   const table = createTable(tBody, {
     caption: "Mapped resource sites",
-    search: canada ? "Search sites, provinces, operators" : "Search sites, states, operators",
+    search: `Search sites, ${(TERMS.region.short_many ?? TERMS.region.many).toLowerCase()}, operators`,
     searchText: (r) => `${r.name} ${r.state || ""} ${r.detail || ""} ${typeById.get(r.type)?.name || ""}`,
     rank: true,
     columns: [
       { key: "name", label: "Site", align: "l", width: "minmax(0,1.7fr)", value: (r) => r.name, html: (r) => `<span class="ic">${glyph(typeById.get(r.type), 13)}</span>${esc(r.name)}` },
       { key: "type", label: "Type", align: "l", width: "minmax(0,1fr)", value: (r) => typeById.get(r.type)?.name, text: (r) => typeById.get(r.type)?.name.replace(/ \(shale play\)/, "") || r.type },
-      { key: "state", label: canada ? "Prov./terr." : "State", align: "l", width: "46px", value: (r) => r.state, text: (r) => r.state || "–" },
+      { key: "state", label: TERMS.region.column, align: "l", width: "46px", value: (r) => r.state, text: (r) => r.state || "–" },
       { key: "value", label: "Size", width: "minmax(0,.95fr)", value: sizeSort, text: (r) => sizeText(r), title: "Sort by capacity (MW; other units sort last)" },
     ],
     rows: [],
@@ -158,16 +162,14 @@ export function mount(ctx) {
   }
 
   // --- per state ------------------------------------------------------------------------------------------------
-  const sBody = section(el, canada
-    ? { title: "Power by province or territory", note: "Mapped capacity per province or territory, by type. Click one to filter everything to it; click it again to clear." }
-    : { title: "Power by state", note: "Mapped capacity per state, by type. Click a state to filter everything to it; click it again to clear." });
+  const sBody = section(el, { title: `Power by ${TERMS.region.one.toLowerCase()}`, note: rich("advisor.energy.regions_note") });
   const stateRows = states
     .map((s, i) => ({ key: s.abbr, label: s.name, idx: i, parts: s.energy?.by_type || {}, total: s.energy?.total || 0, text: mw(s.energy?.total) }))
     .filter((r) => r.total > 0)
     .sort((a, b) => b.total - a.total);
   const stacks = stackedBars(sBody, {
     rows: stateRows, keys: mwTypes.map((t) => ({ key: t.id, label: t.name, color: t.color })), fmt: (v) => mw(v),
-    ariaLabel: canada ? "Mapped power capacity by province or territory" : "Mapped power capacity by state",
+    ariaLabel: `Mapped power capacity by ${TERMS.region.one.toLowerCase()}`,
     onHover: (x) => {
       if (!x) return link.hover(null);
       const sIdx = x.row.idx;
@@ -191,16 +193,7 @@ export function mount(ctx) {
       <p>${esc(ty.description)}</p><span class="src">Source: ${esc(src ? `${src.title} (${src.vintage || src.publisher})` : ty.source)}</span></div></div>`;
   }).join("")}`).join("");
 
-  el.insertAdjacentHTML("beforeend", sourcesHtml(data, canada ? ["wri_plants", "statcan_province_digital", "nrcan_mines"] : ["eia_860m", "eia_coal", "msha_mines", "eia_shale_plays"], canada ? [
-    "Power plants are those of 25 MW or more as listed in 2016–17 (Natural Resources Canada’s August 2017 inventory, via WRI), with their capacity then: plants built or closed since are not reflected.",
-    "Plant coordinates determine the province or territory using Statistics Canada’s digital boundaries, including water.",
-    "The 900A source provides site locations and commodities. Its site counts have no capacity or output measure.",
-  ] : [
-    "Only sites above each type's threshold are mapped (e.g. gas plants of 1,500 MW or more, wind clustered per hex at 500 MW or more), so totals are <b>not</b> state or national capacity.",
-    "Capacity is nameplate-style net summer capacity (MW), not how much electricity a site produces: a 1,000 MW solar farm generates far less in a year than a 1,000 MW nuclear plant.",
-    "Mines are sized by employees (MSHA) or coal output (EIA); oil and gas plays by area. These units cannot be added to MW.",
-    "A site counts in the state its operator files it under; a few border sites sit in a hex another state owns.",
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.energy"));
 
   // --- map ------------------------------------------------------------------------------------------------------
   const bubbles = ctx.bubbles("sites", {
@@ -239,7 +232,7 @@ export function mount(ctx) {
     const sIdx = st.state ? stateIdx.get(st.state) : null;
     link.base({ dimOthers: true, states: sIdx != null ? new Set([sIdx]) : undefined });
     stateChip.innerHTML = st.state
-      ? `<span class="adv-fchip">${regionName}: <b>${esc(states[sIdx]?.name || st.state)}</b> · ${int(vis.length)} sites<button type="button" data-clear-state aria-label="${canada ? "Clear the province or territory filter" : "Clear the state filter"}">✕</button></span>`
+      ? `<span class="adv-fchip">${esc(TERMS.region.one)}: <b>${esc(states[sIdx]?.name || st.state)}</b> · ${int(vis.length)} sites<button type="button" data-clear-state aria-label="Clear the ${esc(TERMS.region.one.toLowerCase())} filter">✕</button></span>`
       : "";
     const r = (v) => 24 * Math.sqrt(v / vMax);
     legendBox.innerHTML = sizeLegend([250, 1000, 4000].filter((v) => v <= vMax * 1.2), r, (v) => `${int(v)} MW`, "Circle area = capacity");

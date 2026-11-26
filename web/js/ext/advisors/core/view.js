@@ -1,6 +1,7 @@
 // Layout helpers shared by the advisor views: sections, controls, stat tiles, sources and caveats.
 import { esc, el, fin } from "./util.js";
 import { icon } from "../../../ui/icon.js";
+import { richText, textList } from "../../../app/text.js";
 
 /** Append a titled section; returns its body element. opts: {title, note, kicker, collapsed, cls} */
 export function section(parent, { title, note = "", kicker = "", cls = "", open = true } = {}) {
@@ -148,6 +149,12 @@ export function mapPicker(ctx, parent, { options, value, label = "Map" }) {
 export const frameBtn = () => `<button type="button" class="adv-mini adv-framebtn" data-frame title="Fly the map to the selection"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>Frame on map</button>`;
 
 /** Sources and caveats footer. ids: source ids from sources.json; caveats: [string] */
+/** The sources footer an edition gives in its text pack: `${key}.sources` (source ids) and `${key}.caveats` (rich text,
+ * {placeholders} filled from `vars`), followed by `extra` caveats (HTML) a view computes itself. */
+export function editionSources(data, key, vars = {}, extra = []) {
+  return sourcesHtml(data, textList(`${key}.sources`), [...textList(`${key}.caveats`).map((c) => richText(c, vars)), ...extra]);
+}
+
 export function sourcesHtml(data, ids, caveats = []) {
   const list = [...new Set(ids)].map((id) => data.source(id)).filter(Boolean);
   return `<footer class="adv-sources">

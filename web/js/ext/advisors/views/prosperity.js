@@ -4,8 +4,15 @@ import { money, dollars, pct, int, count3, fmtShort } from "../core/fmt.js";
 import { barList, histogram, rampLegend } from "../core/charts.js";
 import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
-import { section, tiles, segmented, lensButton, sourcesHtml, topBy, frameBtn } from "../core/view.js";
-import { canada, regionsName } from "../../../app/country.js";
+import { section, tiles, segmented, lensButton, editionSources, topBy, frameBtn } from "../core/view.js";
+import { NATION, TERMS, defaults, hasText, rich, txt } from "../../../app/text.js";
+
+defaults({
+  "advisor.prosperity.poverty_title": "Poverty",
+  "advisor.prosperity.poverty_rates": "poverty rates",
+  "advisor.prosperity.poverty_note": "Divisions by the share of people below the poverty line. Hover a bar to outline those divisions; the table lists them all.",
+  "advisor.prosperity.unemployment_note": "Unemployed ÷ labour force ({vintage}). Metros of {min}+ people.",
+});
 import { rowsHighlight } from "../core/data.js";
 
 const METRO_MIN = 250000;
@@ -19,7 +26,7 @@ export function mount(ctx) {
   el.insertAdjacentHTML("beforeend", tiles([
     { label: "Median income", value: dollars(n.median_income), sub: "per household" },
     { label: "Median home", value: money(n.home_value), sub: `${(n.home_value / n.median_income).toFixed(1)}× income` },
-    { label: "Unemployment", value: pct(n.unemployment), sub: canada ? data.nation.unemployment_vintage || "Labour Force Survey" : data.vintage },
+    { label: "Unemployment", value: pct(n.unemployment), sub: data.nation.unemployment_vintage || data.vintage },
   ]));
 
   // --- income vs home value -------------------------------------------------------------------------------------
@@ -27,9 +34,9 @@ export function mount(ctx) {
   const aCtl = document.createElement("div");
   aCtl.className = "adv-row";
   aBody.appendChild(aCtl);
-  const countyHomes = counties && !canada; // Canadian census divisions have no published home value
+  const countyHomes = !!counties?.field("home_value"); // divisions with a published home value (not Canada's)
   let level = countyHomes ? "counties" : "metros";
-  segmented(aCtl, { label: "Places", value: level, options: [...(countyHomes ? [{ value: "counties", label: "Counties" }] : []), { value: "metros", label: "Metros" }], onChange: (v) => { level = v; drawAfford(); } });
+  segmented(aCtl, { label: "Places", value: level, options: [...(countyHomes ? [{ value: "counties", label: TERMS.division.Many }] : []), { value: "metros", label: "Metros" }], onChange: (v) => { level = v; drawAfford(); } });
   for (const [id, label] of [["income", "Income lens"], ["home", "Home value lens"]]) {
     const b = lensButton(app, id, label);
     if (b) aCtl.appendChild(b);
@@ -88,13 +95,12 @@ export function mount(ctx) {
   // --- poverty --------------------------------------------------------------------------------------------------
   let povHist = null;
   if (counties) {
-    const pBody = section(el, canada
-      ? { title: "Low income", note: "Census divisions by the share of people below the low-income measure after tax (LIM-AT, 2020). Hover a bar to outline those divisions; the table lists them all." }
-      : { title: "Poverty", note: "Counties by the share of people below the official poverty line. Hover a bar to outline those counties; the table lists them all." });
+    const povTitle = txt("advisor.prosperity.poverty_title"), povRates = txt("advisor.prosperity.poverty_rates");
+    const pBody = section(el, { title: povTitle, note: rich("advisor.prosperity.poverty_note") });
     const pCtl = document.createElement("div");
     pCtl.className = "adv-row";
     pBody.appendChild(pCtl);
-    const lb = lensButton(app, "poverty", canada ? "Low income lens" : "Poverty lens");
+    const lb = lensButton(app, "poverty", `${povTitle} lens`);
     if (lb) pCtl.appendChild(lb);
     const pHost = document.createElement("div");
     pBody.appendChild(pHost);
@@ -105,17 +111,17 @@ export function mount(ctx) {
     })();
     povHist = histogram(pHost, {
       values: counties.rows.map((r) => ({ key: r.key, v: r.v.poverty, w: r.v.population })), bins: 30, domain: [0, 0.45], height: 120,
-      fmt: (v) => fmtShort("pct", v), unitLabel: canada ? "census divisions" : "counties", label: canada ? "Histogram of census division low-income rates" : "Histogram of county poverty rates",
+      fmt: (v) => fmtShort("pct", v), unitLabel: TERMS.division.many, label: `Histogram of ${TERMS.division.one} ${povRates}`,
       colorOf: (_, t) => colorScale({ type: "seq", domain: [0, 1], ramp: RAMPS.heat })(t),
-      markers: fin(usPov) ? [{ v: usPov, label: `${canada ? "Canada" : "Lower 48"} ${pct(usPov)}` }] : [],
+      markers: fin(usPov) ? [{ v: usPov, label: `${hasText("advisor.prosperity.nation_marker") ? txt("advisor.prosperity.nation_marker") : NATION.short} ${pct(usPov)}` }] : [],
       onHover: (bin) => link.hover(bin ? rowsHighlight(counties, bin.keys.map((k) => counties.byKey.get(k)), { dim: true }) : null),
     });
     const povTable = createTable(pBody, {
-      caption: canada ? "Census division low-income rates" : "County poverty rates", rank: true, maxHeight: 240, rows: counties.rows.filter((r) => fin(r.v.poverty)), search: canada ? "Search census divisions" : "Search counties",
+      caption: `${TERMS.division.One} ${povRates}`, rank: true, maxHeight: 240, rows: counties.rows.filter((r) => fin(r.v.poverty)), search: `Search ${TERMS.division.many}`,
       columns: [
-        { key: "name", label: canada ? "Census division" : "County", align: "l", value: (r) => r.name, html: (r) => `${esc(r.name)} <span class="sub">${esc(r.sub)}</span>` },
+        { key: "name", label: TERMS.division.One, align: "l", value: (r) => r.name, html: (r) => `${esc(r.name)} <span class="sub">${esc(r.sub)}</span>` },
         { key: "population", label: "People", value: (r) => r.v.population, text: (r) => count3(r.v.population) },
-        { key: "poverty", label: canada ? "Low income" : "Poverty", value: (r) => r.v.poverty, text: (r) => pct(r.v.poverty), bar: { max: 0.5, color: "rgba(232,119,74,.4)" } },
+        { key: "poverty", label: povTitle, value: (r) => r.v.poverty, text: (r) => pct(r.v.poverty), bar: { max: 0.5, color: "rgba(232,119,74,.4)" } },
         { key: "income", label: "Income", value: (r) => r.v.income, text: (r) => money(r.v.income) },
       ],
       sort: { key: "poverty", dir: "desc" },
@@ -138,12 +144,10 @@ export function mount(ctx) {
   barList(rBody, { ...rOpts, rows: rentRows(lo), max: rmax, ariaLabel: "Lightest rent burden" });
 
   // --- unemployment ---------------------------------------------------------------------------------------------
-  const uBody = section(el, { title: "Unemployment", note: canada
-    ? `Unemployed ÷ labour force aged 15+ (${esc(data.nation.unemployment_vintage || "Labour Force Survey")}). Metros of ${count3(BIG_METRO)}+ people, all of them census metropolitan areas.`
-    : `Unemployed ÷ civilian labour force (${esc(data.vintage)}). Metros of ${count3(BIG_METRO)}+ people.` });
+  const uBody = section(el, { title: "Unemployment", note: rich("advisor.prosperity.unemployment_note", { vintage: data.vintage, unemployment_vintage: data.nation.unemployment_vintage || "", min: count3(BIG_METRO) }) });
   const uHost = document.createElement("div");
   let uLevel = "states";
-  segmented(uBody, { label: "Areas", value: uLevel, options: [{ value: "states", label: regionsName }, { value: "metros", label: "Large metros" }], onChange: (v) => { uLevel = v; drawU(); } });
+  segmented(uBody, { label: "Areas", value: uLevel, options: [{ value: "states", label: TERMS.region.many }, { value: "metros", label: "Large metros" }], onChange: (v) => { uLevel = v; drawU(); } });
   uBody.appendChild(uHost);
   function drawU() {
     uHost.innerHTML = "";
@@ -161,19 +165,10 @@ export function mount(ctx) {
   }
   drawU();
 
-  el.insertAdjacentHTML("beforeend", canada ? sourcesHtml(data, ["statcan_census_areas", "statcan_census_divisions", "statcan_lfs"], [
-    `Metro, provincial and division figures are ${esc(data.nation.census_vintage || data.vintage)}; incomes are for 2020. Unemployment: ${esc(data.nation.unemployment_vintage || "Labour Force Survey")}, for provinces, territories and CMAs (the survey does not publish census agglomerations). The Explorer also has the 2021 Census rate for every area.`,
-    "Home values are owners' own estimates of what their home would sell for, not sale prices; census divisions have no published home value, so the home-cost chart compares metros.",
-    "Rent is renters' median monthly shelter cost (rent plus utilities). Rent ÷ income compares two medians from different households; it is a rough guide, not the share of renters who are cost-burdened.",
-    "Low income uses the low-income measure after tax (LIM-AT): half the national median adjusted household income. It is the same everywhere and does not adjust for local living costs.",
-    ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest census divisions are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-  ]) : sourcesHtml(data, ["acs_1yr", "acs_5yr"], [
-    `Metro and state figures are ${esc(data.vintage)}; county figures are ${esc(data.countyVintage)} (five years pooled) and run lower in fast-rising markets.`,
-    "Home values are owners' own estimates of what their home would sell for (ACS), not sale prices.",
-    "Rent ÷ income compares two medians from different households; it is a rough guide, not the share of renters who are cost-burdened.",
-    "Poverty uses the official federal thresholds, which are the same everywhere and do not adjust for local living costs.",
-    ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest counties are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.prosperity", {
+    vintage: data.vintage, county_vintage: data.countyVintage, census_vintage: data.nation.census_vintage || data.vintage,
+    unemployment_vintage: data.nation.unemployment_vintage || "",
+  }, data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest ${esc(TERMS.division.many)} are smaller than one hex, so selecting them outlines nothing on the map.`] : []));
 
   return {
     onMapHover(h) {

@@ -7,11 +7,22 @@ import { barList, shareBar, stackedBars, swatchLegend, sizeLegend } from "../cor
 import { createTable } from "../core/table.js";
 import { section, tiles, segmented, sourcesHtml } from "../core/view.js";
 import { frameBox, focusPoint } from "../core/frame.js";
-import { canada } from "../../../app/country.js";
+import { TERMS, defaults, hasText, rich, richText, textList, txt } from "../../../app/text.js";
+
+defaults({
+  "advisor.commerce.callout": "Freight values in current money: what moves between places, not what each place produces. Imports {imports} and exports {exports} are counted separately.",
+  "advisor.commerce.commodity_note": "",
+  "advisor.commerce.zones_note": "The freight model splits the country into metro areas and the rest of each region. Value of freight that starts or ends in each zone (domestic), plus its trade with other countries. Hover to outline a zone's cities; click to see its routes and partners.",
+  "advisor.commerce.zones_caption": "Freight zones",
+  "advisor.commerce.zone_prefix": "",
+  "advisor.commerce.ports_what": "ports",
+  "advisor.commerce.pax_note": "Passenger boardings in the year; change on the year before.",
+  "advisor.commerce.cargo_note": "Air cargo in the year.",
+});
 
 // The Canadian edition: Canadian Freight Analysis Framework routes (tonnes, tonne-kilometres) and Statistics Canada
 // airport traffic (boardings, cargo tonnes); its zones are CMAs and the rest of each province.
-const REGION = canada ? "province" : "state";
+const REGION = TERMS.region.short.toLowerCase();
 
 // Route colours by FAF mode (original palette: ochre road, iron rail, blue water, lilac air, sea-green mixed,
 // dark copper pipeline drawn dashed).
@@ -38,9 +49,7 @@ export async function mount(ctx) {
     { label: "Domestic freight", value: fin(nm.domestic) ? money(nm.domestic * MUSD) : "–", sub: `${esc(trade?.vintage || "FAF")} · by value` },
     { label: "Busiest port", value: topPort ? `${count3(topPort.tons)} t` : "–", sub: topPort ? topPort.name : "" },
     { label: "Busiest airport", value: topAir ? count3(topAir.enplanements) : "–", sub: topAir ? `${topAir.id} boardings ${topAir.year}` : "" },
-  ]) + (trade ? (canada
-    ? `<p class="adv-callout">Freight values come from the Canadian Freight Analysis Framework (${esc(String(trade.year || ""))}, Statistics Canada): air, rail and for-hire truck shipments only, in current Canadian dollars. What moves between places, not what each place produces. Imports ${money(nm.import * MUSD)} and exports ${money(nm.export * MUSD)} are counted separately.</p>`
-    : `<p class="adv-callout">Freight values are model estimates from the Freight Analysis Framework, in current dollars: what moves between places, not what each place produces. Imports ${money(nm.import * MUSD)} and exports ${money(nm.export * MUSD)} are counted separately.</p>`) : ""));
+  ]) + (trade ? `<p class="adv-callout">${rich("advisor.commerce.callout", { year: trade.year ?? "", imports: money(nm.import * MUSD), exports: money(nm.export * MUSD) })}</p>` : ""));
 
   // --- trade routes ---------------------------------------------------------------------------------------------
   let routes = [], zoneById = new Map(), routeCells = new Map(), overlayOff = null;
@@ -80,7 +89,7 @@ export async function mount(ctx) {
     const rHost = mk("div");
     rBody.appendChild(rHost);
     rBody.appendChild(rDetail);
-    rBody.insertAdjacentHTML("beforeend", `<p class="adv-note">${esc(trade.path_note || "")} Line width follows value; colour, the main mode${canada ? "" : " (pipeline dashed)"}.</p>${swatchLegend((trade.modes || []).filter((m) => modeTot[m.id] > 0).map((m) => ({ label: m.name, color: MODE_COLOR[m.id] })))}`);
+    rBody.insertAdjacentHTML("beforeend", `<p class="adv-note">${esc(trade.path_note || "")} Line width follows value; colour, the main mode${(trade.modes || []).some((m) => m.id === "pipeline") ? " (pipeline dashed)" : ""}.</p>${swatchLegend((trade.modes || []).filter((m) => modeTot[m.id] > 0).map((m) => ({ label: m.name, color: MODE_COLOR[m.id] })))}`);
 
     const routeHighlight = (r) => {
       const za = zoneById.get(r.a), zb = zoneById.get(r.b);
@@ -150,10 +159,10 @@ export async function mount(ctx) {
         <h4 class="adv-h4">#${r.rank} ${esc(zoneById.get(r.a)?.name || r.a)} ⇄ ${esc(zoneById.get(r.b)?.name || r.b)}</h4>
         ${tiles([
           { label: "Value", value: money(r.value_musd * MUSD), sub: "both directions" },
-          { label: "Weight", value: `${count3(r.tons_k * 1000)} t`, sub: canada ? "tonnes" : "short tons" },
-          { label: "Distance", value: `${int(r.dist_km)} km`, sub: canada ? `${count3(r.tkm_m * 1e6)} tonne-km` : `${count3(r.tmiles_m * 1e6)} ton-miles` },
+          { label: "Weight", value: `${count3(r.tons_k * 1000)} t`, sub: (trade.units?.tons_k || "").replace(/^thousand\s+/, "") },
+          { label: "Distance", value: `${int(r.dist_km)} km`, sub: r.tkm_m != null ? `${count3(r.tkm_m * 1e6)} tonne-km` : `${count3(r.tmiles_m * 1e6)} ton-miles` },
         ])}
-        <p class="adv-note"><b>By mode:</b> ${parts.map(([m, s]) => `${esc(modeName.get(m) || m)} ${pct(s)}`).join(" · ")}. <b>Largest commodity:</b> ${esc(comm[r.top_commodity] || "–")}${canada ? "" : " (among each zone pair's top five)"}.</p>
+        <p class="adv-note"><b>By mode:</b> ${parts.map(([m, s]) => `${esc(modeName.get(m) || m)} ${pct(s)}`).join(" · ")}. <b>Largest commodity:</b> ${esc(comm[r.top_commodity] || "–")}${esc(txt("advisor.commerce.commodity_note"))}.</p>
         <button type="button" class="adv-mini" data-unpin>Close</button></div>`;
       rDetail.querySelector("[data-unpin]").addEventListener("click", () => selectRoute(st.route));
     }
@@ -161,8 +170,7 @@ export async function mount(ctx) {
     // Zones table.
     const zBody = section(el, {
       title: "Freight zones",
-      note: canada ? "The Canadian Freight Analysis Framework splits the country into 12 metro areas, the rest of each province and the territories. Value of freight that starts or ends in each zone (domestic), plus its trade with other countries. Hover to outline a zone's cities; click to see its routes and partners."
-        : "FAF splits the country into metro areas and the rest of each state. Value of freight that starts or ends in each zone (domestic), plus its trade with other countries. Hover to outline a zone's cities; click to see its routes and partners.",
+      note: rich("advisor.commerce.zones_note"),
     });
     const zoneHighlight = (z) => {
       const cells = new Set();
@@ -172,7 +180,7 @@ export async function mount(ctx) {
     };
     const zones = (trade.zones || []).map((z) => ({ ...z, key: z.id }));
     zTable = createTable(zBody, {
-      caption: canada ? "Freight zones" : "FAF freight zones", rank: true, maxHeight: 260, search: "Search zones",
+      caption: txt("advisor.commerce.zones_caption"), rank: true, maxHeight: 260, search: "Search zones",
       searchText: (z) => `${z.name} ${(z.states || []).join(" ")}`,
       columns: [
         { key: "name", label: "Zone", align: "l", width: "minmax(0,1.9fr)", value: (z) => z.short || z.name, html: (z) => `${esc(z.short || z.name)} <span class="sub">${esc((z.states || []).join("–"))}</span>`, tip: (z) => z.name },
@@ -190,7 +198,7 @@ export async function mount(ctx) {
       const z = st.zone ? zoneById.get(st.zone) : null;
       if (!z) { zDetail.innerHTML = ""; return; }
       zDetail.innerHTML = `<div class="adv-card-detail"><h4 class="adv-h4">${esc(z.name)}</h4>
-        <p class="adv-note">${z.kind === "rest_of_state" ? (canada && !z.name.startsWith("Rest of ") ? "The whole province or territory (it has no metro zone). " : `The rest of the ${REGION} outside its ${canada ? "" : "FAF "}metro zones. `) : ""}${canada ? "" : `${int(z.counties)} counties on the map · `}cities: ${(z.cities || []).slice(0, 6).map((id) => esc(metros.byKey.get(id)?.name || id)).join(", ") || "none on the map"}${(z.cities || []).length > 6 ? "…" : ""}</p>
+        <p class="adv-note">${z.kind === "rest_of_state" ? (hasText("advisor.commerce.zone_whole") && !z.name.startsWith("Rest of ") ? `${esc(txt("advisor.commerce.zone_whole"))} ` : `The rest of the ${REGION} outside its ${esc(txt("advisor.commerce.zone_prefix"))}metro zones. `) : ""}${z.counties != null ? `${int(z.counties)} ${esc(TERMS.division.many)} on the map · ` : ""}cities: ${(z.cities || []).slice(0, 6).map((id) => esc(metros.byKey.get(id)?.name || id)).join(", ") || "none on the map"}${(z.cities || []).length > 6 ? "…" : ""}</p>
         <h4 class="adv-h4">Top partners (any ${REGION})</h4><div class="adv-zp"></div></div>`;
       barList(zDetail.querySelector(".adv-zp"), {
         compact: true, ariaLabel: "Top partner zones",
@@ -268,15 +276,17 @@ export async function mount(ctx) {
   let portBars = null, airBars = null, portBubbles = null, airBubbles = null;
   if (infra) {
     const v = infra.vintage || {};
-    const pBody = section(el, { title: "Ports", kicker: esc(v.ports || ""), note: `${esc(infra.rules?.ports || "")}${canada ? "" : " Bars split each port's tonnage into domestic, imports and exports."}` });
+    // Ports split into domestic, imports and exports where the data has the split (the U.S.; Canada publishes totals).
+    const portSplit = (infra.ports || []).some((p) => p.domestic != null);
+    const pBody = section(el, { title: "Ports", kicker: esc(v.ports || ""), note: `${esc(infra.rules?.ports || "")}${portSplit ? " Bars split each port's tonnage into domestic, imports and exports." : ""}` });
     const ports = (infra.ports || []).map((p) => ({ ...p, key: `p${p.id}` }));
     const PK = [{ key: "domestic", label: "Domestic", color: "#8fcbb8" }, { key: "imports", label: "Imports", color: "#4f9ad6" }, { key: "exports", label: "Exports", color: "#d9a457" }];
     const portHover = (p) => {
       link.hover(p ? { cells: new Set(p.cell != null ? [p.cell] : []), label: p.name } : null);
       portBubbles?.setHot(p ? p.key : null);
     };
-    // Transport Canada publishes each port authority's total only, so the Canadian bars are not split.
-    portBars = canada ? barList(pBody, {
+    // Ports with only a total (Transport Canada publishes each port authority's total only) get plain bars.
+    portBars = !portSplit ? barList(pBody, {
       rank: true, ariaLabel: "Busiest ports by tonnage",
       rows: ports.slice(0, 15).map((p) => ({ key: p.key, label: p.name, sub: p.state, value: p.tons, text: `${count3(p.tons)} t`, color: PORT_COLOR })),
       onHover: (r) => portHover(r ? ports.find((p) => p.key === r.key) : null),
@@ -287,10 +297,12 @@ export async function mount(ctx) {
       onHover: (x) => portHover(x ? ports.find((p) => p.key === x.row.key) : null),
       onClick: (x) => flyTo(ports.find((p) => p.key === x.row.key)),
     });
-    pBody.insertAdjacentHTML("beforeend", (canada ? "" : swatchLegend(PK)) + `<p class="adv-note">Top 15 of ${int(ports.length)} ${canada ? "Canada Port Authorities (tonnes)" : "principal ports in the lower 48 (short tons)"}.</p>`);
+    pBody.insertAdjacentHTML("beforeend", (portSplit ? swatchLegend(PK) : "") + `<p class="adv-note">Top 15 of ${int(ports.length)} ${esc(txt("advisor.commerce.ports_what"))}.</p>`);
 
     const aBody = section(el, { title: "Airports", kicker: esc(v.airports || ""), note: esc(infra.rules?.airports || "") });
     const airports = (infra.airports || []).map((a) => ({ ...a, key: `a${a.id}` }));
+    // Air cargo in tonnes (cargo_t; Canada) or in pounds landed (cargo_lbs; the U.S. FAA figure).
+    const cargoKey = airports.some((x) => x.cargo_t != null) ? "cargo_t" : "cargo_lbs";
     let aMode = "pax";
     const aHost = mk("div");
     segmented(aBody, { label: "Rank by", value: aMode, options: [{ value: "pax", label: "Passengers" }, { value: "cargo", label: "Cargo" }], onChange: (x) => { aMode = x; drawAir(); } });
@@ -301,7 +313,7 @@ export async function mount(ctx) {
     };
     function drawAir() {
       aHost.innerHTML = "";
-      const k = aMode === "pax" ? "enplanements" : canada ? "cargo_t" : "cargo_lbs";
+      const k = aMode === "pax" ? "enplanements" : cargoKey;
       const list = airports.filter((a) => fin(a[k])).sort((a, b) => b[k] - a[k]).slice(0, 15);
       airBars = barList(aHost, {
         rank: true, ariaLabel: aMode === "pax" ? "Busiest airports by boardings" : "Busiest cargo airports",
@@ -309,7 +321,7 @@ export async function mount(ctx) {
           const ch = aMode === "pax" && fin(a.enplanements_prev) && a.enplanements_prev > 0 ? a.enplanements / a.enplanements_prev - 1 : null;
           return {
             key: a.key, label: `${a.id} ${a.city || a.name}`, full: a.name, value: a[k],
-            text: aMode === "pax" ? count3(a[k]) : `${count3(a[k])} ${canada ? "t" : "lb"}`,
+            text: aMode === "pax" ? count3(a[k]) : `${count3(a[k])} ${cargoKey === "cargo_t" ? "t" : "lb"}`,
             sub: aMode === "pax" ? (fin(ch) ? `${signedPct(ch)} on ${a.year - 1}` : "") : `${a.state}`,
             tone: fin(ch) ? (ch >= 0 ? "good" : "bad") : undefined, color: AIR_COLOR,
           };
@@ -318,8 +330,8 @@ export async function mount(ctx) {
         onClick: (r) => flyTo(airports.find((a) => a.key === r.key)),
       });
       aHost.insertAdjacentHTML("beforeend", `<p class="adv-note">${aMode === "pax"
-        ? `Passenger boardings (${canada ? "passengers enplaned, Statistics Canada table 23-10-0253" : "enplanements"}) in the year; change on the year before.`
-        : canada ? "Cargo loaded and unloaded, in tonnes (Statistics Canada table 23-10-0254)." : "All-cargo landed weight in pounds, as the FAA publishes it (aircraft weight landed, not freight carried)."}</p>`);
+        ? rich("advisor.commerce.pax_note")
+        : rich("advisor.commerce.cargo_note")}</p>`);
     }
     drawAir();
 
@@ -335,9 +347,8 @@ export async function mount(ctx) {
     mBody.appendChild(sizeBox);
     portBubbles = ctx.bubbles("ports", {
       rMax: 20, alpha: 0.5,
-      tip: (b) => canada
-        ? `<b>${esc(b.it.name)}</b><br>Port · <b>${count3(b.it.tons)} t</b> (${b.it.year}${b.it.preliminary ? ", preliminary" : ""}) · rank ${b.it.rank}`
-        : `<b>${esc(b.it.name)}</b><br>Port · <b>${count3(b.it.tons)} t</b> (${b.it.year}) · rank ${b.it.rank}<br><span class="sub">domestic ${count3(b.it.domestic)} · imports ${count3(b.it.imports)} · exports ${count3(b.it.exports)}</span>`,
+      tip: (b) => `<b>${esc(b.it.name)}</b><br>Port · <b>${count3(b.it.tons)} t</b> (${b.it.year}${b.it.preliminary ? ", preliminary" : ""}) · rank ${b.it.rank}${
+        b.it.domestic != null ? `<br><span class="sub">domestic ${count3(b.it.domestic)} · imports ${count3(b.it.imports)} · exports ${count3(b.it.exports)}</span>` : ""}`,
       onHover: (b) => portBars?.setHot(b ? b.key : null),
       onClick: (b) => { portBars?.setHot(b.key); flyTo(b.it); },
     });
@@ -371,19 +382,9 @@ export async function mount(ctx) {
     focusPoint(app, p.x, p.y, Math.min(app.cam.maxScale, Math.max(app.cam.scale, (app.cam.fitScale || 1) * 3)));
   }
 
-  el.insertAdjacentHTML("beforeend", sourcesHtml(data, [...(trade?.sources || []), ...(infra?.sources || [])], canada ? [
-    `Freight values are the Canadian Freight Analysis Framework's ${esc(String(trade?.year ?? ""))} estimates (the latest year it covers) in current Canadian dollars and tonnes, for air, rail and for-hire truck only: water, pipeline and private trucking are not in it. Zones are whole metro areas or the rest of a province, so a route between two cities stands for everything moving between their regions.`,
-    "Routes count only flows between zones in different provinces; the drawn line follows mapped highways as a drawing aid (the framework assigns no route).",
-    "Rest-of-province zones are drawn from their largest city, though the flow comes from the whole region.",
-    `Airports are Statistics Canada's annual passenger and cargo counts${infra?.vintage?.airports ? ` (${esc(infra.vintage.airports)})` : ""}, placed with OurAirports coordinates; freight is ${esc(String(trade?.year ?? ""))}, so the two are years apart.`,
-    "Natural Earth roads and rails are map art, not statistics: an older, simplified alignment of the main network.",
-  ] : [
-    "FAF values are model estimates for 2024 in current dollars and thousand short tons; zones are whole metro areas or the rest of a state, so a route between two cities stands for everything moving between their regions.",
-    "Routes count only flows between zones in different states; the drawn line follows mapped highways as a drawing aid (FAF assigns no route). Pipeline routes carry crude oil or gas.",
-    "Rest-of-state zones are drawn from their largest city, though the flow comes from the whole region.",
-    "Port tonnage is calendar 2023 (USACE), two years older than the airport counts (FAA 2025). Port positions are port-area centroids, so long river ports are approximate.",
-    "Natural Earth roads and rails are map art, not statistics: an older, simplified alignment holding about half the real rail network.",
-  ]));
+  const cvars = { year: trade?.year ?? "", airports_part: infra?.vintage?.airports ? ` (${infra.vintage.airports})` : "" };
+  el.insertAdjacentHTML("beforeend", sourcesHtml(data, [...(trade?.sources || []), ...(infra?.sources || [])],
+    textList("advisor.commerce.caveats").map((c) => richText(c, cvars))));
 
   return {
     onMapHover(h) {

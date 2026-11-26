@@ -1,4 +1,196 @@
 {
+ "advisor.commerce.callout": "Freight values are model estimates from the Freight Analysis Framework, in current dollars: what moves between places, not what each place produces. Imports {imports} and exports {exports} are counted separately.",
+ "advisor.commerce.cargo_note": "All-cargo landed weight in pounds, as the FAA publishes it (aircraft weight landed, not freight carried).",
+ "advisor.commerce.caveats": [
+  "FAF values are model estimates for 2024 in current dollars and thousand short tons; zones are whole metro areas or the rest of a state, so a route between two cities stands for everything moving between their regions.",
+  "Routes count only flows between zones in different states; the drawn line follows mapped highways as a drawing aid (FAF assigns no route). Pipeline routes carry crude oil or gas.",
+  "Rest-of-state zones are drawn from their largest city, though the flow comes from the whole region.",
+  "Port tonnage is calendar 2023 (USACE), two years older than the airport counts (FAA 2025). Port positions are port-area centroids, so long river ports are approximate.",
+  "Natural Earth roads and rails are map art, not statistics: an older, simplified alignment holding about half the real rail network."
+ ],
+ "advisor.commerce.commodity_note": " (among each zone pair's top five)",
+ "advisor.commerce.pax_note": "Passenger boardings (enplanements) in the year; change on the year before.",
+ "advisor.commerce.ports_what": "principal ports in the lower 48 (short tons)",
+ "advisor.commerce.zone_prefix": "FAF ",
+ "advisor.commerce.zones_caption": "FAF freight zones",
+ "advisor.commerce.zones_note": "FAF splits the country into metro areas and the rest of each state. Value of freight that starts or ends in each zone (domestic), plus its trade with other countries. Hover to outline a zone's cities; click to see its routes and partners.",
+ "advisor.council.note": "All figures are public data: Census ACS and population estimates, BEA GDP, BLS QCEW, EIA and MSHA site lists, USGS land cover, DoD installation and spending files, FHWA freight flows, USACE and FAA traffic, NPS visits, NSF research spending, the U.S. Religion Census, CDC PLACES, FEMA and NOAA. Each dashboard lists its sources and caveats at the bottom.",
+ "advisor.culture.caveats": [
+  "Faith: {faith_note}",
+  "Amenities: {amen_note}",
+  "A FEMA declaration is an administrative act that unlocks federal aid, not a measure of damage; Connecticut's planning regions count a disaster declared for any old county they overlap, which can overstate them.",
+  "NOAA billion-dollar events span several states: a state's cost is its share of the events that touched it, and state figures must not be added up.",
+  "Park visits are counted differently by unit type, so parks are ranked only within their own rule. Landmarks are an editorial choice.",
+  "University R&D includes medical schools; a few universities report together with their medical centre."
+ ],
+ "advisor.culture.disaster_sources": [
+  "fema_declarations",
+  "noaa_billions"
+ ],
+ "advisor.culture.disasters_kicker": "FEMA declarations · NOAA billion-dollar events",
+ "advisor.culture.faith_kicker": "2020 U.S. Religion Census",
+ "advisor.culture.faith_note": "State figures are population-weighted means of county rates (≈). Adherents are counted where congregations meet, so a county can pass 100.",
+ "advisor.culture.faith_regions": "States by adherents per 100 residents ≈",
+ "advisor.culture.faith_tile_label": "Adherents ≈",
+ "advisor.culture.faith_tile_sub": "residents, 2020 congregations",
+ "advisor.culture.park_visits_sub": "all NPS units, {year}",
+ "advisor.culture.sources": [
+  "usrc_2020",
+  "cdc_places"
+ ],
+ "advisor.culture.wonders_note": "Hover a wonder to find it on the map; click to fly there. Parks are ranked by recreation visits, universities by research spending; landmarks are a hand-picked list.",
+ "advisor.economy.caveats": [
+  "GDP is counted where the work is done (BEA); jobs and specialisation are counted where workers live (ACS), so a commuter suburb's workers count in its own metro.",
+  "GDP is {gdp_vintage} while population is {vintage}: per-person figures divide numbers a year apart.",
+  "Metro GDP sums the member counties of each metro (OMB 2023 delineation); BEA suppresses some industry figures for small areas, so metro industry GDP is incomplete and not used here."
+ ],
+ "advisor.economy.gdp_note": "Value added by each industry, where the work is done. Hover an industry to light up the states where it is the biggest share of the economy; click it to rank the metros that specialise in it.",
+ "advisor.economy.sources": [
+  "bea_gdp",
+  "acs_1yr",
+  "pep_population",
+  "cbsa_delineation"
+ ],
+ "advisor.energy.caveats": [
+  "Only sites above each type's threshold are mapped (e.g. gas plants of 1,500 MW or more, wind clustered per hex at 500 MW or more), so totals are <b>not</b> state or national capacity.",
+  "Capacity is nameplate-style net summer capacity (MW), not how much electricity a site produces: a 1,000 MW solar farm generates far less in a year than a 1,000 MW nuclear plant.",
+  "Mines are sized by employees (MSHA) or coal output (EIA); oil and gas plays by area. These units cannot be added to MW.",
+  "A site counts in the state its operator files it under; a few border sites sit in a hex another state owns."
+ ],
+ "advisor.energy.min_note": "Mines and oil &amp; gas plays are hidden while a minimum is set: they are not measured in MW.",
+ "advisor.energy.oilgas_label": "Shale plays",
+ "advisor.energy.oilgas_sub": "oil & gas hexes",
+ "advisor.energy.regions_note": "Mapped capacity per state, by type. Click a state to filter everything to it; click it again to clear.",
+ "advisor.energy.sources": [
+  "eia_860m",
+  "eia_coal",
+  "msha_mines",
+  "eia_shale_plays"
+ ],
+ "advisor.explorer.caveats": [
+  "Columns marked ≈ are population-weighted means of county values: a fair guide, not the true median of the area.",
+  "Metro and state data are {vintage}; county data are {county_vintage}. GDP is BEA, counted where the work is done; jobs are counted where people live.",
+  "Alaska and Hawaii are not on the map, so they are not in the tables."
+ ],
+ "advisor.explorer.region_example": "e.g. TX",
+ "advisor.explorer.sources_areas": [
+  "acs_1yr"
+ ],
+ "advisor.explorer.sources_counties": [
+  "acs_5yr"
+ ],
+ "advisor.knowledge.caveats": [
+  "Science workers are counted where they live (ACS), not where they work, and cover whole industries (a law firm's receptionist counts; a hospital's researcher does not).",
+  "Degrees and broadband are {county_vintage} county figures; metro values here are population-weighted roll-ups of their counties.",
+  "The Science jobs map colours metro and micro areas only (grey hexes are outside them), because the yields come from 1-year ACS data that skip small places.",
+  "Broadband means any paid subscription, including a phone data plan: it measures access at home, not speed."
+ ],
+ "advisor.knowledge.degrees_note": "Share of adults with a bachelor's degree or more against median household income; colour = broadband. Drag to select; hover the map to find a place.",
+ "advisor.knowledge.sources": [
+  "acs_1yr",
+  "acs_5yr"
+ ],
+ "advisor.land.caveats": [
+  "Land cover is NLCD 2021 resampled to about 2 km, so small features (a river valley's farms, a small town) blur into their surroundings.",
+  "Grassland includes lawns and parks (NLCD developed open space); built-up counts only low to high-intensity development.",
+  "Farm workers are counted where they live (ACS) and include forestry and fishing."
+ ],
+ "advisor.land.cover_note": "Share of the land in each cover type (NLCD 2021, averaged over every hex). Hover a type to light up the hexes where it is the largest cover; click to keep them lit.",
+ "advisor.land.kicker": "Lower 48",
+ "advisor.land.regions_note": "Each state's land by cover type. Sort by any cover; hover a state to outline it, click to open it.",
+ "advisor.land.regions_title": "The states' make-up",
+ "advisor.land.sources": [
+  "nlcd",
+  "acs_1yr"
+ ],
+ "advisor.people.caveats": [
+  "The growth map colours metro and micro areas by their own change; grey hexes are outside them. Switch the chart to States to colour every hex by its state.",
+  "Growth uses Census population estimates; the population totals are {vintage}. They are different estimates and do not divide exactly.",
+  "County figures are {county_vintage} averages (five years pooled), so they lag the 1-year metro and state numbers.",
+  "A county's dot shows its median age; the median of a group of counties is not the average of their medians."
+ ],
+ "advisor.people.density_note": "Counties by residents per km² (log scale). Switch to <i>people</i> to weight each county by its population: most Americans live in the dense tail. Hover a bar to see those counties; click to keep them outlined.",
+ "advisor.people.growth_note": "Population change {years} from one vintage of the Census population estimates, on today's borders. Metros of {min}+ people.",
+ "advisor.people.growth_sub": "Census estimates",
+ "advisor.people.residents_sub": "{vintage}",
+ "advisor.people.sources": [
+  "acs_1yr",
+  "pep_population",
+  "acs_5yr",
+  "census_gazetteer"
+ ],
+ "advisor.prosperity.caveats": [
+  "Metro and state figures are {vintage}; county figures are {county_vintage} (five years pooled) and run lower in fast-rising markets.",
+  "Home values are owners' own estimates of what their home would sell for (ACS), not sale prices.",
+  "Rent ÷ income compares two medians from different households; it is a rough guide, not the share of renters who are cost-burdened.",
+  "Poverty uses the official federal thresholds, which are the same everywhere and do not adjust for local living costs."
+ ],
+ "advisor.prosperity.nation_marker": "Lower 48",
+ "advisor.prosperity.poverty_note": "Counties by the share of people below the official poverty line. Hover a bar to outline those counties; the table lists them all.",
+ "advisor.prosperity.sources": [
+  "acs_1yr",
+  "acs_5yr"
+ ],
+ "advisor.prosperity.unemployment_note": "Unemployed ÷ civilian labour force ({vintage}). Metros of {min}+ people.",
+ "almanac.about": "<p>This is the real United States, drawn like a strategy game. Nothing is invented: every tile, city and\nnumber comes from public data, listed under <i>Sources</i>.</p>\n<h4>How it's built</h4>\n<p>The lower 48 states are projected (Albers equal-area) and cut into {cols}×{rows}\nhexes, each {hex_km} km corner to corner. Each hex belongs to the state and county under its centre.\nTerrain comes from elevation samples inside each hex.</p>\n<p><b>Cities</b> are the metropolitan and micropolitan areas published in the ACS 1-year estimates (the Census Bureau\nincludes areas of roughly 65,000+ people, so a few now fall slightly below that), placed at their principal city. Their numbers cover the whole metro area, not just the city proper.</p>\n<h4>Controls</h4>\n<p>Drag or arrow keys / WASD to pan · scroll, +/– or double-click to zoom · click a city or a state to open it ·\n/ or ⌘K to search · L to cycle lenses · R to show or hide resources · ? for all shortcuts · Esc to close.</p>\n<p>The address bar always holds a link to what you're looking at (lens, selection and view); use <i>Share</i> to copy it\nor to download a picture.</p>",
+ "almanac.amenities": "<p>Unemployment = unemployed ÷ civilian labour force (B23025). Rent ÷ income = median gross rent × 12 ÷ median household\nincome: a rough affordability signal, not a household-level burden rate.</p>",
+ "almanac.beyond_borders": "Foreign land (Canada, Mexico, and in the Caribbean Cuba and the Bahamas) is drawn under a light fog: it is shown for context and not mapped in detail.",
+ "almanac.lenses_intro": "<p>Lenses recolour the map by one measure, built from county data ({vintage}). Each hex is sampled at 7 points. A county covering some of them is assumed to cover that share of the hex. Small dense counties that no sample hits (Manhattan, Virginia's independent cities) are added to the hex containing their centre. Income and home value are averaged over the counties in a hex, weighted by population.</p>",
+ "almanac.regions": "<p>Click any land hex without a city to open its state. A state's numbers are the state totals and medians from the\nsame tables as the cities ({vintage}{gdp_part}),\nnot the sum of its cities, so rural areas count too.</p>\n<p><b>Ranks</b> (\"#3 of 49\") compare the 48 contiguous states and the District of Columbia; 1 is the largest. Alaska,\nHawaii and the territories are not mapped yet, so they are not ranked.</p>\n<p>Metro areas that cross state lines (New York–Newark, Kansas City, Philadelphia…) are listed under every state they\ntouch, with their whole-metro numbers.</p>",
+ "almanac.resources_intro": "<p>Resources mark the country's biggest power plants, mines and oil &amp; gas fields on the tiles where they are.\nOnly meaningful sites are shown: each type's threshold is in its description. When zoomed out, a hex shows its\nhighest-ranked resource; zoom in to see more. Press <b>R</b> to show or hide them.</p>",
+ "citizens.born_abroad": "Residents born in another country (ACS B05002)",
+ "citizens.degree": "Adults 25+ with a bachelor's degree or higher (ACS C15003)",
+ "citizens.median_age": "Median age (ACS B01002)",
+ "citizens.none": "Census published none of the citizen tables for {name} in the {vintage} release (it leaves out small areas), so there are no citizen figures here.",
+ "citizens.note": "{vintage}, tables C24010, B01001, C08301, C15003 and B05002. Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share. ▲▼ = at least 1.5× or at most 0.67× the U.S. share. Commute counts workers, not all residents.",
+ "citizens.origins_sub": "where residents were born",
+ "citizens.row_missing": "Census did not publish this table for {name} in the {vintage} release, so this row is left out.",
+ "cv.districts_counting": "QCEW counts jobs where the employer is, not where workers live; it leaves out the self-employed, most farm workers, railroads and uniformed military.",
+ "cv.districts_note": "{vintage}, all ownerships (federal and state only for the Government plaza and Encampment). ×N = location quotient; ≥ = a lower bound (BLS withheld a county's figure).",
+ "cv.districts_source": "BLS QCEW {year}",
+ "cv.economy_note": "{gdp_vintage}, current dollars, counted where the work is done; shares are of the metro's total GDP. ×N = the industry's share of GDP compared with its share of U.S. GDP.",
+ "cv.economy_note.estimated": " ≈ includes an estimate where BEA withholds a small county's figure (its sector total, split in U.S. proportions).",
+ "cv.economy_note.undisclosed": " Undisclosed = GDP that BEA withholds for confidentiality.",
+ "cv.foot": "Sources: {vintage}; GDP: {gdp_vintage}; Census population estimates; ACS 5-year county estimates; EIA, MSHA and USGS sites. Ranks are among all {count} metro and micro areas on the map.",
+ "cv.gdp_estimated": "Includes an estimate for small counties whose figure BEA withholds.",
+ "cv.gdp_undisclosed": "BEA withholds some county figures to protect individual businesses: {industries}. This is the metro's GDP minus every disclosed industry.",
+ "cv.growth_source": "Census population estimates",
+ "cv.legend_districts_source": "BLS QCEW",
+ "cv.lower_bound": "BLS withheld part of this in {n} member {divisions}, so it is a lower bound.",
+ "cv.lower_bound_row": "Lower bound: BLS withheld it in {n} member {divisions}.",
+ "cv.no_districts": "BLS publishes no county employment for {name}'s member counties, so it has no industry districts.",
+ "cv.no_gdp_industries": "No industry breakdown for this metro.",
+ "cv.panel_link": "These are residents' industries (ACS). The metro's specialised districts, from jobs counted at employers (BLS QCEW), are in the City View.",
+ "cv.population_note": "Census population estimates (July 1, today's metro borders). They differ slightly from the ACS count above.",
+ "cv.resources_note": "Sites whose hex centre lies in one of the metro's counties. Mapped sites only, not the metro's full capacity.",
+ "cv.workforce_note": "{vintage}, table C24030 (where residents work, by where they live). The map's districts come from jobs counted where the employers are (BLS QCEW): see Districts.",
+ "fields.area_kind": "Metropolitan (50,000+ urban core) or micropolitan area (OMB).",
+ "fields.citizens_missing": "Blank where Census left the area out of that table.",
+ "fields.cz_degree": "Adults 25+ with a bachelor's degree or higher ({vintage}, C15003).",
+ "fields.cz_degree_label": "Bachelor's or more (1-yr)",
+ "fields.cz_median_age": "Median age of residents, ACS B01002 ({vintage}): the area's own median, unlike the county roll-up.",
+ "fields.cz_median_age_label": "Median age (1-yr)",
+ "fields.division_metro": "The metro or micro area the county belongs to (OMB), if it is on the map.",
+ "fields.energy": "Capacity of the power sites mapped as resources (each type above its size threshold): not the total generating capacity.",
+ "fields.gdp": "{gdp_vintage}: GDP in current dollars, counted where the work is done.",
+ "fields.gdp_pc": "GDP ÷ residents (BEA GDP year ÷ ACS population year).",
+ "fields.growth": "Population change {years} (Census population estimates, same borders both years).",
+ "fields.home_value": "Median value of owner-occupied homes ({vintage}).",
+ "fields.land_source": "NLCD",
+ "fields.population": "Residents ({vintage}, B01003).",
+ "fields.rent": "Median gross rent per month ({vintage}).",
+ "fields.rent_unit": "median gross rent / month",
+ "fields.unemployment": "Unemployed ÷ civilian labour force ({vintage}, B23025).",
+ "layers.airport_cargo": "All-cargo airport (not a primary passenger airport)",
+ "layers.airport_nonhub": "Nonhub primary airport",
+ "layers.airport_source": "FAA CY enplanements and all-cargo data.",
+ "layers.fort_area": "Boundary",
+ "layers.fort_source": "DoD MIRTA. Sized by boundary area: no per-base headcount is published.",
+ "layers.port_source": "USACE principal ports; placed at the port area's centre (long river ports are approximate).",
+ "layers.port_unit": "short tons",
+ "layers.range_source": "One of the 30 largest DoD boundaries (MIRTA), drawn on the hexes it covers.",
+ "layers.route_note": "Both directions summed. Drawn as an arc between each zone's largest city: FAF records where freight starts and ends, not its route.",
+ "layers.route_value": "<b>{value}</b> of freight a year, {tons} short tons (FAF {year} estimate)",
  "load.error_hint": "Run \"uv run python -m pipeline all\" and serve web/ over HTTP.",
  "panel.city_foot": "Source: {vintage} (tables C24030, B19025, B19013, B25064, B25077, B23025); GDP: {gdp_vintage}. Green ×N = this industry's share of jobs is N× the U.S. share.",
  "panel.city_industries": "Districts · where people work",
@@ -6,6 +198,11 @@
  "panel.no_cities": "No metro or micro areas in this state's data.",
  "panel.region_foot": "Source: {vintage}; GDP: {gdp_vintage}. Ranks are among the {count} mapped states + DC (1 = largest).",
  "panel.rent": "Median gross rent / mo",
+ "report.growth_source": "Census population estimates",
+ "report.population.description": "Residents (ACS B01003).",
+ "report.unemployment.description": "Unemployed ÷ civilian labour force (ACS B23025).",
  "search.aria": "Search cities and states (/ or Ctrl K)",
- "search.placeholder": "Search cities & states"
+ "search.placeholder": "Search cities & states",
+ "share.credit": "Data: Census ACS, BEA, NOAA, USGS/MRLC, EIA, Natural Earth",
+ "share.local_label": "usaciv"
 }

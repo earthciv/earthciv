@@ -1,6 +1,5 @@
 // Top-bar search over cities and states: prefix matches first, then word-prefix, then substring; ties by population.
-import { regionName } from "./country.js";
-import { defaults, txt } from "./text.js";
+import { TERMS, defaults, txt } from "./text.js";
 import { esc, popShort } from "../format.js";
 import { icon } from "../ui/icon.js";
 
@@ -34,7 +33,7 @@ export function initSearch(opts) {
   (opts.states || []).forEach((s, index) => {
     if (!s) return;
     entries.push({ kind: "state", index, name: s.name, n: norm(s.name), full: norm(s.abbr), abbr: (s.abbr || "").toLowerCase(),
-      pop: s.population || 0, sub: regionName, label: s.name });
+      pop: s.population || 0, sub: TERMS.region.one, label: s.name });
   });
 
   let results = [];

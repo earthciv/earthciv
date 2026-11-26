@@ -1,6 +1,6 @@
 // Small inline-SVG charts for the city screen (no libraries). All return HTML strings.
 import { esc } from "../../format.js";
-import { canada } from "../../app/country.js";
+import { NATION } from "../../app/text.js";
 
 let uid = 0;
 
@@ -58,7 +58,7 @@ export function meter(v, us, max, better = null) {
   let cls = "";
   if (better && us != null && Math.abs(v / us - 1) >= 0.03) cls = (better === "high" ? v > us : v < us) ? "good" : "bad";
   return `<div class="cv-meter ${cls}"><i style="width:${(f * 100).toFixed(1)}%"></i>${
-    u != null ? `<b class="us" style="left:${(u * 100).toFixed(1)}%" title="${canada ? "Canada" : "U.S."}"></b>` : ""}</div>`;
+    u != null ? `<b class="us" style="left:${(u * 100).toFixed(1)}%" title="${esc(NATION.short)}"></b>` : ""}</div>`;
 }
 
 /** A thin horizontal bar (0..1) in a colour; optional tick (0..1) for a reference such as the U.S. share. */

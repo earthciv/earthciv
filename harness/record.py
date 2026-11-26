@@ -92,7 +92,7 @@ async def record_view(browser, url: str, view: dict, dest: Path) -> dict:
         await page.goto(url + view["hash"], wait_until="load")
         await page.evaluate("v => __snap.apply(window, v)", view)
         quiet = await _net_quiet(inflight)
-        idle = await page.evaluate("() => __snap.idle(window)")
+        idle = await page.evaluate("() => __snap.settle(window)")
         if not (quiet and idle):
             result["unsettled"] = True
         await page.screenshot(path=str(dest / f"{view['id']}.png"), animations="disabled", caret="hide")

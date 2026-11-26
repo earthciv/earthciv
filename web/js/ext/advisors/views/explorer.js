@@ -7,7 +7,9 @@ import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
 import { section, segmented, selectBox, sourcesHtml, frameBtn } from "../core/view.js";
 import { rowsHighlight, extendData } from "../core/data.js";
-import { canada } from "../../../app/country.js";
+import { TERMS, richText, textList, txt, defaults } from "../../../app/text.js";
+
+defaults({ "advisor.explorer.region_example": "e.g. AB" });
 
 const DEFAULT_COLS = {
   states: ["population", "growth", "gdp_pc", "median_income", "unemployment"],
@@ -43,7 +45,7 @@ export async function mount(ctx) {
   const { app, data, el, link } = ctx;
   // Columns from the optional files (garrisons and defense $, industry districts, citizen mixes): loaded on demand,
   // only when the Explorer opens, and added to the levels once.
-  await extendData(data, canada ? ["districts", "citizens"] : ["military", "districts", "citizens"]);
+  await extendData(data, ["military", "districts", "citizens"]);
   const avail = ["states", "metros", "counties"].filter((k) => data.levels[k]);
   const saved = load() || {};
   const st = {
@@ -184,7 +186,7 @@ export async function mount(ctx) {
     const syncOps = () => {
       const f = L().field(fsel.value);
       ops.innerHTML = (numeric(f) ? OPS.num : OPS.text).map((o) => `<option>${esc(o)}</option>`).join("");
-      valIn.placeholder = numeric(f) ? (f.format === "pct" || f.format === "signed" ? "e.g. 25%" : f.format === "usd" || f.format === "money" ? "e.g. 80K" : "e.g. 1M") : st.level === "counties" ? (canada ? "e.g. ON" : "e.g. TX") : "text";
+      valIn.placeholder = numeric(f) ? (f.format === "pct" || f.format === "signed" ? "e.g. 25%" : f.format === "usd" || f.format === "money" ? "e.g. 80K" : "e.g. 1M") : st.level === "counties" ? txt("advisor.explorer.region_example") : "text";
     };
     fsel.select.addEventListener("change", syncOps);
     syncOps();
@@ -353,16 +355,12 @@ export async function mount(ctx) {
     if (!lensFields.length) lensRow.innerHTML = `<span class="adv-note">No map lens for these columns: hover and brush to see places on the map.</span>`;
     fieldInfo.innerHTML = [fx, fy, fs, fc].filter((f, i, a) => f && a.indexOf(f) === i).map((f) => `<p><b>${esc(f.label)}</b>${f.unit ? ` <span class="sub">${esc(f.unit)}</span>` : ""}: ${esc(f.description || "")}</p>`).join("");
     const srcIds = [fx, fy, fs, fc].filter(Boolean).map((f) => f.source).filter(Boolean);
-    srcEl.innerHTML = canada ? sourcesHtml(data, [...srcIds, st.level === "counties" ? "statcan_census_divisions" : "statcan_census_areas"], [
-      "Columns marked ≈ are population-weighted means of census division values: a fair guide, not the true median of the area.",
-      `Census figures are ${esc(data.nation.census_vintage || data.vintage)} (incomes for 2020); population is the July 1, ${esc(String(data.nation.year))} estimate. GDP is Statistics Canada's ${esc(String(data.nat.gdp_year))} GDP for provinces and territories and the latest published year for CMAs, counted where the work is done; per-person GDP divides by the population of the same year. Jobs are counted where people live. Unemployment: ${esc(data.nation.unemployment_vintage || "Labour Force Survey")} (no census agglomerations); Unemployment (2021 Census) covers every area.`,
-      "CMAs and CAs are built from municipalities, not census divisions, so metros have no rolled-up division columns.",
-      ...(st.level === "counties" && data.countiesOffMap ? [`${int(data.countiesOffMap)} small census divisions are smaller than one hex: they are in the table and chart but cannot be outlined on the map.`] : []),
-    ]) : sourcesHtml(data, [...srcIds, st.level === "counties" ? "acs_5yr" : "acs_1yr"], [
-      "Columns marked ≈ are population-weighted means of county values: a fair guide, not the true median of the area.",
-      `Metro and state data are ${esc(data.vintage)}; county data are ${esc(data.countyVintage)}. GDP is BEA, counted where the work is done; jobs are counted where people live.`,
-      "Alaska and Hawaii are not on the map, so they are not in the tables.",
-      ...(st.level === "counties" && data.countiesOffMap ? [`${int(data.countiesOffMap)} small counties are smaller than one hex: they are in the table and chart but cannot be outlined on the map.`] : []),
+    const counties = st.level === "counties";
+    srcEl.innerHTML = sourcesHtml(data, [...srcIds, ...textList(counties ? "advisor.explorer.sources_counties" : "advisor.explorer.sources_areas")], [
+      ...textList("advisor.explorer.caveats").map((c) => richText(c, { vintage: data.vintage, county_vintage: data.countyVintage,
+        census_vintage: data.nation.census_vintage || data.vintage, year: data.nation.year ?? "", gdp_year: data.nat.gdp_year ?? "",
+        unemployment_vintage: data.nation.unemployment_vintage || "" })),
+      ...(counties && data.countiesOffMap ? [`${int(data.countiesOffMap)} small ${esc(TERMS.division.many)} are smaller than one hex: they are in the table and chart but cannot be outlined on the map.`] : []),
     ]);
   }
 

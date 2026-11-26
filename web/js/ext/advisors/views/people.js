@@ -3,13 +3,20 @@ import { esc, fin, colorScale, robustDomain, RAMPS } from "../core/util.js";
 import { pct, int, signedPct, count3, fmtShort, fmtValue } from "../core/fmt.js";
 import { barList, histogram, rampLegend } from "../core/charts.js";
 import { createScatter } from "../core/scatter.js";
-import { section, tiles, segmented, mapPicker, frameBtn, sourcesHtml, topBy } from "../core/view.js";
+import { section, tiles, segmented, mapPicker, frameBtn, sourcesHtml, editionSources, topBy } from "../core/view.js";
 import { rowsHighlight } from "../core/data.js";
 import { growthLens } from "../core/lenses.js";
-import { canada, regionsName } from "../../../app/country.js";
+import { NATION, TERMS, defaults, rich, textList, txt } from "../../../app/text.js";
 
 // Words for the county level: census divisions in the Canadian edition.
-const CO = canada ? { many: "census divisions", one: "census division", Many: "Divisions" } : { many: "counties", one: "county", Many: "Counties" };
+const CO = { many: TERMS.division.many, one: TERMS.division.one, Many: TERMS.division.short_many ?? TERMS.division.Many };
+
+defaults({
+  "advisor.people.residents_sub": "{vintage}",
+  "advisor.people.growth_sub": "Population estimates",
+  "advisor.people.growth_note": "Population change {years}, on the same borders both years. Metros of {min}+ people.",
+  "advisor.people.density_note": "Divisions by residents per km² (log scale). Switch to <i>people</i> to weight each division by its population. Hover a bar to see those divisions; click to keep them outlined.",
+});
 
 const METRO_MIN = 250000;
 
@@ -20,9 +27,9 @@ export function mount(ctx) {
   const yrs = n.growth_years || [];
 
   el.insertAdjacentHTML("beforeend", tiles([
-    { label: "Residents", value: count3(n.population), sub: canada ? `July 1, ${data.nation.year} estimate` : data.vintage },
-    { label: `Growth ${yrs.join("–")}`, value: signedPct(n.growth, 2), sub: canada ? "July 1 estimates" : "Census estimates" },
-    { label: canada ? "CMAs & CAs" : "Metros & micros", value: int(metros.rows.length), sub: counties ? `${int(counties.rows.length)} ${CO.many}` : "" },
+    { label: "Residents", value: count3(n.population), sub: txt("advisor.people.residents_sub", { year: data.nation.year, vintage: data.vintage }) },
+    { label: `Growth ${yrs.join("–")}`, value: signedPct(n.growth, 2), sub: txt("advisor.people.growth_sub") },
+    { label: TERMS.area.both ?? TERMS.area.areas, value: int(metros.rows.length), sub: counties ? `${int(counties.rows.length)} ${CO.many}` : "" },
   ]));
 
   // --- the map: growth by default, so the map tells the same story as the first chart ---------------------------
@@ -41,9 +48,9 @@ export function mount(ctx) {
   });
 
   // --- growth ---------------------------------------------------------------------------------------------------
-  const gBody = section(el, { title: "Who is growing, who is shrinking", note: canada ? `Population change ${yrs.join("–")} (Statistics Canada's July 1 estimates), on 2021 borders. Metros of ${count3(METRO_MIN)}+ people.` : `Population change ${yrs.join("–")} from one vintage of the Census population estimates, on today's borders. Metros of ${count3(METRO_MIN)}+ people.` });
+  const gBody = section(el, { title: "Who is growing, who is shrinking", note: rich("advisor.people.growth_note", { years: yrs.join("–"), min: count3(METRO_MIN) }) });
   const gHost = document.createElement("div");
-  segmented(gBody, { label: "Areas", value: gLevel, options: [{ value: "metros", label: "Metros" }, { value: "states", label: regionsName }], onChange: (v) => { gLevel = v; drawGrowth(); if (picker.value === "growth") picker.refresh(); } });
+  segmented(gBody, { label: "Areas", value: gLevel, options: [{ value: "metros", label: "Metros" }, { value: "states", label: TERMS.region.many }], onChange: (v) => { gLevel = v; drawGrowth(); if (picker.value === "growth") picker.refresh(); } });
   gBody.appendChild(gHost);
   function drawGrowth() {
     gHost.innerHTML = "";
@@ -67,12 +74,12 @@ export function mount(ctx) {
 
   if (!counties) {
     el.insertAdjacentHTML("beforeend", `<p class="adv-empty pad">counties.json is not built, so the county charts are missing.</p>`);
-    el.insertAdjacentHTML("beforeend", sourcesHtml(data, canada ? ["statcan_estimates", "statcan_population", "statcan_census_areas"] : ["acs_1yr", "pep_population"], []));
+    el.insertAdjacentHTML("beforeend", sourcesHtml(data, textList("advisor.people.sources"), []));
     return {};
   }
 
   // --- density --------------------------------------------------------------------------------------------------
-  const dBody = section(el, { title: "How crowded", note: canada ? "Census divisions by residents per km² (log scale). Switch to <i>people</i> to weight each division by its population: most Canadians live in the dense tail. Hover a bar to see those divisions; click to keep them outlined." : "Counties by residents per km² (log scale). Switch to <i>people</i> to weight each county by its population: most Americans live in the dense tail. Hover a bar to see those counties; click to keep them outlined." });
+  const dBody = section(el, { title: "How crowded", note: rich("advisor.people.density_note") });
   const dCtl = document.createElement("div");
   dCtl.className = "adv-row";
   dBody.appendChild(dCtl);
@@ -149,23 +156,12 @@ export function mount(ctx) {
   function selSummary(sel) {
     const pop = sel.reduce((a, r) => a + (r.v.population || 0), 0);
     const top = [...sel].sort((a, b) => (b.v.population || 0) - (a.v.population || 0)).slice(0, 5);
-    return `<b>${int(sel.length)}</b> ${CO.many} · ${count3(pop)} people (${pct(pop / n.population)} of ${canada ? "Canada" : "the U.S."})<br><span class="sub">Largest: ${top.map((r) => `${esc(r.name)}, ${esc(r.sub)}`).join(" · ")}</span> ${frameBtn()}<button type="button" class="adv-mini" data-clear>Clear</button>`;
+    return `<b>${int(sel.length)}</b> ${CO.many} · ${count3(pop)} people (${pct(pop / n.population)} of ${esc(NATION.the)})<br><span class="sub">Largest: ${top.map((r) => `${esc(r.name)}, ${esc(r.sub)}`).join(" · ")}</span> ${frameBtn()}<button type="button" class="adv-mini" data-clear>Clear</button>`;
   }
   selInfo.addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) { scatter.setSelected(null); link.base(null); selInfo.innerHTML = ""; } });
 
-  el.insertAdjacentHTML("beforeend", canada ? sourcesHtml(data, ["statcan_estimates", "statcan_population", "statcan_divisions", "statcan_census_divisions", "statcan_census_areas"], [
-    "The growth map colours CMAs and CAs by their own change; grey hexes are outside them. Switch the chart to provinces to colour every hex by its province or territory.",
-    `Population is Statistics Canada's July 1, ${esc(String(data.nation.year))} estimate and growth runs from July 1, 2021, both on 2021 census boundaries; density divides by the 2021 land area. Age, immigration and the other census measures are 2021 Census figures.`,
-    "Census divisions are the counties, regional municipalities and districts of each province (numbered divisions on the Prairies); the territories are split into regions.",
-    "A division's dot shows its median age; the median of a group of divisions is not the average of their medians.",
-    ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest census divisions are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-  ]) : sourcesHtml(data, ["acs_1yr", "pep_population", "acs_5yr", "census_gazetteer"], [
-    "The growth map colours metro and micro areas by their own change; grey hexes are outside them. Switch the chart to States to colour every hex by its state.",
-    `Growth uses Census population estimates; the population totals are ${esc(data.vintage)}. They are different estimates and do not divide exactly.`,
-    `County figures are ${esc(data.countyVintage)} averages (five years pooled), so they lag the 1-year metro and state numbers.`,
-    "A county's dot shows its median age; the median of a group of counties is not the average of their medians.",
-    ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest counties are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.people", { year: data.nation.year, vintage: data.vintage, county_vintage: data.countyVintage },
+    data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest ${esc(TERMS.division.many)} are smaller than one hex, so selecting them outlines nothing on the map.`] : []));
 
   return {
     onMapHover(h) {

@@ -50,11 +50,34 @@
     if (win.document.head) noSmooth();
     else win.document.addEventListener("DOMContentLoaded", noSmooth, { once: true });
     win.addEventListener("scroll", touch, true);
+    // Short timers and idle callbacks still pending are activity too: the app clears a row's highlight after 1.2 s
+    // and paints sprites for the next zoom in idle time, and either can change what the next frame shows.
+    st.timers = new Set();
+    const setT = win.setTimeout.bind(win), clearT = win.clearTimeout.bind(win);
+    st.rawSetTimeout = setT; // for the harness's own waits
+    win.setTimeout = (fn, ms = 0, ...args) => {
+      if (!(ms <= 5000)) return setT(fn, ms, ...args);
+      const id = setT((...a) => { st.timers.delete(id); touch(); if (typeof fn === "function") fn(...a); }, ms, ...args);
+      st.timers.add(id);
+      return id;
+    };
+    win.clearTimeout = (id) => { st.timers.delete(id); clearT(id); };
+    if (typeof win.requestIdleCallback === "function") {
+      const ric = win.requestIdleCallback.bind(win), cic = win.cancelIdleCallback.bind(win);
+      st.idles = new Set();
+      win.requestIdleCallback = (fn, o) => {
+        const id = ric((d) => { st.idles.delete(id); touch(); fn(d); }, o);
+        st.idles.add(id);
+        return id;
+      };
+      win.cancelIdleCallback = (id) => { st.idles.delete(id); cic(id); };
+    }
     return st;
   };
   S.instrument(window);
 
-  const sleep = (win, ms) => new Promise((r) => win.setTimeout(r, ms));
+  // The harness's own waits use the page's original timer, so they are not counted as activity.
+  const sleep = (win, ms) => new Promise((r) => (win.__snapActivity?.rawSetTimeout || win.setTimeout)(r, ms));
 
   /** Resolves with window.__app once the map, the extensions and the eager map-layer files are in. */
   S.ready = async function (win, timeoutMs = 45000) {
@@ -77,11 +100,22 @@
       const st = win.__snapActivity, app = win.__app, now = win.performance.now();
       const images = [...win.document.images].every((im) => im.complete);
       const busy = !images || (app && app.cam && app.cam.moving) ||
-        (st ? st.frames.size > 0 || st.fetching > 0 || now - st.last < quietMs : now - t0 < 1500);
+        (st ? st.frames.size > 0 || st.fetching > 0 || st.timers.size > 0 || (st.idles?.size ?? 0) > 0 || now - st.last < quietMs
+          : now - t0 < 1500);
       if (!busy) return true;
       if (now - t0 > timeoutMs) return false;
       await sleep(win, 50);
     }
+  };
+
+  /** Idle, then one more frame, then idle again. When an animation stops, its last drawn frame depends on timing
+   * (the selected region's border rests a frame either side of its end), and caches filled in idle time only reach
+   * the screen with the next draw; the extra frame draws the resting state with everything in. */
+  S.settle = async function (win, opts) {
+    const first = await S.idle(win, opts);
+    win.__app?.requestDraw?.();
+    const second = await S.idle(win, opts);
+    return first && second;
   };
 
   // --- the views ------------------------------------------------------------------------------------------------
@@ -217,7 +251,8 @@
       const cs = win.getComputedStyle(el);
       if (cs.display === "none") return;
       let line = "  ".repeat(depth) + tag + (el.id ? `#${el.id}` : "");
-      const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).filter(Boolean) : [];
+      // Classes sorted: the order they were added in can vary with timing, and it does not change what is shown.
+      const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).filter(Boolean).sort() : [];
       if (cls.length) line += "." + cls.join(".");
       if (cs.visibility === "hidden") line += " [invisible]";
       for (const a of ATTRS) if (el.hasAttribute(a)) line += ` ${a}=${JSON.stringify(el.getAttribute(a))}`;

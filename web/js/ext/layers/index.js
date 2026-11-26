@@ -6,7 +6,7 @@
 // first frame; app.loadData returns the same promise). A missing file (null) leaves its layers off and their switches
 // harmless. Defaults: roads, rail, ports & airports, military and wonders on (roads, rail and hubs only from the region
 // view in: see each layer's minRpx), trade routes off.
-import { canada } from "../../app/country.js";
+import { hasText, txt } from "../../app/text.js";
 import { createModel } from "./model.js";
 import { makeLayers } from "./layers.js";
 import { tips } from "./tips.js";
@@ -21,14 +21,8 @@ const TOGGLES = [
 ];
 
 export function install(app) {
-  const toggleDefs = canada ? [
-    { ...TOGGLES[0], title: "Major highways from Natural Earth" },
-    { ...TOGGLES[1], title: "Rail lines from Natural Earth" },
-    { ...TOGGLES[2], title: "Canada Port Authorities by tonnage (Transport Canada), airports by boardings and cargo (Statistics Canada)" },
-    { ...TOGGLES[3], title: "Canadian Forces bases as forts, the largest DND lands as restricted ground (Directory of Federal Real Property)" },
-    { ...TOGGLES[4], title: "Most-visited parks, canals and historic sites (Parks Canada) and the universities with the most doctoral students" },
-    { ...TOGGLES[5], title: "The 40 largest freight flows between provinces (Canadian Freight Analysis Framework, 2017)" },
-  ] : TOGGLES;
+  // An edition rewords a switch's tooltip for its own sources (text pack "layers.toggle.<id>").
+  const toggleDefs = TOGGLES.map((t) => (hasText(`layers.toggle.${t.id}`) ? { ...t, title: txt(`layers.toggle.${t.id}`) } : t));
   const model = createModel(app.w);
   const on = Object.fromEntries(toggleDefs.map((t) => [t.id, t.def]));
   const layers = makeLayers(model, on, { tips, app });

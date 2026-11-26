@@ -1176,19 +1176,20 @@ def wonders(loc, centre_x, centre_y):
                  "wikidata_campuses"],
         national=dict(park_visits=park_visits, park_visits_year=ATTENDANCE_YEAR),
         rules=[
-            dict(id="national_park", kind="natural", kinds=["natural"], year=ATTENDANCE_YEAR,
+            dict(id="national_park", kind="natural", kinds=["natural"], year=ATTENDANCE_YEAR, measure="attendance", among="national parks",
                  text=f"The 15 national parks and national park reserves with the most visits in fiscal {ATTENDANCE_YEAR} "
                       "(Parks Canada attendance), among those with a published boundary. Parks Canada reports Mount "
                       "Revelstoke and Glacier together, so they count as one."),
-            dict(id="park_unit", kind="natural", kinds=["recreation", "coastal"], year=ATTENDANCE_YEAR,
+            dict(id="park_unit", kind="natural", kinds=["recreation", "coastal"], year=ATTENDANCE_YEAR, measure="attendance",
+                 among="marine parks and historic canals",
                  text=f"The 5 most-visited marine parks and historic canals in fiscal {ATTENDANCE_YEAR} (Parks Canada "
                       "attendance): the park units that are neither national parks nor historic buildings and grounds. "
                       "Canals stand at their official place-name point, marine parks inside their boundary."),
-            dict(id="research_university", kind="university", year=f"{year}/{year + 1}",
+            dict(id="research_university", kind="university", year=f"{year}/{year + 1}", measure="doctoral",
                  text=f"The 20 universities with the most doctoral students in {academic} (Statistics Canada, table "
                       "37-10-0232), at most 2 per city. Canada publishes no research spending by university, so doctoral "
                       f"enrolment stands in for the U.S. edition's R&D ranking.{note}"),
-            dict(id="landmark", kind="landmark", year=ATTENDANCE_YEAR,
+            dict(id="landmark", kind="landmark", year=ATTENDANCE_YEAR, measure="attendance", among="national historic sites",
                  text=f"The 12 most-visited national historic sites in fiscal {ATTENDANCE_YEAR} (Parks Canada attendance), "
                       "at most one per city, ranked by data rather than hand-picked. Canals are park units, and sites "
                       "inside a national park wonder are left out so no place counts twice."),

@@ -5,14 +5,89 @@
   "emblem": "★",
   "title": "usaciv — the United States as a strategy game",
   "map_label": "Hex map of the contiguous United States",
-  "nation": {"vs": "US", "code": "US", "short": "U.S.", "the": "the U.S.", "in": "in the U.S.", "poss": "U.S.", "the_poss": "the U.S.", "adj": "U.S."},
-  "currency": {"code": "USD", "symbol": "$"},
-  "terms": {
-    "region": {"one": "State", "many": "States", "short": "State", "column": "State"},
-    "division": {"one": "county", "many": "counties", "One": "County", "Many": "Counties"},
-    "area": {"one": "metro", "many": "metros", "areas": "metro and micro areas", "metro": "Metro", "micro": "Micro"}
+  "nation": {
+    "vs": "US",
+    "code": "US",
+    "short": "U.S.",
+    "the": "the U.S.",
+    "in": "in the U.S.",
+    "poss": "U.S.",
+    "the_poss": "the U.S.",
+    "adj": "U.S."
   },
-  "files": ["world", "cities", "nation", "states", "lenses", "resources", "sources", "counties", "citizens", "districts",
-            "infrastructure", "wonders", "trade", "military", "disasters"],
-  "text": "text.json"
+  "currency": {
+    "code": "USD",
+    "symbol": "$",
+    "words": "dollars"
+  },
+  "terms": {
+    "region": {
+      "one": "State",
+      "many": "States",
+      "short": "State",
+      "column": "State",
+      "extra": {
+        "abbr": "DC",
+        "name": "DC"
+      },
+      "short_many": "States"
+    },
+    "division": {
+      "one": "county",
+      "many": "counties",
+      "One": "County",
+      "Many": "Counties",
+      "short_many": "Counties"
+    },
+    "area": {
+      "one": "metro",
+      "many": "metros",
+      "areas": "metro and micro areas",
+      "metro": "Metro",
+      "micro": "Micro",
+      "ranked": "metros",
+      "metro_long": "Metropolitan area",
+      "micro_long": "Micropolitan area",
+      "both": "Metros & micros"
+    }
+  },
+  "off_map": [
+    {
+      "abbr": "AK",
+      "name": "Alaska"
+    },
+    {
+      "abbr": "HI",
+      "name": "Hawaii"
+    }
+  ],
+  "files": [
+    "world",
+    "cities",
+    "nation",
+    "states",
+    "lenses",
+    "resources",
+    "sources",
+    "counties",
+    "citizens",
+    "districts",
+    "infrastructure",
+    "wonders",
+    "trade",
+    "military",
+    "disasters"
+  ],
+  "text": "text.json",
+  "sources": {
+    "roles": {
+      "areas": "acs_1yr",
+      "growth": "pep_population",
+      "gdp": "bea_gdp",
+      "land": "census_gazetteer",
+      "cover": "nlcd",
+      "power": "eia_860m",
+      "citizens": "acs_1yr"
+    }
+  }
 }

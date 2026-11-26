@@ -5,7 +5,8 @@
 //            highlight(rows, opts) → app.state.highlight, rowAtCell(cell) → row | null, focus(row), byKey: Map}
 //   row   = {key, name, sub, level, ref, v: {fieldKey: value}}
 //   field = {key, label, format, unit, higher_is, source, description, lens?, group, derived?}
-import { canada } from "../../../app/country.js";
+import { edition, TEXT } from "../../../app/edition.js";
+import { CURRENCY, LABEL_YEARS, NATION, TERMS, defaults, txt } from "../../../app/text.js";
 import { fin, ratio } from "./util.js";
 import { isMoney } from "../../../format.js";
 import { frameBox } from "./frame.js";
@@ -32,6 +33,30 @@ export const LAND_COLOR = {
   forest: "#3f7a3a", crop: "#d2c457", pasture: "#93b852", grass: "#b9b06a", shrub: "#c9a874", wetland: "#4f9a86", developed: "#9a8f9e",
 };
 export { LAND_KEYS };
+
+// Neutral wording for the Explorer's field notes; each edition's text pack gives its own sources and tables.
+defaults({
+  "fields.population": "Residents ({vintage}).",
+  "fields.growth": "Population change {years}.",
+  "fields.gdp": "GDP, counted where the work is done.",
+  "fields.gdp_pc": "GDP ÷ residents.",
+  "fields.rent_unit": "median rent / month",
+  "fields.rent": "Median rent per month ({vintage}).",
+  "fields.home_value": "Median home value ({vintage}).",
+  "fields.unemployment": "Unemployed ÷ labour force ({vintage}).",
+  "fields.unemployment_census": "Unemployed ÷ labour force in the census, for every area.",
+  "fields.land_source": "land cover",
+  "fields.energy": "Capacity of the power sites mapped as resources: not the total generating capacity.",
+  "fields.area_kind": "A metropolitan area or a smaller urban area.",
+  "fields.area_bachelors": "Adults 25+ with a bachelor's degree or higher: the area's own census figure.",
+  "fields.division_metro": "The city area the division belongs to, if any.",
+  "fields.census_workers": "Employed residents, all industries ({vintage}).",
+  "fields.citizens_missing": "Blank where no figure was published.",
+  "fields.cz_median_age_label": "Median age (city)",
+  "fields.cz_median_age": "Median age of residents ({vintage}).",
+  "fields.cz_degree_label": "Bachelor's or more (25+)",
+  "fields.cz_degree": "Adults 25+ with a bachelor's degree or higher ({vintage}).",
+});
 
 export function buildData(app) {
   const { cities = [], states = [], nation = {}, counties, resources, sources = [] } = app.data;
@@ -61,35 +86,38 @@ export function buildData(app) {
   for (const c of cities) if (c.cell != null) cellMetro.set(c.cell, c);
 
   const srcTitle = new Map(sources.map((s) => [s.id, s]));
-  // The Canadian edition's sources and words (2021 Census, Statistics Canada GDP, NRCan land cover, census divisions).
-  const SRC = canada
-    ? { areas: "statcan_census_areas", growth: "statcan_estimates", gdp: "statcan_gdp", land: "statcan_divisions", cover: "nrcan_cover", power: "wri_plants" }
-    : { areas: "acs_1yr", growth: "pep_population", gdp: "bea_gdp", land: "census_gazetteer", cover: "nlcd", power: "eia_860m" };
-  const countyWord = canada ? "census divisions" : "counties";
+  // Which source each family of figures cites (manifest sources.roles: source ids in sources.json).
+  const ROLES = edition.sources?.roles || {};
+  const SRC = { areas: ROLES.areas || "", growth: ROLES.growth || "", gdp: ROLES.gdp || "", land: ROLES.land || "", cover: ROLES.cover || "", power: ROLES.power || "" };
+  const countyWord = TERMS.division.many;
   const workerYields = (nation.yields || []).filter((y) => !isMoney(y.unit));
   const nat = nation.nation || {};
   const vintage = nation.vintage || "ACS 1-year";
   const countyVintage = counties?.vintage || "ACS 5-year";
-  // Canada: population is the July 1 estimate; incomes, rents, home values and the employed are the 2021 Census.
-  const censusVintage = canada ? nation.census_vintage || vintage : vintage;
+  // Where a census stands beside the main survey (Canada: population is the July 1 estimate; incomes, rents, home
+  // values and the employed are the 2021 Census), its figures cite the census.
+  const censusVintage = nation.census_vintage || vintage;
+  const hasPasture = (w.raw.tables?.cover || []).some((c) => c.key === "pasture"); // Canada's land cover has none
+  const ownBachelors = cities.some((c) => "bachelors" in c); // areas with their own census degree share (Canada)
   const metroGdpYear = cities.find((c) => fin(c.gdp) && c.gdp_year)?.gdp_year ?? null;
 
   // --- fields ---------------------------------------------------------------------------------------------------
   const F = (key, label, format, o = {}) => ({ key, label, format, unit: o.unit || null, higher_is: o.higher_is || "neutral", source: o.source || "", description: o.description || "", lens: o.lens || null, group: o.group || "Economy", derived: !!o.derived });
+  const fv = { vintage, census_vintage: censusVintage, population_vintage: nation.population_vintage || vintage, unemployment_vintage: nation.unemployment_vintage || "", gdp_vintage: nation.gdp_vintage || "", year: nat.gdp_year ?? "", metro_year: metroGdpYear ?? "", years: (nat.growth_years || []).join("–") };
   const econFields = (src) => [
-    F("population", "Population", "int", { unit: "people", source: canada ? SRC.growth : src, group: "People", description: canada ? `Residents: ${nation.population_vintage || vintage}.` : `Residents (${vintage}, B01003).`, lens: "density" }),
-    F("growth", "Growth", "signed", { unit: "population change", higher_is: "neutral", source: SRC.growth, group: "People", description: canada ? `Population change ${(nat.growth_years || []).join("–")} (Statistics Canada's July 1 estimates, on 2021 borders).` : `Population change ${(nat.growth_years || []).join("–")} (Census population estimates, same borders both years).` }),
-    F("gdp", "GDP", "money", { unit: canada ? "CA$ per year" : "$ per year", source: SRC.gdp, description: canada ? `GDP in current Canadian dollars: ${nat.gdp_year} for provinces and territories (market prices); ${metroGdpYear}, the latest year published, for CMAs (basic prices, on the GDP table's borders).` : `${nation.gdp_vintage || "BEA"}: GDP in current dollars, counted where the work is done.` }),
-    F("gdp_pc", "GDP per person", "usd", { unit: canada ? "CA$ per resident" : "$ per resident", higher_is: "good", source: SRC.gdp, description: canada ? `GDP ÷ the July 1 population of the same year (${nat.gdp_year} for provinces and territories, ${metroGdpYear} for CMAs).` : "GDP ÷ residents (BEA GDP year ÷ ACS population year)." }),
+    F("population", "Population", "int", { unit: "people", source: ROLES.population || src, group: "People", description: txt("fields.population", fv), lens: "density" }),
+    F("growth", "Growth", "signed", { unit: "population change", higher_is: "neutral", source: SRC.growth, group: "People", description: txt("fields.growth", fv) }),
+    F("gdp", "GDP", "money", { unit: `${CURRENCY} per year`, source: SRC.gdp, description: txt("fields.gdp", fv) }),
+    F("gdp_pc", "GDP per person", "usd", { unit: `${CURRENCY} per resident`, higher_is: "good", source: SRC.gdp, description: txt("fields.gdp_pc", fv) }),
     F("median_income", "Income", "usd", { unit: "median household income", higher_is: "good", source: src, group: "Prosperity", description: `Median household income (${censusVintage}).`, lens: "income" }),
-    F("median_rent", "Rent", "usd", { unit: canada ? "median rent incl. utilities / month" : "median gross rent / month", source: src, group: "Prosperity", description: canada ? `Renters' median monthly shelter cost, rent plus utilities (${censusVintage}).` : `Median gross rent per month (${vintage}).` }),
-    F("home_value", "Home value", "usd", { unit: "median home value", source: src, group: "Prosperity", description: canada ? `Median owner-estimated value of dwellings (${censusVintage}).` : `Median value of owner-occupied homes (${vintage}).`, lens: canada ? null : "home" }),
+    F("median_rent", "Rent", "usd", { unit: txt("fields.rent_unit"), source: src, group: "Prosperity", description: txt("fields.rent", fv) }),
+    F("home_value", "Home value", "usd", { unit: "median home value", source: src, group: "Prosperity", description: txt("fields.home_value", fv), lens: app.lensById?.has("home") ? "home" : null }),
     F("affordability", "Home value ÷ income", "ratio", { unit: "years of income", higher_is: "bad", group: "Prosperity", description: "Median home value ÷ median household income: how many years of income a typical home costs.", derived: true }),
     F("rent_burden", "Rent ÷ income", "pct", { unit: "median rent × 12 ÷ median income", higher_is: "bad", source: src, group: "Prosperity", description: "Median rent × 12 ÷ median household income (a ratio of medians, not the share of renters who are burdened)." }),
-    // Canada: the Labour Force Survey's annual average (provinces, territories and CMAs; it does not publish CAs), and
-    // the 2021 Census rate for every area as its own column, so the two years are never ranked together.
-    F("unemployment", canada ? `Unemployment (${nat.unemployment_year ?? "LFS"})` : "Unemployment", "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: canada ? "statcan_lfs" : src, group: "Prosperity", description: canada ? `Unemployed ÷ labour force aged 15+, ${nation.unemployment_vintage || "Labour Force Survey"} (tables 14-10-0464 and 14-10-0461). The survey does not publish census agglomerations; see Unemployment (2021 Census).` : `Unemployed ÷ civilian labour force (${vintage}, B23025).` }),
-    ...(canada ? [F("unemployment_census", "Unemployment (2021 Census)", "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: src, group: "Prosperity", description: "Unemployed ÷ labour force aged 15+ in the 2021 Census (table 98-10-0448), for every area. The census week, in May 2021, fell during COVID-19 restrictions, so these rates run well above the Labour Force Survey's." })] : []),
+    // With a census rate beside the survey's (Canada: the Labour Force Survey's annual average covers provinces,
+    // territories and CMAs, not CAs), the census rate is its own column, so the two years are never ranked together.
+    F("unemployment", LABEL_YEARS ? `Unemployment (${nat.unemployment_year ?? ""})` : "Unemployment", "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: ROLES.unemployment || src, group: "Prosperity", description: txt("fields.unemployment", fv) }),
+    ...(nat.unemployment_census != null ? [F("unemployment_census", `Unemployment (${nation.census_year ?? ""} Census)`, "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: src, group: "Prosperity", description: txt("fields.unemployment_census", fv) })] : []),
     F("employed", "Employed", "int", { unit: "employed residents", source: src, description: `Employed residents, where they live (${censusVintage}).` }),
     ...workerYields.map((y) => F(`y_${y.key}`, `${y.label} workers`, "int", { unit: "workers", source: src, group: "Yields", description: y.description })),
   ];
@@ -178,7 +206,7 @@ export function buildData(app) {
     affordability: ratio(o.home_value, o.median_income),
     rent_burden: o.rent_burden ?? null,
     unemployment: o.unemployment ?? null,
-    ...(canada ? { unemployment_census: o.unemployment_census ?? null } : {}),
+    ...(nat.unemployment_census != null ? { unemployment_census: o.unemployment_census ?? null } : {}),
     employed: o.employed ?? null,
     ...Object.fromEntries(workerYields.map((y) => [`y_${y.key}`, o.yields?.[y.key] ?? null])),
   });
@@ -201,12 +229,12 @@ export function buildData(app) {
       energy_mw: s.energy ? s.energy.total : null,
     },
   }));
-  const landFields = LAND_KEYS.filter((k) => !(canada && k === "pasture")).map((k) => F(`land_${k}`, LAND_LABEL[k], "pct", { unit: "share of land", source: SRC.cover, group: "Land", description: `Share of the land in ${LAND_LABEL[k].toLowerCase()} (${canada ? "NRCan 2020 land cover" : "NLCD"}, mean over the area's hexes).`, lens: k === "forest" ? "forest" : k === "developed" ? "developed" : null }));
-  const energyField = F("energy_mw", "Mapped power", "mw", { unit: "MW of mapped sites", source: SRC.power, group: "Energy", description: canada ? "Capacity of the mapped power plants of 25 MW or more, as listed in 2016–17 (Natural Resources Canada's inventory, via WRI): close to, but not exactly, the total generating capacity then." : "Capacity of the power sites mapped as resources (each type above its size threshold): not the total generating capacity." });
+  const landFields = LAND_KEYS.filter((k) => hasPasture || k !== "pasture").map((k) => F(`land_${k}`, LAND_LABEL[k], "pct", { unit: "share of land", source: SRC.cover, group: "Land", description: `Share of the land in ${LAND_LABEL[k].toLowerCase()} (${txt("fields.land_source")}, mean over the area's hexes).`, lens: k === "forest" ? "forest" : k === "developed" ? "developed" : null }));
+  const energyField = F("energy_mw", "Mapped power", "mw", { unit: "MW of mapped sites", source: SRC.power, group: "Energy", description: txt("fields.energy") });
   const states_ = makeLevel({
-    id: "states", label: canada ? "Provinces & territories" : "States", noun: canada ? "province or territory" : "state",
+    id: "states", label: TERMS.region.many, noun: TERMS.region.one.toLowerCase(),
     rows: stateRows,
-    fields: [F("name", canada ? "Province" : "State", "text", { group: "Name" }), ...econFields(SRC.areas), ...rollupFields(), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), ...landFields, energyField],
+    fields: [F("name", TERMS.region.short, "text", { group: "Name" }), ...econFields(SRC.areas), ...rollupFields(), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), ...landFields, energyField],
     highlight: (rows) => ({ states: new Set(rows.map((r) => r.ref)) }),
     rowAtCell: (cell, byKey) => (owner[cell] >= 0 ? stateRows[owner[cell]] || null : null),
     focus: (row) => app.selectState(row.ref, { fly: true }),
@@ -217,18 +245,18 @@ export function buildData(app) {
   const metroRows = cities.map((c) => ({
     key: c.id, name: c.name, sub: (c.states || []).join("–"), level: "metros", ref: c,
     v: {
-      name: c.name, states: (c.states || []).join("–"), kind: canada ? (c.metro === false ? "CA" : "CMA") : c.metro === false ? "Micro" : "Metro",
+      name: c.name, states: (c.states || []).join("–"), kind: c.metro === false ? TERMS.area.micro : TERMS.area.metro,
       ...econValues(c), ...rolled(roll.metros, c.id), energy_mw: mwByMetro.get(c.id) ?? 0,
-      // Canadian CMAs and CAs are not made of census divisions: their degree share is their own census figure.
-      ...(canada ? { bachelors: c.bachelors ?? null } : {}),
+      // Areas not made of divisions (Canada's CMAs and CAs) carry their own census degree share.
+      ...("bachelors" in c ? { bachelors: c.bachelors ?? null } : {}),
     },
   }));
   const metroByCity = new Map(metroRows.map((r) => [r.ref, r]));
   const metros = makeLevel({
     id: "metros", label: "Metros", noun: "metro",
     rows: metroRows,
-    fields: [F("name", "Metro", "text", { group: "Name" }), F("states", canada ? "Provinces" : "States", "text", { group: "Name" }), F("kind", "Type", "text", { group: "Name", description: canada ? "Census metropolitan area (CMA: 100,000+ people, 50,000+ in the core) or census agglomeration (CA: 10,000+ in the core)." : "Metropolitan (50,000+ urban core) or micropolitan area (OMB)." }), ...econFields(SRC.areas), ...rollupFields().map((f) => (canada && f.key === "bachelors"
-      ? { ...f, label: f.label.replace(/ ≈$/, ""), source: "statcan_census_city_view", derived: false, description: "Adults 25+ with a bachelor's degree or higher: the city's own 2021 Census figure (table 98-10-0384)." }
+    fields: [F("name", "Metro", "text", { group: "Name" }), F("states", TERMS.region.short_many ?? TERMS.region.many, "text", { group: "Name" }), F("kind", "Type", "text", { group: "Name", description: txt("fields.area_kind") }), ...econFields(SRC.areas), ...rollupFields().map((f) => (ownBachelors && f.key === "bachelors"
+      ? { ...f, label: f.label.replace(/ ≈$/, ""), source: ROLES.citizens || f.source, derived: false, description: txt("fields.area_bachelors") }
       : f)), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), energyField],
     highlight: (rows, o = {}) => {
       const cells = new Set();
@@ -261,11 +289,11 @@ export function buildData(app) {
     // Counties smaller than a hex own no cell: counties.json `cell` (the hex nearest the county's centre) stands in.
     const cellsOfRow = (r) => countyCells.get(r.ref) || (Number.isInteger(r.v.cell) ? [r.v.cell] : []);
     const fields = counties.fields.filter((f) => f.key !== "cbsa" && f.key !== "geoid" && f.key !== "cell").map((f) => ({
-      ...F(f.key, f.key === "name" ? (canada ? "Census division" : "County") : f.label, f.format, { unit: f.unit, higher_is: f.higher_is, source: f.source, description: f.description, lens: COUNTY_LENS[f.key], group: groupOf(f.key) }),
+      ...F(f.key, f.key === "name" ? TERMS.division.One : f.label, f.format, { unit: f.unit, higher_is: f.higher_is, source: f.source, description: f.description, lens: COUNTY_LENS[f.key], group: groupOf(f.key) }),
     }));
-    fields.splice(2, 0, F("metro", "Metro", "text", { group: "Name", description: canada ? "None: CMAs and CAs are built from municipalities, not census divisions." : "The metro or micro area the county belongs to (OMB), if it is on the map." }));
+    fields.splice(2, 0, F("metro", "Metro", "text", { group: "Name", description: txt("fields.division_metro") }));
     counties_ = makeLevel({
-      id: "counties", label: canada ? "Census divisions" : "Counties", noun: canada ? "census division" : "county",
+      id: "counties", label: TERMS.division.Many, noun: TERMS.division.one,
       rows: countyRows, fields,
       highlight: (rows) => {
         const cells = new Set();
@@ -363,6 +391,8 @@ export async function extendData(data, names) {
 }
 
 function extendMilitary(data, mil) {
+  // Personnel by duty state and spending are the U.S. files' shape; military.json without them adds no columns.
+  if (!mil.national?.personnel) return;
   const { states, metros } = data.levels;
   const v = mil.vintage || {};
   const instBy = (k) => {
@@ -406,15 +436,17 @@ function extendDistricts(data, d) {
   const cat = new Map((d.catalog || []).map((c) => [c.id, c]));
   const vint = d.vintage || "BLS QCEW";
   const lb = (x) => (x?.lower_bound ? " (at least)" : "");
-  if (canada) { // 2021 Census: employed residents by detailed industry, no pay, no census-division districts
-    const src = "statcan_census_city_view";
+  // districts.json counting employed residents where they live (rule.counts "workers"; Canada's census): no pay,
+  // no division districts.
+  if (d.rule?.counts === "workers") {
+    const src = edition.sources?.roles?.citizens || "";
     metros.addFields([
-      F4("city_type", "City type", "text", { source: src, group: "Districts", description: `The city's badge: named after its strongest district, by its speciality when one is at least 3× Canada's share of workers (${vint}). Blank: no district passes (a diversified economy).` }),
+      F4("city_type", "City type", "text", { source: src, group: "Districts", description: `The city's badge: named after its strongest district, by its speciality when one is at least 3× ${NATION.poss} share of workers (${vint}). Blank: no district passes (a diversified economy).` }),
       F4("districts", "Districts", "text", { source: src, group: "Districts", description: `Industry districts the city qualifies for, strongest first. ${d.rule?.text || ""}` }),
       F4("n_districts", "Number of districts", "int", { source: src, group: "Districts", description: "How many districts pass the rule (up to 5)." }),
-      F4("census_workers", "Workers (census)", "int", { unit: "employed residents aged 15+", source: src, group: "Districts", description: `Employed people aged 15 and over who live in the city, all industries (${vint}, table 98-10-0448).` }),
+      F4("census_workers", "Workers (census)", "int", { unit: "employed residents aged 15+", source: src, group: "Districts", description: txt("fields.census_workers", { vintage: vint }) }),
       F4("top_industry", "Most specialised industry", "text", { source: src, group: "Districts", description: "The detailed industry (of those this project fetches) with the highest location quotient and at least 1,000 workers." }),
-      F4("top_lq", "Its location quotient", "lq", { unit: "× Canada's share of workers", source: src, group: "Districts", description: "Location quotient of the most specialised industry: its share of the city's workers ÷ its share of Canada's workers." }),
+      F4("top_lq", "Its location quotient", "lq", { unit: `× ${NATION.poss} share of workers`, source: src, group: "Districts", description: `Location quotient of the most specialised industry: its share of the city's workers ÷ its share of ${NATION.poss} workers.` }),
     ]);
     for (const r of metros.rows) {
       const c = d.cities?.[r.key];
@@ -474,22 +506,15 @@ const CZ_US = [
   ["education", "graduate", "Graduate degrees"],
   ["nativity", "born_in_state", "Born in the state"], ["nativity", "foreign_born", "Born abroad (1-yr)"],
 ];
-// The Canadian edition's citizens.json (2021 Census): NOC 2021 groups and generation status.
-const CZ_CA = [
-  ["workforce", "executive", "Managers & finance"], ["workforce", "engineer", "Engineers & scientists"], ["workforce", "healer", "Health workers"],
-  ["workforce", "service", "Service workers"], ["workforce", "farmer", "Farm & resource workers"], ["workforce", "builder", "Trades"],
-  ["workforce", "maker", "Factory & transport workers"],
-  ["age", "child", "Children"], ["age", "young", "Young adults"], ["age", "elder", "Elders 65+"],
-  ["commute", "drove_alone", "Drive alone"], ["commute", "transit", "Public transit"], ["commute", "walk", "Walk to work"], ["commute", "home", "Work from home"],
-  ["education", "graduate", "Graduate degrees"],
-  ["nativity", "third_plus", "Third generation or more"], ["nativity", "first", "Born abroad"],
-];
 function extendCitizens(data, cz) {
   const { metros } = data.levels;
   const vint = cz.vintage || "ACS 1-year";
-  const CZ = canada ? CZ_CA : CZ_US;
-  const src = canada ? "statcan_census_city_view" : "acs_1yr";
-  const missing = canada ? "Blank where Statistics Canada published no figure." : "Blank where Census left the area out of that table.";
+  // The telling shares to list: the edition's own choice (text pack "citizens.fields"), else the U.S. edition's;
+  // either way only categories its citizens.json has.
+  const have = new Set(Object.entries(cz.groups || {}).flatMap(([row, list]) => list.map((g) => `${row}.${g.key}`)));
+  const CZ = (Array.isArray(TEXT["citizens.fields"]) ? TEXT["citizens.fields"] : CZ_US).filter(([row, key]) => have.has(`${row}.${key}`));
+  const src = edition.sources?.roles?.citizens || "";
+  const missing = txt("fields.citizens_missing");
   const label = new Map(Object.entries(cz.groups || {}).flatMap(([row, list]) => list.map((g) => [`${row}.${g.key}`, g.label])));
   const rowDesc = cz.rows || {};
   const grp = { workforce: "Citizens: work", age: "Citizens: age", commute: "Citizens: commute", education: "Citizens: education", nativity: "Citizens: origin" };
@@ -498,8 +523,8 @@ function extendCitizens(data, cz) {
       unit: `share of ${(rowDesc[row] || row).toLowerCase()}`, source: src, group: grp[row],
       description: `${label.get(`${row}.${key}`) || lbl}: share of ${(rowDesc[row] || row).toLowerCase()} (${vint}). ${missing}${row === "commute" ? " Shares of workers, not of all residents." : ""}`,
     })),
-    F4("cz_median_age", canada ? "Median age (city)" : "Median age (1-yr)", "years", { unit: "years", source: src, group: grp.age, description: canada ? `Median age of residents (${vint}, table 98-10-0020): the city's own median, unlike the census-division roll-up.` : `Median age of residents, ACS B01002 (${vint}): the area's own median, unlike the county roll-up.` }),
-    F4("cz_degree", canada ? "Bachelor's or more (25+)" : "Bachelor's or more (1-yr)", "pct", { unit: "of adults 25+", source: src, group: grp.education, description: canada ? `Adults 25+ with a bachelor's degree or higher (${vint}, table 98-10-0384).` : `Adults 25+ with a bachelor's degree or higher (${vint}, C15003).` }),
+    F4("cz_median_age", txt("fields.cz_median_age_label"), "years", { unit: "years", source: src, group: grp.age, description: txt("fields.cz_median_age", { vintage: vint }) }),
+    F4("cz_degree", txt("fields.cz_degree_label"), "pct", { unit: "of adults 25+", source: src, group: grp.education, description: txt("fields.cz_degree", { vintage: vint }) }),
     F4("cz_specialist", "Most over-represented citizen", "text", { source: src, group: "Citizens", description: `The category most over-represented against the national share (at least 1.5×). ${cz.rule?.text || ""}` }),
   ]);
   for (const r of metros.rows) {

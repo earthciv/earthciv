@@ -17,7 +17,13 @@ import { createBannerFocus } from "./bannerFocus.js";
 import { render, goToSection } from "./screen.js";
 import { icon } from "../../ui/icon.js";
 import { esc } from "../../format.js";
-import { canada } from "../../app/country.js";
+import { TERMS, defaults, rich, txt } from "../../app/text.js";
+
+defaults({
+  "cv.panel_link": "These are residents' industries. The {area}'s specialised districts are in the City View.",
+  "cv.legend_districts_source": "industry counts",
+  "cv.legend_districts_counted": "jobs",
+});
 
 const MODE = "city";
 const CSS_HREF = new URL("../../../css/cityview.css", import.meta.url).href;
@@ -71,9 +77,7 @@ export async function install(app) {
     if (!sec || sec.querySelector(".cv-plink")) return;
     const p = document.createElement("p");
     p.className = "cv-plink";
-    p.innerHTML = canada
-      ? `These are 2021 Census industry sectors. The city's specialised districts, from the same census's detailed industries, are in the City View. <button type="button">Districts ›</button>`
-      : `These are residents' industries (ACS). The metro's specialised districts, from jobs counted at employers (BLS QCEW), are in the City View. <button type="button">Districts ›</button>`;
+    p.innerHTML = `${rich("cv.panel_link", { area: TERMS.area.one })} <button type="button">Districts ›</button>`;
     p.querySelector("button").onclick = () => openCityView(city, { section: "districts" });
     sec.appendChild(p);
   }
@@ -220,8 +224,8 @@ export async function install(app) {
       <div class="cv-ml-body" id="cv-ml-body">
         <div class="cv-ml-r"><span class="cv-ml-pill">${icon("pop", "👥", { size: 11 })}≈</span>residents per hex <small>(density × area)</small></div>
         <div class="cv-ml-r"><span class="cv-ml-pill">${icon("l-developed", "▦", { size: 11 })}%</span>main land use</div>
-        <div class="cv-ml-r"><span class="cv-ml-hex" aria-hidden="true"></span>districts: real specialisations <small>(${canada ? "2021 Census" : "BLS QCEW"})</small></div>
-        <p class="cv-ml-n">The districts are real (industries with a high share of the ${canada ? "city's workers" : "metro's jobs"}), but their positions are schematic: they are not where the jobs are.</p>
+        <div class="cv-ml-r"><span class="cv-ml-hex" aria-hidden="true"></span>districts: real specialisations <small>(${esc(txt("cv.legend_districts_source"))})</small></div>
+        <p class="cv-ml-n">The districts are real (industries with a high share of the ${esc(TERMS.area.one)}'s ${esc(txt("cv.legend_districts_counted"))}), but their positions are schematic: they are not where the jobs are.</p>
       </div>`;
     setLegendOpen(legendOpen ?? false);
   }

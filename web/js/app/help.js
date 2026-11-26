@@ -1,5 +1,6 @@
 // Keyboard & mouse cheat-sheet.
-import { ANNOUNCEMENT_URL, ORIGINAL_URL, regionsName, regionName } from "./country.js";
+import { ANNOUNCEMENT_URL, ORIGINAL_URL } from "./project.js";
+import { TERMS } from "./text.js";
 import { icon } from "../ui/icon.js";
 
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
@@ -15,8 +16,8 @@ const ROWS = [
   ]],
   ["Explore", [
     [["Click city"], "Open the city screen"],
-    [["Click land"], `Open that ${regionName.toLowerCase()}`],
-    [["/", `${MOD} K`], `Search cities and ${regionsName.toLowerCase()}`],
+    [["Click land"], `Open that ${TERMS.region.one.toLowerCase()}`],
+    [["/", `${MOD} K`], `Search cities and ${TERMS.region.many.toLowerCase()}`],
     [["L", "Shift L"], "Next / previous lens"],
     [["Legend"], "Hover or drag the scale to show only that range"],
     [["R"], "Show or hide resources"],

@@ -4,10 +4,16 @@ import { money, pct, int, count3, fmtShort } from "../core/fmt.js";
 import { barList, histogram, rampLegend } from "../core/charts.js";
 import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
-import { section, tiles, segmented, mapPicker, frameBtn, sourcesHtml, topBy } from "../core/view.js";
+import { section, tiles, segmented, mapPicker, frameBtn, sourcesHtml, editionSources, topBy } from "../core/view.js";
 import { rowsHighlight } from "../core/data.js";
 import { scienceLens } from "../core/lenses.js";
-import { canada } from "../../../app/country.js";
+import { edition } from "../../../app/edition.js";
+import { NATION, TERMS, defaults, rich } from "../../../app/text.js";
+
+defaults({
+  "advisor.knowledge.degrees_note": "Share of adults with a bachelor's degree or more against median household income. Drag to select; hover the map to find a place.",
+});
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const METRO_MIN = 250000;
 
@@ -26,10 +32,12 @@ export function mount(ctx) {
     return w ? a / w : null;
   };
 
+  // Broadband is a county column in the U.S. data; Canada's census has none, so its charts colour by density instead.
+  const hasBroadband = !!counties?.field("broadband");
   el.insertAdjacentHTML("beforeend", tiles([
     { label: "Science workers", value: count3(usSci), sub: `${pct(usShare)} of the employed`, color: sci?.color },
     { label: "Degree holders", value: pct(wavg("bachelors")), sub: "adults 25+, BA or higher" },
-    !canada && { label: "Broadband", value: pct(wavg("broadband")), sub: "of homes subscribe" },
+    hasBroadband && { label: "Broadband", value: pct(wavg("broadband")), sub: "of homes subscribe" },
   ].filter(Boolean)));
 
   // --- the map: degrees by default (the scatter's x axis), or the Science yield's share by metro ----------------
@@ -41,7 +49,7 @@ export function mount(ctx) {
     options: [
       ...(counties ? [{ value: "bachelors", label: "Degrees", lens: () => "bachelors" }] : []),
       { value: "science", label: "Science jobs", lens: () => scienceLens(data) },
-      ...(counties && !canada ? [{ value: "broadband", label: "Broadband", lens: () => "broadband" }] : []),
+      ...(counties && hasBroadband ? [{ value: "broadband", label: "Broadband", lens: () => "broadband" }] : []),
       { value: "terrain", label: "Terrain", lens: () => null },
     ],
   });
@@ -64,7 +72,7 @@ export function mount(ctx) {
     const list = mode === "abs" ? topBy(metros.rows, (r) => r.v.y_science, { n: 12 }) : topBy(metros.rows, share, { n: 12, min: METRO_MIN });
     barList(sHost, {
       rank: true, ariaLabel: "Science leaders",
-      rows: list.map((x) => ({ key: x.r.key, label: x.r.name, sub: mode === "abs" ? pct(share(x.r)) : `×${(share(x.r) / usShare).toFixed(2)} ${canada ? "Canada" : "U.S."}`, value: x.v, text: mode === "abs" ? count3(x.v) : pct(x.v), color: sci?.color, row: x.r })),
+      rows: list.map((x) => ({ key: x.r.key, label: x.r.name, sub: mode === "abs" ? pct(share(x.r)) : `×${(share(x.r) / usShare).toFixed(2)} ${NATION.short}`, value: x.v, text: mode === "abs" ? count3(x.v) : pct(x.v), color: sci?.color, row: x.r })),
       onHover: (r) => link.hover(r ? rowsHighlight(metros, [r.row]) : null),
       onClick: (r) => metros.focus(r.row),
     });
@@ -73,31 +81,29 @@ export function mount(ctx) {
 
   if (!counties) {
     el.insertAdjacentHTML("beforeend", `<p class="adv-empty pad">counties.json is not built, so the county charts are missing.</p>`);
-    el.insertAdjacentHTML("beforeend", sourcesHtml(data, [canada ? "statcan_census_areas" : "acs_1yr"], []));
+    el.insertAdjacentHTML("beforeend", sourcesHtml(data, [edition.sources?.roles?.areas].filter(Boolean), []));
     return {};
   }
 
   // --- degrees vs income ----------------------------------------------------------------------------------------
-  const dBody = section(el, { title: "Degrees and income", note: canada
-    ? "Share of adults with a bachelor's degree or more against median household income (2021 Census; incomes for 2020); colour = residents per km². Drag to select; hover the map to find a place."
-    : "Share of adults with a bachelor's degree or more against median household income; colour = broadband. Drag to select; hover the map to find a place." });
+  const dBody = section(el, { title: "Degrees and income", note: rich("advisor.knowledge.degrees_note") });
   const dCtl = document.createElement("div");
   dCtl.className = "adv-row";
   dBody.appendChild(dCtl);
   let level = "counties";
-  segmented(dCtl, { label: "Places", value: level, options: [{ value: "counties", label: canada ? "Census divisions" : "Counties" }, { value: "metros", label: canada ? "CMAs and CAs" : "Metros" }], onChange: (v) => { level = v; drawDeg(); } });
+  segmented(dCtl, { label: "Places", value: level, options: [{ value: "counties", label: TERMS.division.Many }, { value: "metros", label: cap(TERMS.area.ranked ?? TERMS.area.many) }], onChange: (v) => { level = v; drawDeg(); } });
   const lv = () => data.levels[level];
   const inc = (r) => (level === "counties" ? r.v.income : r.v.median_income);
-  // The colour: broadband in the U.S.; residents per km² (log) in Canada, which has no broadband measure.
-  const cKey = canada ? "density" : "broadband";
-  const bbDom = canada ? robustDomain(counties.rows.map((r) => r.v.density), 0.02, true) || [0.1, 1000] : robustDomain(counties.rows.map((r) => r.v.broadband), 0.02) || [0.7, 0.95];
-  const bbColor = colorScale({ type: "seq", domain: bbDom, ramp: RAMPS.seq, log: canada });
+  // The colour: broadband where the data has it (the U.S.); else residents per km² (log; Canada).
+  const cKey = hasBroadband ? "broadband" : "density";
+  const bbDom = hasBroadband ? robustDomain(counties.rows.map((r) => r.v.broadband), 0.02) || [0.7, 0.95] : robustDomain(counties.rows.map((r) => r.v.density), 0.02, true) || [0.1, 1000];
+  const bbColor = colorScale({ type: "seq", domain: bbDom, ramp: RAMPS.seq, log: !hasBroadband });
   const scatter = createScatter(dBody, {
     height: 300, points: [],
     x: { label: "Adults with a degree", fmt: (v) => fmtShort("pct", v) },
     y: { label: "Median household income", fmt: money, log: true },
     size: { label: "Population", fmt: count3, max: 14, min: 1.4 },
-    color: (c) => bbColor(c), colorLabel: canada ? "Residents per km²" : "Broadband", colorFmt: canada ? (v) => fmtShort("float", v) : (v) => pct(v),
+    color: (c) => bbColor(c), colorLabel: hasBroadband ? "Broadband" : "Residents per km²", colorFmt: hasBroadband ? (v) => pct(v) : (v) => fmtShort("float", v),
     onHover: (p) => link.hover(p ? rowsHighlight(lv(), [p.row]) : null),
     onClick: (p) => lv().focus(p.row),
     onBrush: (set) => {
@@ -106,9 +112,9 @@ export function mount(ctx) {
       selInfo.innerHTML = sel.length ? `<b>${int(sel.length)}</b> ${level} · ${count3(sel.reduce((a, r) => a + (r.v.population || 0), 0))} people ${frameBtn()}<button type="button" class="adv-mini" data-clear>Clear</button>` : "";
     },
   });
-  dBody.insertAdjacentHTML("beforeend", canada
-    ? rampLegend({ ramp: RAMPS.seq, domain: bbDom, fmt: (v) => fmtShort("float", v), log: true, label: "Residents per km²" })
-    : rampLegend({ ramp: RAMPS.seq, domain: bbDom, fmt: (v) => fmtShort("pct", v), label: "Households with broadband" }));
+  dBody.insertAdjacentHTML("beforeend", hasBroadband
+    ? rampLegend({ ramp: RAMPS.seq, domain: bbDom, fmt: (v) => fmtShort("pct", v), label: "Households with broadband" })
+    : rampLegend({ ramp: RAMPS.seq, domain: bbDom, fmt: (v) => fmtShort("float", v), log: true, label: "Residents per km²" }));
   const selInfo = document.createElement("div");
   selInfo.className = "adv-brushinfo";
   dBody.appendChild(selInfo);
@@ -125,13 +131,8 @@ export function mount(ctx) {
   drawDeg();
 
   // --- broadband ------------------------------------------------------------------------------------------------
-  if (canada) {
-    el.insertAdjacentHTML("beforeend", sourcesHtml(data, ["statcan_census_areas", "statcan_census_divisions", "statcan_census_city_view"], [
-      "Science workers are counted where they live (2021 Census), not where they work, and cover whole industries (a law firm's receptionist counts; a hospital's researcher does not).",
-      "Degrees are for adults aged 25 and over (2021 Census): census divisions from table 98-10-0387, CMAs and CAs from their own figures in table 98-10-0384. Canada's census has no broadband question, so the U.S. edition's broadband charts are left out.",
-      "The Science jobs map colours CMAs and CAs only (grey hexes are outside them).",
-      ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest census divisions are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-    ]));
+  if (!hasBroadband) {
+    el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.knowledge", { county_vintage: data.countyVintage }, data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest ${esc(TERMS.division.many)} are smaller than one hex, so selecting them outlines nothing on the map.`] : []));
     return {
       onMapHover(h) {
         const r = h.cell >= 0 ? lv().rowAtCell(h.cell) : null;
@@ -166,13 +167,7 @@ export function mount(ctx) {
     onClick: (r) => counties.focus(r),
   });
 
-  el.insertAdjacentHTML("beforeend", sourcesHtml(data, ["acs_1yr", "acs_5yr"], [
-    "Science workers are counted where they live (ACS), not where they work, and cover whole industries (a law firm's receptionist counts; a hospital's researcher does not).",
-    `Degrees and broadband are ${esc(data.countyVintage)} county figures; metro values here are population-weighted roll-ups of their counties.`,
-    "The Science jobs map colours metro and micro areas only (grey hexes are outside them), because the yields come from 1-year ACS data that skip small places.",
-    "Broadband means any paid subscription, including a phone data plan: it measures access at home, not speed.",
-    ...(data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest counties are smaller than one hex, so selecting them outlines nothing on the map.`] : []),
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.knowledge", { county_vintage: data.countyVintage }, data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest ${esc(TERMS.division.many)} are smaller than one hex, so selecting them outlines nothing on the map.`] : []));
 
   return {
     onMapHover(h) {
