@@ -97,15 +97,17 @@ const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h
 const ANIM_MS = Math.round(520 * (2 * Math.PI + Math.asin(0.2))); // ≈ 3.37 s
 
 export function createMapLayer(app, { focusRect = () => null } = {}) {
-  let view = null; // {model, edge, fill}
+  let view = null; // {model, edge, fill, placedCells}
   let focusCell = -1;
   let animT0 = 0;
+  let cachedLayout = null; // shared between marksUnder (z 8) and marksOver (z 120) on the same frame
 
   function set(model) {
+    cachedLayout = null;
     if (!model) { view = null; return; }
     const g = app.w.grid;
     if (view?.model !== model) animT0 = performance.now();
-    view = { model, edge: edgePath(g, model.mask), fill: fillPath(g, model.mask) };
+    view = { model, edge: edgePath(g, model.mask), fill: fillPath(g, model.mask), placedRef: null, placedCells: null };
   }
   // ms into the border animation (it rests at ANIM_MS), or -1 for the still frame.
   const animTime = () => (reduced.matches ? -1 : Math.min(ANIM_MS, Math.max(0, performance.now() - animT0)));
@@ -166,62 +168,38 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
   // between overlay z < 100 and z >= 100): whatever overlaps the open city's banner goes under it (z 8), everything
   // else over the faded neighbour banners (z 120), so no other city's plate can bury the metro. Share images keep
   // a single pass under all banners (they only take overlays below z 100).
-  function drawMarks(ctx, cam, pass) {
-    if (!view) return;
+  // Compute the screen-space layout once per frame (reused by marksUnder and marksOver) and cache measured widths
+  // so focusRect() and measureText() run once instead of 2-4× per frame.
+  function layoutMarks(ctx, cam) {
     const m = view.model;
     const g = app.w.grid;
     const Rpx = g.R * cam.scale;
-    if (Rpx < 7) return;
+    if (Rpx < 7) return null;
     const onScreen = (sx, sy, pad) => sx > -pad && sy > -pad && sx < cam.w + pad && sy < cam.h + pad;
-    ctx.textBaseline = "middle";
+    if (view.placedRef !== m.placed) {
+      view.placedRef = m.placed;
+      view.placedCells = new Set(m.placed.map((d) => d.cell));
+    }
     const banner = cam === app.cam ? focusRect(ctx, cam) : null; // measured for the live view only
-    // Draw `fn` in this pass? Under the banner → the "under" pass; else the "over" pass; "all" draws both.
-    const mine = (rect) => pass === "all" || (pass === "under") === !!(banner && overlaps(rect, banner));
-
-    // 2. Districts (real, from districts.json; schematic positions): hex plaques with the industry icon and, nearer, its name and LQ. Their screen
-    //    rects (with the label) and the open city's banner are the obstacles the site labels keep clear of.
     const obstacles = banner ? [{ x: banner.x - 2, y: banner.y - 2, w: banner.w + 4, h: banner.h + 4 }] : [];
-    const plaques = []; // laid out first (they win every collision), drawn after the pills
-    const plaque = (d, sx, sy, r, label) => plaques.push([d, sx, sy, r, label]);
-    const drawPlaque = (d, sx, sy, r, label) => {
-      let txt = "", tw = 0;
+
+    // 2. Districts (real, from districts.json; schematic positions): laid out first so they win every collision.
+    const plaques = [];
+    const plaqueRects = [];
+    const addPlaque = (d, sx, sy, r, label) => {
+      let txt = "", tw = 0, font = "";
       if (label) {
-        ctx.font = `600 ${Math.round(Math.min(11, Math.max(9, r * 0.32)))}px ${SANS}`;
+        font = `600 ${Math.round(Math.min(11, Math.max(9, r * 0.32)))}px ${SANS}`;
+        ctx.font = font;
         txt = `${clip(d.short || "", 18)}${d.lq != null ? ` ×${d.lq.toFixed(1)}` : ""}`;
         tw = ctx.measureText(txt).width + 10;
       }
       const rect = label
         ? { x: Math.min(sx - r, sx - tw / 2), y: sy - r, w: Math.max(2 * r, tw), h: r * 0.98 + 7 + r }
         : { x: sx - r, y: sy - r, w: 2 * r, h: 2 * r };
-      if (!mine(rect)) return;
-      hexScreen(ctx, sx, sy, r);
-      const grd = ctx.createLinearGradient(sx, sy - r, sx, sy + r);
-      grd.addColorStop(0, d.color);
-      grd.addColorStop(1, "rgba(10,14,20,.92)");
-      ctx.fillStyle = grd;
-      ctx.globalAlpha = 0.92;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = Math.max(1.5, r * 0.09);
-      ctx.strokeStyle = "#120d06";
-      ctx.stroke();
-      ctx.lineWidth = Math.max(1, r * 0.05);
-      ctx.strokeStyle = "#e8c77a";
-      ctx.stroke();
-      const iy = sy - (label ? r * 0.08 : 0);
-      if (!(d.icon && hasIcon(d.icon) && drawIcon(ctx, d.icon, sx, iy, r * 1.05, { bg: d.color }))) tentMark(ctx, sx, iy, r);
-      if (label) {
-        const ty = sy + r * 0.98;
-        roundRect(ctx, sx - tw / 2, ty - 7, tw, 14, 7);
-        ctx.fillStyle = "rgba(8,12,18,.92)";
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "rgba(232,199,122,.7)";
-        ctx.stroke();
-        ctx.fillStyle = "#f3e6c4";
-        ctx.textAlign = "center";
-        ctx.fillText(txt, sx, ty + 0.5);
-      }
+      const under = !!(banner && overlaps(rect, banner));
+      plaques.push({ d, sx, sy, r, label, txt, tw, font, under });
+      plaqueRects.push(rect);
     };
     if (Rpx >= 9) {
       const r = Math.max(9, Math.min(30, Rpx * 0.42));
@@ -229,7 +207,7 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
       const lift = Rpx >= 18 ? Rpx * 0.12 : 0; // room for the tile-yield pill below
       for (const d of m.placed) {
         const [sx, sy] = cam.toScreen(g.cx(d.cell), g.cy(d.cell));
-        if (onScreen(sx, sy, r * 3)) plaque(d, sx, sy - lift, r, label);
+        if (onScreen(sx, sy, r * 3)) addPlaque(d, sx, sy - lift, r, label);
       }
       if (m.inCity.length && m.city.cell != null && Rpx >= 22) {
         // Small metros: the remaining districts in a row across the lower part of the city's hex.
@@ -238,44 +216,43 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
         const rMax = Math.max(8, Math.min(15, Rpx * 0.17));
         const step = Math.min(rMax * 2.3, (Rpx * 1.6) / Math.max(1, n));
         const rr = Math.max(6, Math.min(rMax, step / 2.15));
-        m.inCity.forEach((d, k) => plaque(d, cx + (k - (n - 1) / 2) * step, cy + Rpx * 0.62, rr, false));
+        m.inCity.forEach((d, k) => addPlaque(d, cx + (k - (n - 1) / 2) * step, cy + Rpx * 0.62, rr, false));
       }
     }
 
-    const plaqueRects = plaques.map(([d, sx, sy, r, label]) => {
-      if (!label) return { x: sx - r, y: sy - r, w: 2 * r, h: 2 * r };
-      ctx.font = `600 ${Math.round(Math.min(11, Math.max(9, r * 0.32)))}px ${SANS}`;
-      const tw = ctx.measureText(`${clip(d.short || "", 18)}${d.lq != null ? ` ×${d.lq.toFixed(1)}` : ""}`).width + 10;
-      return { x: Math.min(sx - r, sx - tw / 2), y: sy - r, w: Math.max(2 * r, tw), h: r * 0.98 + 7 + r };
-    });
-
-    // 1. Tile yields: [people ≈12K | land 41%] under each footprint hex (not the city's own hex: its banner). They
-    //    give way to the plaques and to each other; on phones only the five most populous hexes get one.
+    // 1. Tile yields: [people ≈12K | land 41%] under each footprint hex (not the city's own hex: its banner).
+    const pills = [];
     if (Rpx >= 18) {
       const full = Rpx >= 30;
       const phone = cam.w <= 700;
       let tiles = m.tiles.filter((t) => !t.isCity);
       if (phone) tiles = [...tiles].sort((a, b) => (b.residents || 0) - (a.residents || 0)).slice(0, 5);
       const taken = [];
+      const h = full ? 16 : 13;
+      const fs = full ? 10 : 9;
+      const ic = h - 4;
+      ctx.font = `600 ${fs}px ${SANS}`;
       for (const t of tiles) {
         const [sx, sy0] = cam.toScreen(t.x, t.y);
         if (!onScreen(sx, sy0, Rpx * 1.2)) continue;
-        const sy = sy0 + Rpx * (m.placed.some((d) => d.cell === t.cell) ? 0.74 : 0.56);
-        const W = pillWidth(ctx, t, full), h = full ? 16 : 13;
+        const sy = sy0 + Rpx * (view.placedCells.has(t.cell) ? 0.74 : 0.56);
+        const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "–";
+        const landTxt = t.land && full ? `${Math.round(t.land.share * 100)}%` : "";
+        const wRes = ic + 2 + ctx.measureText(resTxt).width;
+        const wLand = t.land ? ic + (landTxt ? 2 + ctx.measureText(landTxt).width : 0) : 0;
+        const gap = t.land ? 6 : 0;
+        const W = 8 + wRes + gap + wLand;
         const rect = { x: sx - W / 2 - 2, y: sy - h / 2 - 2, w: W + 4, h: h + 4 };
         if (taken.some((o) => overlaps(o, rect)) || plaqueRects.some((o) => overlaps(o, rect))) continue;
         taken.push(rect);
         obstacles.push(rect);
-        if (mine(rect)) pill(ctx, sx, sy, t, full);
+        pills.push({ sx, sy, t, full, h, fs, ic, resTxt, landTxt, wRes, gap, W, under: !!(banner && overlaps(rect, banner)) });
       }
     }
-    for (const q of plaques) drawPlaque(...q);
     obstacles.push(...plaqueRects);
 
-    // 3. Resource sites of the metro: a label per hex (the biggest site, "+N" more). Each label tries a few spots
-    //    around its hex (above, higher, below the yield pill) and takes the first one clear of the plaques, the
-    //    city's banner and the labels already placed; with no clear spot the name is left out (the site keeps its
-    //    ring, and the Resources list names it). The focused site is placed first and always shown.
+    // 3. Resource sites of the metro: a label per hex (the biggest site, "+N" more).
+    const sites = [];
     if (Rpx >= 14) {
       const cells = [...m.siteCells.keys()];
       if (focusCell >= 0 && m.siteCells.has(focusCell)) cells.sort((a, b) => (b === focusCell) - (a === focusCell));
@@ -289,7 +266,12 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
         const name = clip(top.item.name || top.type?.name || "", Rpx >= 40 ? 26 : 16);
         const val = Rpx >= 30 ? resourceValue(top.item, top.type, compact) : "";
         const more = list.length > 1 ? ` +${list.length - 1}` : "";
-        const W = siteLabelWidth(ctx, name, val, more), H = 17;
+        ctx.font = `bold 11px ${SERIF}`;
+        const nw = ctx.measureText(name).width;
+        ctx.font = `600 10px ${SANS}`;
+        const vw = val ? ctx.measureText(val).width + 6 : 0;
+        const mw = more ? ctx.measureText(more).width + 2 : 0;
+        const W = 14 + nw + vw + mw + 8, H = 17;
         const below = sy0 + Rpx * 0.56 + (pillH ? pillH / 2 + 2 : 0) + H / 2;
         const spots = isCity
           ? [sy0 + Rpx * 0.98, sy0 + Rpx * 0.98 + H + 3]
@@ -302,10 +284,66 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
         const box = boxAt(sy);
         obstacles.push(box);
         // A focused label forced onto the banner still goes over it: it is what the viewer is pointing at.
-        if (pass === "all" || (pass === "over") === (focused || !(banner && overlaps(box, banner)))) {
-          siteLabel(ctx, sx, sy, name, val, more, top.type?.color || "#c9a45c", focused);
-        }
+        const over = focused || !(banner && overlaps(box, banner));
+        sites.push({ sx, sy, name, val, more, nw, vw, W, color: top.type?.color || "#c9a45c", focused, over });
       }
+    }
+    return { plaques, pills, sites };
+  }
+
+  function drawMarks(ctx, cam, pass) {
+    if (!view) return;
+    let lay;
+    if (pass === "under") {
+      lay = layoutMarks(ctx, cam);
+      cachedLayout = { view, placed: view.model.placed, x: cam.x, y: cam.y, scale: cam.scale, w: cam.w, h: cam.h, focusCell, lay };
+    } else if (pass === "over" && cachedLayout && cachedLayout.view === view && cachedLayout.placed === view.model.placed && cachedLayout.x === cam.x && cachedLayout.y === cam.y && cachedLayout.scale === cam.scale && cachedLayout.w === cam.w && cachedLayout.h === cam.h && cachedLayout.focusCell === focusCell) {
+      lay = cachedLayout.lay;
+    } else {
+      lay = layoutMarks(ctx, cam);
+    }
+    if (!lay) return;
+    ctx.textBaseline = "middle";
+    for (const q of lay.pills) {
+      if (pass === "all" || (pass === "under") === q.under) drawPill(ctx, q);
+    }
+    for (const q of lay.plaques) {
+      if (pass === "all" || (pass === "under") === q.under) drawPlaque(ctx, q);
+    }
+    for (const q of lay.sites) {
+      if (pass === "all" || (pass === "over") === q.over) drawSiteLabel(ctx, q);
+    }
+  }
+
+  function drawPlaque(ctx, { d, sx, sy, r, label, txt, tw, font }) {
+    hexScreen(ctx, sx, sy, r);
+    const grd = ctx.createLinearGradient(sx, sy - r, sx, sy + r);
+    grd.addColorStop(0, d.color);
+    grd.addColorStop(1, "rgba(10,14,20,.92)");
+    ctx.fillStyle = grd;
+    ctx.globalAlpha = 0.92;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = Math.max(1.5, r * 0.09);
+    ctx.strokeStyle = "#120d06";
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, r * 0.05);
+    ctx.strokeStyle = "#e8c77a";
+    ctx.stroke();
+    const iy = sy - (label ? r * 0.08 : 0);
+    if (!(d.icon && hasIcon(d.icon) && drawIcon(ctx, d.icon, sx, iy, r * 1.05, { bg: d.color }))) tentMark(ctx, sx, iy, r);
+    if (label) {
+      const ty = sy + r * 0.98;
+      roundRect(ctx, sx - tw / 2, ty - 7, tw, 14, 7);
+      ctx.fillStyle = "rgba(8,12,18,.92)";
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(232,199,122,.7)";
+      ctx.stroke();
+      ctx.font = font;
+      ctx.fillStyle = "#f3e6c4";
+      ctx.textAlign = "center";
+      ctx.fillText(txt, sx, ty + 0.5);
     }
   }
 
@@ -319,28 +357,8 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
     draw(ctx, cam) { if (live(cam)) drawMarks(ctx, cam, "over"); },
   };
 
-  function pillWidth(ctx, t, full) {
-    const h = full ? 16 : 13;
-    ctx.font = `600 ${full ? 10 : 9}px ${SANS}`;
-    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "–";
-    const landTxt = t.land && full ? `${Math.round(t.land.share * 100)}%` : "";
-    const ic = h - 4;
-    const wRes = ic + 2 + ctx.measureText(resTxt).width;
-    const wLand = t.land ? ic + (landTxt ? 2 + ctx.measureText(landTxt).width : 0) : 0;
-    return 8 + wRes + (t.land ? 6 : 0) + wLand;
-  }
-
-  function pill(ctx, sx, sy, t, full) {
-    const h = full ? 16 : 13;
-    const fs = full ? 10 : 9;
+  function drawPill(ctx, { sx, sy, t, h, fs, ic, resTxt, landTxt, wRes, gap, W }) {
     ctx.font = `600 ${fs}px ${SANS}`;
-    const resTxt = t.residents != null ? `≈${compact(t.residents)}` : "–";
-    const landTxt = t.land && full ? `${Math.round(t.land.share * 100)}%` : "";
-    const ic = h - 4;
-    const wRes = ic + 2 + ctx.measureText(resTxt).width;
-    const wLand = t.land ? ic + (landTxt ? 2 + ctx.measureText(landTxt).width : 0) : 0;
-    const gap = t.land ? 6 : 0;
-    const W = 8 + wRes + gap + wLand;
     const x = sx - W / 2, y = sy - h / 2;
     roundRect(ctx, x, y, W, h, h / 2);
     ctx.fillStyle = "rgba(8,12,18,.86)";
@@ -372,22 +390,8 @@ export function createMapLayer(app, { focusRect = () => null } = {}) {
     }
   }
 
-  function siteLabelWidth(ctx, name, val, more) {
-    ctx.font = `bold 11px ${SERIF}`;
-    const nw = ctx.measureText(name).width;
-    ctx.font = `600 10px ${SANS}`;
-    const vw = val ? ctx.measureText(val).width + 6 : 0;
-    const mw = more ? ctx.measureText(more).width + 2 : 0;
-    return 14 + nw + vw + mw + 8;
-  }
-
-  function siteLabel(ctx, sx, sy, name, val, more, color, focused) {
-    ctx.font = `bold 11px ${SERIF}`;
-    const nw = ctx.measureText(name).width;
-    ctx.font = `600 10px ${SANS}`;
-    const vw = val ? ctx.measureText(val).width + 6 : 0;
-    const mw = more ? ctx.measureText(more).width + 2 : 0;
-    const W = 14 + nw + vw + mw + 8, h = 17;
+  function drawSiteLabel(ctx, { sx, sy, name, val, more, nw, vw, W, color, focused }) {
+    const h = 17;
     const x = sx - W / 2, y = sy - h / 2;
     roundRect(ctx, x, y, W, h, 3);
     ctx.fillStyle = focused ? "rgba(60,44,14,.95)" : "rgba(10,14,20,.9)";

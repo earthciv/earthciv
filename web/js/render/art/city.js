@@ -6,6 +6,7 @@
 //
 //   cityTileVisible(city, Rpx) → bool     is the city drawn at all at this zoom (small towns vanish zoomed out)
 //   cityIsDot(city, Rpx) → bool           drawn as a dot (true) or as a full tile (false)
+//   cityDotBand(Rpx) → 0..3               which of cityIsDot's zoom bands Rpx is in (a cache key for what it decides)
 //   cityClass(population) → {id, ...}     size class: village, town, city, metropolis, megalopolis
 //   metroSpill(w) → Map(cell → pseudo-city)  urban neighbours of 1.5M+ metros drawn as smaller city tiles (map.js);
 //                                         terrain.js leaves them bare like real city cells
@@ -47,8 +48,10 @@ import { lodFor } from "./lod.js";
 import { rng } from "./sprites.js";
 
 /** Cities draw as a dot (on top of the terrain) rather than a full tile when hexes are small. */
+const DOT_RPX = [9, 18, 26]; // below each, fewer cities get a full tile
 export const cityIsDot = (city, Rpx) =>
-  Rpx < 9 || (Rpx < 18 && city.population < 2.5e5) || (Rpx < 26 && city.population < 1e5);
+  Rpx < DOT_RPX[0] || (Rpx < DOT_RPX[1] && city.population < 2.5e5) || (Rpx < DOT_RPX[2] && city.population < 1e5);
+export const cityDotBand = (Rpx) => (Rpx < DOT_RPX[0] ? 0 : Rpx < DOT_RPX[1] ? 1 : Rpx < DOT_RPX[2] ? 2 : 3);
 
 // --- metro spill ----------------------------------------------------------------------------------------------
 const SPILL_MIN_POP = 1.5e6;
@@ -277,16 +280,19 @@ class Painter {
     this.detail = detail; // 0 mid, 1 near, 2 close
     this.accent = accent;
     this.shadows = new Path2D();
+    this.shadowOnly = false;
   }
   px(n) {
     return n / this.s;
   }
-  /** Ground shadow of a box (cast to the lower right). */
+  /** Ground shadow of a box (cast to the lower right). Collected only during prepassShadows. */
   shadow(F, h) {
+    if (!this.shadowOnly) return;
     poly(this.shadows, shadowOf(F, h));
   }
   /** A box on footprint F (from foot()), from height z0 to z0 + h. Colours: base [r,g,b]. */
   box(F, z0, h, base, { glass = false, outline = true, top = null } = {}) {
+    if (this.shadowOnly) return null;
     const g = this.g;
     const [N, E, S, W] = F.map((p) => up(p, z0));
     const [Nt, Et, St, Wt] = [N, E, S, W].map((p) => up(p, h));
@@ -328,7 +334,7 @@ class Painter {
   }
   /** Rows of windows on both visible faces of a box placed with box(). */
   windows(F, z0, h, glass) {
-    if (this.detail < 2) return;
+    if (this.shadowOnly || this.detail < 2) return;
     const g = this.g;
     const floor = Math.max(this.px(3.2), this.R * 0.022);
     const nf = Math.floor((h - floor * 0.6) / floor);
@@ -339,16 +345,22 @@ class Painter {
       [S, E, glass ? "rgba(160,200,230,.22)" : "rgba(30,34,44,.5)"],
     ];
     for (const [a, b, style] of faces) {
-      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const len = Math.hypot(dx, dy);
       const nCol = Math.max(1, Math.floor(len / this.px(3)));
       const path = new Path2D();
+      const zh = floor * 0.45;
       for (let f = 0; f < nf; f++) {
-        const z = floor * (f + 0.45), zh = floor * 0.45;
+        const z = floor * (f + 0.45);
         for (let c = 0; c < nCol; c++) {
           const t0 = (c + 0.22) / nCol, t1 = (c + 0.78) / nCol;
-          const p0 = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0 - z];
-          const p1 = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1 - z];
-          poly(path, [p0, p1, [p1[0], p1[1] - zh], [p0[0], p0[1] - zh]]);
+          const x0 = a[0] + dx * t0, y0 = a[1] + dy * t0 - z;
+          const x1 = a[0] + dx * t1, y1 = a[1] + dy * t1 - z;
+          path.moveTo(x0, y0);
+          path.lineTo(x1, y1);
+          path.lineTo(x1, y1 - zh);
+          path.lineTo(x0, y0 - zh);
+          path.closePath();
         }
       }
       g.fillStyle = style;
@@ -359,10 +371,11 @@ class Painter {
   house(x, y, a, b, wall, roof, along) {
     const hw = Math.max(this.R * 0.03, this.px(2)), hr = Math.max(this.R * 0.026, this.px(1.6));
     const F = foot(x, y, a, b);
+    if (this.shadowOnly) { this.shadow(F, hw + hr * 0.6); return; }
     gable(this.g, F, hw, hr, wall, roof, along, this.detail >= 1 ? this.px(0.5) : 0);
-    this.shadow(F, hw + hr * 0.6);
   }
   tree(x, y, r, conifer = false) {
+    if (this.shadowOnly) return;
     treeShape(this.g, x, y, r, conifer);
   }
   /** Feathered fill: a soft dark halo of `blur` km around path P, then P itself. */
@@ -382,16 +395,19 @@ class Painter {
 /** A white church with a gabled nave along A and a steeple at its front (lower right) end. */
 function drawChurch(p, x, y, sz, accent) {
   const g = p.g;
-  const roof = mix([88, 92, 104], accent, 0.35);
   const F = foot(x, y, sz, sz * 0.55);
   const hw = sz * 0.62;
-  p.shadow(F, hw + sz * 0.4);
-  gable(g, F, hw, sz * 0.48, P.white, roof, 0, p.detail >= 1 ? p.px(0.5) : 0);
-  // steeple: a square tower, a belfry band and a spire in the state colour, a gold finial
   const [tx, ty] = iso(sz * 0.95, 0);
   const t = sz * 0.3, th = sz * 1.55, sh = sz * 1.15;
   const Ft = foot(x + tx, y + ty, t, t);
-  p.shadow(Ft, th + sh * 0.6);
+  if (p.shadowOnly) {
+    p.shadow(F, hw + sz * 0.4);
+    p.shadow(Ft, th + sh * 0.6);
+    return;
+  }
+  const roof = mix([88, 92, 104], accent, 0.35);
+  gable(g, F, hw, sz * 0.48, P.white, roof, 0, p.detail >= 1 ? p.px(0.5) : 0);
+  // steeple: a square tower, a belfry band and a spire in the state colour, a gold finial
   const top = p.box(Ft, 0, th, P.white);
   if (p.detail >= 1) {
     const [, E, S, W] = Ft.map((q) => up(q, th * 0.72));
@@ -410,6 +426,7 @@ function drawChurch(p, x, y, sz, accent) {
 
 /** A water tower: four legs, a white tank with a band in the state colour and a conical cap. */
 function drawWaterTower(p, x, y, sz, accent) {
+  if (p.shadowOnly) return;
   const g = p.g;
   const z = sz * 1.9, rx = sz * 0.62, ry = rx * 0.5, th = sz * 0.7;
   g.beginPath();
@@ -720,6 +737,7 @@ function capitolItems(p, C) {
       const a = Math.max(q * 0.13, p.px(1.2)), h = q * 2.1;
       const F = foot(ox, oy, a, a);
       p.shadow(F, h);
+      if (p.shadowOnly) return;
       const t = p.box(F, 0, h, P.marble, { outline: false });
       const tip = [ox, oy - h - a * 2.4];
       fillPoly(p.g, [t.W, t.S, tip], css(shade(P.marble, 0.05)));
@@ -734,6 +752,7 @@ function capitolItems(p, C) {
       const wingH = q * 0.55;
       const F = foot(0, 0, q * 0.95, q * 2.5);
       p.shadow(F, q * 1.4);
+      if (p.shadowOnly) return;
       p.box(F, 0, wingH, P.marble);
       // centre block, a little taller
       const Fc = foot(0, 0, q * 1.05, q * 0.95);
@@ -838,12 +857,10 @@ function paintTile(g, city, R, Rpx, dev, detail, col, seed, capital) {
   const items = cls.village ? paintVillage(p, seed, col, Rpx) : paintGrid(p, cls, seed, Rpx, capital);
   items.sort((a, b) => a.y - b.y);
 
-  // All cast shadows first, as one fill so overlapping shadows don't darken twice, then the buildings. The
-  // shadow geometry comes from a dry run of the same draw calls against a context that paints nothing.
+  // All cast shadows first, as one fill so overlapping shadows don't darken twice, then the buildings.
   prepassShadows(p, items);
   g.fillStyle = "rgba(22,18,12,.3)";
   g.fill(p.shadows);
-  p.shadows = new Path2D(); // the real pass adds the same shapes again; they are dropped
   for (const it of items) it.draw();
 
   // No hex rim: the built-up area fades into the land around it, and the state shows only through accents (roof
@@ -1055,39 +1072,28 @@ function parcels(split, bh) {
   return out;
 }
 
-/** Run each item's draw with a context that swallows paint, so only the shadow geometry is collected. */
+/** Collect every item's cast shadow geometry without running any building paint or window paths. */
 function prepassShadows(p, items) {
-  const real = p.g;
-  p.g = NULL_CTX;
+  p.shadowOnly = true;
   for (const it of items) it.draw();
-  p.g = real;
+  p.shadowOnly = false;
 }
-const NULL_CTX = new Proxy(
-  {},
-  {
-    get(_, key) {
-      if (key === "createLinearGradient" || key === "createRadialGradient") return () => ({ addColorStop() {} });
-      return () => {};
-    },
-    set() {
-      return true;
-    },
-  },
-);
 
 /** A downtown block: a podium filling the block, then one tower or two (side by side along A). */
 function drawCore(p, x, y, bh, h, r, tallest) {
   const podH = Math.max(p.px(2.2), p.R * 0.028);
   const F = foot(x, y, bh * 0.95, bh * 0.95);
-  const podC = pick(P.stone, r(230));
   p.shadow(F, podH);
-  p.box(F, 0, podH, podC);
-  if (p.detail >= 1) {
-    // shop fronts: a dark band along the two visible faces
-    const [, E, S, W] = F;
-    const bandH = podH * 0.45;
-    fillPoly(p.g, [W, S, up(S, bandH), up(W, bandH)], "rgba(40,48,60,.45)");
-    fillPoly(p.g, [S, E, up(E, bandH), up(S, bandH)], "rgba(20,24,32,.45)");
+  if (!p.shadowOnly) {
+    const podC = pick(P.stone, r(230));
+    p.box(F, 0, podH, podC);
+    if (p.detail >= 1) {
+      // shop fronts: a dark band along the two visible faces
+      const [, E, S, W] = F;
+      const bandH = podH * 0.45;
+      fillPoly(p.g, [W, S, up(S, bandH), up(W, bandH)], "rgba(40,48,60,.45)");
+      fillPoly(p.g, [S, E, up(E, bandH), up(S, bandH)], "rgba(20,24,32,.45)");
+    }
   }
   const twin = bh * p.s >= 7 && r(231) < 0.35 && !tallest;
   if (twin) {
@@ -1102,10 +1108,11 @@ function drawCore(p, x, y, bh, h, r, tallest) {
 }
 
 function drawTower(p, x, y, a, b, h, r, tallest, z0 = 0) {
-  const glass = r(201) < 0.65;
-  const base = glass ? pick(P.glass, r(202)) : pick(P.stone, r(203));
   const F = foot(x, y, a, b);
   p.shadow(F, z0 + h);
+  if (p.shadowOnly) return;
+  const glass = r(201) < 0.65;
+  const base = glass ? pick(P.glass, r(202)) : pick(P.stone, r(203));
   const setback = h > p.R * 0.3 && r(204) < 0.45;
   const h1 = setback ? h * (0.55 + r(205) * 0.15) : h;
   p.box(F, z0, h1, base, { glass });
@@ -1146,9 +1153,10 @@ function drawTower(p, x, y, a, b, h, r, tallest, z0 = 0) {
 }
 
 function drawBlock(p, x, y, a, b, h, r, k) {
-  const base = pick(P.stone, r(220 + k));
   const F = foot(x, y, a, b);
   p.shadow(F, h);
+  if (p.shadowOnly) return;
+  const base = pick(P.stone, r(220 + k));
   p.box(F, 0, h, base);
   p.windows(F, 0, h, false);
   if (p.detail >= 1) {
@@ -1160,6 +1168,7 @@ function drawBlock(p, x, y, a, b, h, r, k) {
 }
 
 function drawPlaza(p, x, y, bh, accent) {
+  if (p.shadowOnly) return;
   const g = p.g;
   fillPoly(g, foot(x, y, bh * 0.72, bh * 0.72), css(P.plaza));
   const r = Math.max(bh * 0.24, p.px(1.4));

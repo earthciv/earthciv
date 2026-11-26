@@ -232,7 +232,7 @@ export async function mount(ctx) {
     refresh();
   });
 
-  function buildTable() {
+  function buildTable(refreshTable = true) {
     const lv = L();
     const keys = st.cols[st.level].filter((k) => lv.field(k));
     const sortKey = keys.includes("population") ? "population" : keys[0] || "name";
@@ -258,7 +258,7 @@ export async function mount(ctx) {
         onClick: (r) => L().focus(r),
       });
     } else table.setColumns(cols, { key: sortKey, dir: "desc" });
-    refreshRows();
+    if (refreshTable) refreshRows();
   }
 
   function axisSelects() {
@@ -295,10 +295,9 @@ export async function mount(ctx) {
     return !!e && all.every((v) => v > 0) && e[1] / e[0] > 60;
   };
 
-  function drawScatter() {
+  function drawScatter(rows = filtered()) {
     const lv = L();
     const xy = st.xy[st.level];
-    const rows = filtered();
     const fx = lv.field(xy.x), fy = lv.field(xy.y), fs = xy.s ? lv.field(xy.s) : null, fc = xy.c ? lv.field(xy.c) : null;
     const lx = xy.logx ?? autoLog(xy.x, rows), ly = xy.logy ?? autoLog(xy.y, rows);
     axes.querySelector('[data-log="x"]').checked = lx;
@@ -366,35 +365,32 @@ export async function mount(ctx) {
     ]);
   }
 
-  function applySelection() {
+  function applySelection(rows = filtered()) {
     const lv = L();
     const sel = st.sel ? lv.rows.filter((r) => st.sel.has(r.key)) : [];
-    link.base(sel.length ? rowsHighlight(lv, sel, { dim: true }) : filterHighlight(), { frame: sel.length > 1 || (!sel.length && st.filters.length > 0) });
+    link.base(sel.length ? rowsHighlight(lv, sel, { dim: true }) : filterHighlight(rows), { frame: sel.length > 1 || (!sel.length && st.filters.length > 0) });
     table?.setSelected(st.sel);
     selRow.innerHTML = st.sel ? `<span class="adv-fchip">${int(st.sel.size)} selected on the chart<button type="button" data-clear-sel aria-label="Clear the selection">✕</button></span>${frameBtn()}
       <label class="adv-check"><input type="checkbox" data-only${st.onlySel ? " checked" : ""}> Only show the selection</label>` : `<span class="adv-note">Tip: drag across the chart below to select a group.</span>`;
-    refreshRows();
-    updateSummary();
+    refreshRows(rows);
+    updateSummary(rows);
   }
   selRow.addEventListener("click", (e) => { if (e.target.closest("[data-clear-sel]")) { st.sel = null; st.onlySel = false; scatter.setSelected(null); applySelection(); } });
   selRow.addEventListener("change", (e) => { if (e.target.matches("[data-only]")) { st.onlySel = e.target.checked; refreshRows(); } });
 
   // With filters on, outline the rows that pass (when there are not too many to read).
-  function filterHighlight() {
+  function filterHighlight(rows = filtered()) {
     if (!st.filters.length) return null;
-    const rows = filtered();
     if (!rows.length || rows.length > (st.level === "counties" ? 1500 : 300)) return null;
     return rowsHighlight(L(), rows, { dim: true, ringMax: 12 });
   }
 
-  function refreshRows() {
+  function refreshRows(rows = filtered()) {
     if (!table) return;
-    let rows = filtered();
     if (st.onlySel && st.sel) rows = rows.filter((r) => st.sel.has(r.key));
     table.setRows(rows);
   }
-  function updateSummary() {
-    const rows = filtered();
+  function updateSummary(rows = filtered()) {
     const pop = rows.reduce((a, r) => a + (val(r, "population") || 0), 0);
     summary.innerHTML = `<b>${int(rows.length)}</b> of ${int(L().rows.length)} ${esc(L().label.toLowerCase())} · ${count3(pop)} people${st.sel ? ` · <b>${int(st.sel.size)}</b> selected` : ""}`;
   }
@@ -402,16 +398,16 @@ export async function mount(ctx) {
     renderChips();
     st.sel = null;
     scatter.setSelected(null);
-    refreshRows();
-    drawScatter();
-    applySelection();
+    const rows = filtered();
+    drawScatter(rows);
+    applySelection(rows);
   }
   function rebuild() {
     if (table) { table.destroy(); table = null; }
     renderCols();
     renderFilterBuilder();
     axisSelects();
-    buildTable();
+    buildTable(false);
     refresh();
   }
   rebuild();

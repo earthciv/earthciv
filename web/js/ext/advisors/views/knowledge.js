@@ -146,10 +146,11 @@ export function mount(ctx) {
   const bBody = section(el, { title: "Who is offline", note: "Counties by the share of households with any broadband subscription (cable, fibre, DSL, satellite or a cellular data plan). Hover a bar to outline those counties." });
   const bHost = document.createElement("div");
   bBody.appendChild(bHost);
+  const bbHistColor = colorScale({ type: "seq", domain: [0, 1], ramp: RAMPS.seq });
   const bbHist = histogram(bHost, {
     values: counties.rows.map((r) => ({ key: r.key, v: r.v.broadband })), bins: 30, domain: [0.5, 1], height: 120,
     fmt: (v) => fmtShort("pct", v), unitLabel: "counties", label: "Histogram of county broadband shares",
-    colorOf: (_, t) => colorScale({ type: "seq", domain: [0, 1], ramp: RAMPS.seq })(t),
+    colorOf: (_, t) => bbHistColor(t),
     onHover: (bin) => link.hover(bin ? rowsHighlight(counties, bin.keys.map((k) => counties.byKey.get(k)), { dim: true }) : null),
   });
   createTable(bBody, {

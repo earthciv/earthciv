@@ -92,9 +92,10 @@ export async function mount(ctx) {
       }
       return { cells, cities, label: r.label };
     };
+    let visRoutes = [];
     const visibleRoutes = () => routes.filter((r) => (!st.mode || r.top_mode === st.mode) && (!st.zone || r.a === st.zone || r.b === st.zone));
     const drawRoutes = () => {
-      const vis = visibleRoutes();
+      const vis = (visRoutes = visibleRoutes());
       rHost.innerHTML = "";
       routeBars = barList(rHost, {
         rank: !st.mode && !st.zone, ariaLabel: "Largest freight routes", max: vMax,
@@ -211,7 +212,7 @@ export async function mount(ctx) {
         ctx2.save();
         ctx2.lineCap = "round";
         ctx2.lineJoin = "round";
-        const vis = visibleRoutes();
+        const vis = visRoutes;
         const hot = api.hotRoute || st.route;
         if (!tradeLayerOn()) {
           for (const r of vis) {
