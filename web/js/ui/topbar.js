@@ -23,11 +23,12 @@ export function renderTopbar(nation) {
   if (typeof ResizeObserver === "function") new ResizeObserver(check).observe(el);
   check();
   watchBarOverflow(document.getElementById("topbar"));
+  watchBarOverflow(el); // phones give the yields a row of their own that scrolls sideways
   document.getElementById("turn").innerHTML = `Turn <b>${esc(nation.year ?? "")}</b> · ${esc(nation.vintage || "")}`;
 }
 
-// Phones scroll the whole bar sideways. Mark which ends have more to show (.more-l / .more-r) so CSS can fade
-// them: without a cue the yields look cut off after the second or third value.
+// A strip that scrolls sideways (the yields row on phones): mark which ends have more to show (.more-l / .more-r)
+// so CSS can fade them. Without a cue the yields look cut off after the fourth or fifth value.
 function watchBarOverflow(bar) {
   if (!bar || bar.dataset.overflowWatch) return;
   bar.dataset.overflowWatch = "1";

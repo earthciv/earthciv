@@ -60,7 +60,9 @@ by a small Python pipeline that uses only the standard library, from public down
 - **Sharing and navigation.**
   - Every view has a link (the URL hash holds it), and share images are rendered off-screen.
   - Search with `/`; press `?` for keyboard help.
-  - Works on phones.
+  - Works on phones and tablets. The top bar keeps every control in reach (a menu holds Advisors, Share, Help and
+    the Almanac), a tap on a hex shows what a mouse would see by hovering (with a lens on, that hex's value), and the
+    map glides on after a flick.
 - **Art gallery** at `/dev/art.html`: every terrain, city, water, icon, banner and map-layer specimen at four zoom
   levels, for working on the art.
 - **Trailer maker** at `/dev/trailer.html`: renders a 30-second 1080p MP4 trailer of the map frame by frame,

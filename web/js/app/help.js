@@ -28,6 +28,28 @@ const ROWS = [
   ]],
 ];
 
+// Touch screens: the same sheet in finger terms. Mouse words become touch words, keyboard-only rows go, and the
+// gestures a mouse does not have are added.
+const TOUCH_KEYS = { "Click city": "Tap a city", "Click land": "Tap land", "Double-click": "Double-tap", Scroll: "Pinch",
+  Drag: "Drag", Minimap: "Minimap", Legend: "Legend" };
+const TOUCH_TEXT = { "Hover or drag the scale to show only that range": "Drag along the scale to show only that range",
+  "Click or drag to jump": "Tap or drag to jump" };
+const TOUCH_EXTRA = {
+  Move: [[["Flick"], "Let the map glide on"]],
+  Explore: [[["Tap a hex"], "With a lens on: show that hex's value"]],
+  Panels: [[["Drag the handle"], "Pull a bottom sheet down to close it"]],
+};
+function touchRows(rows) {
+  return rows.map(([title, list]) => {
+    const out = [];
+    for (const [keys, what] of list) {
+      const k = keys.filter((key) => key in TOUCH_KEYS).map((key) => TOUCH_KEYS[key]);
+      if (k.length) out.push([k, TOUCH_TEXT[what] || what]);
+    }
+    return [title, [...out, ...(TOUCH_EXTRA[title] || [])]];
+  }).filter(([, list]) => list.length);
+}
+
 export function initHelp() {
   const modal = document.getElementById("help");
   if (!modal) return { open() {}, close() {}, get isOpen() { return false; } };
@@ -36,7 +58,7 @@ export function initHelp() {
   card.innerHTML = `
     <button class="icon-btn help-close" data-close aria-label="Close help">${icon("close", "✕", { size: 13 })}</button>
     <h2 id="help-title">${icon("help", "?", { size: 22 })}<span>Controls</span></h2>
-    <div class="help-cols">${ROWS.map(([title, rows]) => `
+    <div class="help-cols">${(matchMedia("(hover: none)").matches ? touchRows(ROWS) : ROWS).map(([title, rows]) => `
       <section><h3>${title}</h3>${rows.map(([keys, what]) => `
         <div class="help-row"><span class="keys">${keys.map((k) => `<kbd>${k}</kbd>`).join("")}</span><span>${what}</span></div>`).join("")}
       </section>`).join("")}</div>

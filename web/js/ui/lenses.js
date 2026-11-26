@@ -56,6 +56,10 @@ const DEFAULT_RECENT = ["density", "income", "bachelors"];
 const BINS = 40;
 const HOVER_HALF = 0.08; // half-width of the hover band, in ramp units
 const QUANT = 80; // band edges snap to 1/80 of the ramp so tiny mouse moves don't re-render the map
+// On a touch screen a tap on the scale clears the highlight and a drag sets it (there is no hover).
+const SCALE_HINT = () => (matchMedia("(hover: none)").matches
+  ? "Drag along the scale to show only that range"
+  : "Hover or drag the scale to show only that range");
 
 const loadRecent = () => {
   try {
@@ -306,7 +310,7 @@ export function initLensDock(opts) {
       <div class="ticks">${ticks}</div>
       ${l.unit ? `<div class="lg-unit">${esc(l.unit)}</div>` : ""}
       <div class="lg-meta">${hib}<span class="src">${l.unit ? esc(l.unit) + " · " : ""}${sourceLine(l)}</span></div>
-      <div class="lg-hint" aria-live="polite">Hover or drag the scale to show only that range</div>`;
+      <div class="lg-hint" aria-live="polite">${SCALE_HINT()}</div>`;
     legend.querySelector(".lg-close").onclick = () => opts.onPick(null);
     legend.classList.toggle("expanded", legendExpanded);
     legend.querySelector(".lg-more").onclick = () => {
@@ -354,7 +358,7 @@ export function initLensDock(opts) {
     if (!mark || !active) return;
     if (!band) {
       mark.hidden = true;
-      hint.textContent = "Hover or drag the scale to show only that range";
+      hint.textContent = SCALE_HINT();
       hint.classList.remove("on");
     } else {
       const a = Math.max(0, band[0]), b = Math.min(1, band[1]);
