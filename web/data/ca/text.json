@@ -320,6 +320,7 @@
  "cv.population_note": "Statistics Canada's July 1 population estimates, on 2021 Census boundaries.",
  "cv.rent": "Median rent incl. utilities / month",
  "cv.spread_like": "Canada's",
+ "cv.workforce_compare": "Canada's share",
  "cv.workforce_note": "2021 Census, table 98-10-0448: employed people aged 15 and over by NAICS sector, counted where they live. The map's districts use the same table's detailed industries: see Districts.",
  "fields.area_bachelors": "Adults 25+ with a bachelor's degree or higher: the city's own 2021 Census figure (table 98-10-0384).",
  "fields.area_kind": "Census metropolitan area (CMA: 100,000+ people, 50,000+ in the core) or census agglomeration (CA: 10,000+ in the core).",

@@ -30,6 +30,7 @@ const perPerson = (c) => {
 };
 
 defaults({
+  "cv.workforce_compare": "its {adj} share",
   "cv.growth_source": "Population estimates",
   "cv.population_note": "July 1 population estimates.",
   "cv.rent": "Median rent / month",
@@ -295,7 +296,7 @@ function workforce(m) {
   return `
   <section class="cv-sec" id="cv-workforce" data-sec="workforce" aria-labelledby="cv-h-workforce">
     <h3 id="cv-h-workforce">${icon("y-production", "⚙️", { size: 15 })}Workforce</h3>
-    <p class="cv-lead">Where the ${esc(AREA)}'s ${int(m.city.employed)} employed residents${LABEL_YEARS && m.nation.census_year ? ` (${m.nation.census_year})` : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with its ${esc(NATION.adj)} share.</p>
+    <p class="cv-lead">Where the ${esc(AREA)}'s ${int(m.city.employed)} employed residents${LABEL_YEARS && m.nation.census_year ? ` (${m.nation.census_year})` : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with ${esc(txt("cv.workforce_compare", { adj: NATION.adj }))}.</p>
     <div class="cv-blds">${cards || `<p class="muted cv-note">No industry data.</p>`}</div>
     <p class="cv-note">${rich("cv.workforce_note", { vintage: m.nation.vintage ?? "" })}</p>
   </section>`;

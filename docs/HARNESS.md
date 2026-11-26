@@ -53,8 +53,11 @@ The page side, `web/dev/snap.js`, chooses the views from the edition's own data,
 ## Keeping it deterministic
 
 Every view starts from a fresh page in its own browser context, so views recorded side by side share no storage (the
-app remembers recent lenses and panel settings in `localStorage`). The page side counts animation frames, fetches and
-scrolls still outstanding (it is added before the app's own scripts) and makes scrolling instant, and the runner
-counts requests in flight; a view is captured only after both have been quiet for half a second. The app reads
-neither the clock nor `Math.random`, and screenshots disable CSS animations and hide the caret. Three recordings in a
+app remembers recent lenses and panel settings in `localStorage`). The page side (added before the app's own
+scripts) counts what is still outstanding: animation frames, fetches, scrolls, timers of up to 5 s and idle
+callbacks. It also makes scrolling instant. The runner counts requests in flight. A view is captured once both have
+been quiet for half a second, after one more frame: the app is asked to draw again and the harness waits for quiet
+once more. Animations that read the clock (the selected region's border pulses for about 4 s) stop on a frame that
+depends on timing, and sprites painted in idle time reach the screen only with the next draw; the extra frame draws
+the resting state with everything in. Screenshots disable CSS animations and hide the caret. Three recordings in a
 row must be identical; record on the same machine and browser build when comparing.

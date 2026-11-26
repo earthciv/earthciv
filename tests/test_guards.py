@@ -1,7 +1,8 @@
-"""Guards for the editions work (docs/GLOBAL_PLAN.md, phases 1 and 2).
+"""Guards for the move to editions (docs/EDITIONS.md).
 
 * The U.S. data files stay byte-identical to upstream's build: the engine work moves them, it never regenerates them.
-* Uses of the two-country switch (`canada` in the browser code) may only go down, to 0 at the end of phase 2.
+* Uses of the old two-country switch (`canada` in the browser code) may only go down. The two left are the old
+  address, usaciv-canada.pages.dev, which goes with the rename to earthciv.org.
 """
 
 import hashlib
@@ -13,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "upstream_us_data.json"
 # Lower this as uses are removed; never raise it.
-MAX_COUNTRY_SWITCH_USES = 335
+MAX_COUNTRY_SWITCH_USES = 2
 
 
 def us_data_dir() -> Path:

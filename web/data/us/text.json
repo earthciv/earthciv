@@ -163,6 +163,7 @@
  "cv.panel_link": "These are residents' industries (ACS). The metro's specialised districts, from jobs counted at employers (BLS QCEW), are in the City View.",
  "cv.population_note": "Census population estimates (July 1, today's metro borders). They differ slightly from the ACS count above.",
  "cv.resources_note": "Sites whose hex centre lies in one of the metro's counties. Mapped sites only, not the metro's full capacity.",
+ "cv.workforce_compare": "its U.S. share",
  "cv.workforce_note": "{vintage}, table C24030 (where residents work, by where they live). The map's districts come from jobs counted where the employers are (BLS QCEW): see Districts.",
  "fields.area_kind": "Metropolitan (50,000+ urban core) or micropolitan area (OMB).",
  "fields.citizens_missing": "Blank where Census left the area out of that table.",
