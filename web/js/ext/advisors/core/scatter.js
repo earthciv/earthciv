@@ -175,7 +175,12 @@ export function createScatter(host, opts) {
     if (baseDirty || baseDpr !== dpr) drawBase();
     const c = sizeCanvas(cv, W, H);
     c.clearRect(0, 0, W, H);
-    c.drawImage(baseCv, 0, 0, W, H);
+    // Both canvases have the same backing size: copy pixel for pixel. Drawing it at W×H through the dpr transform
+    // would resample the whole plot whenever W·dpr isn't a whole number (125%, 150%, 175% display scaling).
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(baseCv, 0, 0);
+    c.restore();
     // hot point
     const h = hot != null ? byKey.get(hot) || null : null;
     if (h) {

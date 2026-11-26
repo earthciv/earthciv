@@ -297,6 +297,9 @@ export function createMapTip() {
         boxW = 0;
       }
       if (!boxW) {
+        // Measured at the corner, so a tip last shown near the right edge isn't measured (and kept) squeezed.
+        tip.style.left = "0px";
+        tip.style.top = "0px";
         const r = tip.getBoundingClientRect();
         boxW = r.width;
         boxH = r.height;

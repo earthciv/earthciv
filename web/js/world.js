@@ -175,7 +175,10 @@ export function lensScale(lens) {
   return (v) => (v - d0) / (d1 - d0);
 }
 
-const lensPrepCache = new WeakMap(); // lens → {w, terrain, values, tv, baseRgb, baseCss, dimRgb, dimCss}
+// lens → {w, terrain, values, tv, rawC, baseRgb, baseCss, dimRgb, dimCss}. Only the last few lenses are kept: each entry
+// holds several arrays per cell, and brushing a band re-reads the current lens's entry.
+const lensPrepCache = new Map();
+const LENS_PREP_KEEP = 2;
 
 function terrainCss(w) {
   if (w._terrainCssFor !== w.terrainColors) {
@@ -187,12 +190,16 @@ function terrainCss(w) {
 
 function lensPrepared(w, lens) {
   let e = lensPrepCache.get(lens);
-  if (e && e.w === w && e.terrain === w.terrainColors && e.values === lens.values) return e;
+  if (e && e.w === w && e.terrain === w.terrainColors && e.values === lens.values) {
+    lensPrepCache.delete(lens); // most recently used goes last
+    lensPrepCache.set(lens, e);
+    return e;
+  }
   const n = w.grid.size;
   const stops = lens.ramp.map(parseHex);
   const t = lensScale(lens);
   const { owner } = w.raw;
-  const tv = new Float32Array(n);
+  const tv = new Float64Array(n);
   const baseRgb = new Array(n);
   const baseCss = new Array(n);
   const rawC = new Array(n);
@@ -215,7 +222,9 @@ function lensPrepared(w, lens) {
     baseCss[i] = css(shaded);
   }
   e = { w, terrain: w.terrainColors, values: lens.values, tv, rawC, baseRgb, baseCss, dimRgb: null, dimCss: null };
+  lensPrepCache.delete(lens);
   lensPrepCache.set(lens, e);
+  while (lensPrepCache.size > LENS_PREP_KEEP) lensPrepCache.delete(lensPrepCache.keys().next().value);
   return e;
 }
 
@@ -242,6 +251,7 @@ export function applyLens(w, lens, band = null) {
   }
   const { owner } = w.raw;
   const { tv, rawC, baseRgb, baseCss, dimRgb, dimCss } = e;
+  const values = lens.values;
   const b0 = band[0], b1 = band[1];
   const rgb = new Array(n);
   const colors = new Array(n);
@@ -253,7 +263,7 @@ export function applyLens(w, lens, band = null) {
       continue;
     }
     const norm = tv[i];
-    if (norm === norm && norm >= b0 && norm <= b1) {
+    if (!(values[i] == null || norm < b0 || norm > b1)) {
       rgb[i] = baseRgb[i];
       colors[i] = baseCss[i];
     } else {

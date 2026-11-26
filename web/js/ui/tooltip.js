@@ -22,6 +22,10 @@ if (typeof window !== "undefined") {
 function position(t, mx, my) {
   // Re-measure if unmeasured or if an observer (e.g. City View) mutated the tooltip's DOM after show().
   if (!boxW || t.childNodes.length !== boxChildren || t.textContent.length !== boxTextLen) {
+    // Measure at the corner, where the box has its full width: at its last position near the right edge it would wrap,
+    // and that squeezed size would then be reused for every move inside the hex.
+    t.style.left = "0px";
+    t.style.top = "0px";
     const r = t.getBoundingClientRect();
     boxW = r.width;
     boxH = r.height;

@@ -421,10 +421,18 @@ function drawBorders(ctx, vp, w, s, Rpx, lens) {
       ctx.fill(path);
     }
   }
+  // One stroke over the visible tiles' lines, as before tiling: stroking tile by tile would paint the round caps twice
+  // where a line crosses a tile edge, leaving darker dots along the borders.
   const strokeField = (field, style, width) => {
+    let path = null;
+    for (const t of vis) {
+      if (!t[field]) continue;
+      path ??= new Path2D();
+      path.addPath(t[field]);
+    }
     ctx.strokeStyle = style;
     ctx.lineWidth = width;
-    for (const t of vis) if (t[field]) ctx.stroke(t[field]);
+    if (path) ctx.stroke(path);
   };
   // The smoothed shore (render/art/water.js drawShore) draws the waterline; a stroke along the hex edges here would
   // bring the hex staircase back, so it is only drawn when hexes are too small for the shore pass's lobes.

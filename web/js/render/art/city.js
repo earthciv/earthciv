@@ -6,6 +6,7 @@
 //
 //   cityTileVisible(city, Rpx) → bool     is the city drawn at all at this zoom (small towns vanish zoomed out)
 //   cityIsDot(city, Rpx) → bool           drawn as a dot (true) or as a full tile (false)
+//   cityDotBand(Rpx) → 0..3               which of cityIsDot's zoom bands Rpx is in (a cache key for what it decides)
 //   cityClass(population) → {id, ...}     size class: village, town, city, metropolis, megalopolis
 //   metroSpill(w) → Map(cell → pseudo-city)  urban neighbours of 1.5M+ metros drawn as smaller city tiles (map.js);
 //                                         terrain.js leaves them bare like real city cells
@@ -47,8 +48,10 @@ import { lodFor } from "./lod.js";
 import { rng } from "./sprites.js";
 
 /** Cities draw as a dot (on top of the terrain) rather than a full tile when hexes are small. */
+const DOT_RPX = [9, 18, 26]; // below each, fewer cities get a full tile
 export const cityIsDot = (city, Rpx) =>
-  Rpx < 9 || (Rpx < 18 && city.population < 2.5e5) || (Rpx < 26 && city.population < 1e5);
+  Rpx < DOT_RPX[0] || (Rpx < DOT_RPX[1] && city.population < 2.5e5) || (Rpx < DOT_RPX[2] && city.population < 1e5);
+export const cityDotBand = (Rpx) => (Rpx < DOT_RPX[0] ? 0 : Rpx < DOT_RPX[1] ? 1 : Rpx < DOT_RPX[2] ? 2 : 3);
 
 // --- metro spill ----------------------------------------------------------------------------------------------
 const SPILL_MIN_POP = 1.5e6;

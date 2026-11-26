@@ -49,7 +49,7 @@ import { hash01 } from "../../hex.js";
 import { COVER } from "../../terrain.js";
 import { FOREIGN } from "../../world.js";
 import { css, mix, shade, parseHex } from "../../color.js";
-import { cityIsDot, metroSpill, SUBURB_ART } from "./city.js";
+import { cityDotBand, cityIsDot, metroSpill, SUBURB_ART } from "./city.js";
 import { lodFor, atLeast } from "./lod.js";
 import { bucketPx, deviceScale, getSprite, drawSprite, makePattern, wrapDraw, rng, spriteStats } from "./sprites.js";
 
@@ -72,7 +72,10 @@ export function drawTerrainGlyphs(ctx, cells, w, { Rpx, s, lod, bridges } = {}) 
   Rpx = Rpx ?? R * s;
   lod = lod ?? lodFor(Rpx);
   const dev = deviceScale(ctx); // device px per km
-  const dpr = Math.round((dev / s || 1) * 1000) / 1000 || 1;
+  // The transform is stored in float32, so dev / s drifts by about 1e-7 between zoom steps; rounding to 6 decimals
+  // holds it steady (the field tile size test below would otherwise flip at a whole-number ratio) without moving the
+  // patterns at fractional ratios such as 0.6666667 (67% browser zoom).
+  const dpr = Math.round((dev / s || 1) * 1e6) / 1e6 || 1;
   const upx = bucketPx(R * dev, { min: 6, max: 256 });
   ctx.save();
   drawTextures(ctx, cells, w, s, dpr, lod, Rpx);
@@ -81,10 +84,9 @@ export function drawTerrainGlyphs(ctx, cells, w, { Rpx, s, lod, bridges } = {}) 
   // Bridges join relief across neighbouring hexes; a lone specimen hex (the dev gallery) is drawn without them.
   bridges = bridges ?? !(Array.isArray(cells) && cells.length === 1);
   const env = { w, R, Rpx, lod, upx, bridges, spill: metroSpill(w), ground: null, upright: null, memo: new Map() };
-  // planCell only reads env.Rpx via cityIsDot (thresholds at 9, 18, 26 px), so quantising to that band lets smooth
-  // zoom steps and idle warm-up reuse cached plans instead of re-planning every visible cell on every wheel notch.
-  const cityBand = Rpx < 9 ? 0 : Rpx < 18 ? 1 : Rpx < 26 ? 2 : 3;
-  const plans = planCache(w, `${lod}|${upx}|${cityBand}|${bridges}`);
+  // planCell only reads env.Rpx via cityIsDot, so keying by its zoom band lets smooth zoom steps and idle warm-up
+  // reuse cached plans instead of re-planning every visible cell on every wheel notch.
+  const plans = planCache(w, `${lod}|${upx}|${cityDotBand(Rpx)}|${bridges}`);
   for (const i of cells) {
     let pl = plans.get(i);
     if (!pl) {
