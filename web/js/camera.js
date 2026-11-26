@@ -1,10 +1,16 @@
 // 2D camera over the map (km). Screen = (world − centre) × scale + viewport/2.
 // Smooth motion: zoomBy() eases toward a target scale around an anchor, flyTo() animates centre + scale along
-// a van Wijk & Nuij "optimal" path (zoom out, travel, zoom in) and `pan` (px/s, set from held keys) moves the
-// view; step(dt) advances all of it. `fitScale` is the scale of the last fit() (the home view), handy for
-// encoding the zoom in a URL as a multiple of it.
+// a van Wijk & Nuij "optimal" path (zoom out, travel, zoom in), `pan` (px/s, set from held keys) moves the
+// view and glideFrom() lets it coast after a flick; step(dt) advances all of it. `fitScale` is the scale of the
+// last fit() (the home view), handy for encoding the zoom in a URL as a multiple of it.
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+// Momentum after a flick: the view keeps the finger's speed and slows down exponentially (time constant
+// GLIDE_TAU s, so it coasts about speed × GLIDE_TAU px). Slower flicks than GLIDE_MIN px/s do not glide.
+const GLIDE_TAU = 0.35;
+const GLIDE_MIN = 120;
+const GLIDE_MAX = 3200;
+const GLIDE_STOP = 20;
 
 export class Camera {
   constructor(worldW, worldH) {
@@ -21,6 +27,7 @@ export class Camera {
     this.zoomTarget = null; // {scale, sx, sy}: eased wheel/keyboard zoom around a screen anchor
     this.flight = null; // {path, x1, y1, s1, t, ms}
     this.pan = { x: 0, y: 0 }; // keyboard panning, screen px per second
+    this.glide = null; // {vx, vy}: coasting after a flick, screen px per second (glideFrom)
   }
 
   resize(w, h) {
@@ -81,6 +88,7 @@ export class Camera {
 
   centerOn(x, y) {
     this.flight = null;
+    this.glide = null;
     this.x = x;
     this.y = y;
     this.clamp();
@@ -90,19 +98,31 @@ export class Camera {
   // more time (up to ~2.4 s) so the motion keeps a steady perceived speed.
   flyTo(x, y, scale = this.scale, ms = 700) {
     this.zoomTarget = null;
+    this.glide = null;
     const s1 = this.clampScale(scale);
     const path = zoomPath(this.x, this.y, this.w / this.scale, x, y, this.w / s1);
     const dur = Math.min(Math.max(ms, 2400), Math.max(ms, path.S * 520));
     this.flight = { path, x1: x, y1: y, s1, t: 0, ms: Math.max(1, dur) };
   }
 
+  // Coast on after a drag was released at (vx, vy) screen px per second (the direction the map moved).
+  glideFrom(vx, vy) {
+    const v = Math.hypot(vx, vy);
+    if (!(v >= GLIDE_MIN)) return false;
+    const k = Math.min(1, GLIDE_MAX / v);
+    this.flight = null;
+    this.glide = { vx: vx * k, vy: vy * k };
+    return true;
+  }
+
   stop() {
     this.zoomTarget = null;
     this.flight = null;
+    this.glide = null;
   }
 
   get moving() {
-    return !!(this.zoomTarget || this.flight || this.pan.x || this.pan.y);
+    return !!(this.zoomTarget || this.flight || this.glide || this.pan.x || this.pan.y);
   }
 
   // Advance animations by dt seconds. Returns true while anything is still moving.
@@ -113,6 +133,17 @@ export class Camera {
       this.x += (this.pan.x * pdt) / this.scale;
       this.y += (this.pan.y * pdt) / this.scale;
       this.clamp();
+    }
+    if (this.glide) {
+      const g = this.glide;
+      const gdt = Math.min(0.05, dt); // a stalled frame pauses the glide instead of jumping
+      this.x -= (g.vx * gdt) / this.scale;
+      this.y -= (g.vy * gdt) / this.scale;
+      this.clamp();
+      const decay = Math.exp(-gdt / GLIDE_TAU);
+      g.vx *= decay;
+      g.vy *= decay;
+      if (Math.hypot(g.vx, g.vy) < GLIDE_STOP) this.glide = null;
     }
     if (this.flight) {
       const f = this.flight;
