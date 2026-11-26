@@ -419,10 +419,15 @@ class CanadianCityViewTest(unittest.TestCase):
 
 
 class DefaultEditionTest(unittest.TestCase):
-    def test_the_deployed_page_opens_on_canada(self):
+    def test_the_deployed_page_opens_on_us_with_visible_country_switcher(self):
         html = (ROOT / "web" / "index.html").read_text()
-        self.assertIn('data-default-country="ca"', html)
+        self.assertIn('data-default-country="us"', html)
+        self.assertTrue((ROOT / "web" / "og-image.png").exists())
         self.assertTrue((ROOT / "web" / "og-image-ca.png").exists())
+        self.assertIn('class="country-switcher"', html)
+        self.assertLess(html.index('value="us"'), html.index('value="ca"'))
+        css = (ROOT / "web" / "css" / "style.css").read_text()
+        self.assertNotRegex(css, r"#country-picker\s*\{[^}]*opacity:\s*0")
 
 
 if __name__ == "__main__":

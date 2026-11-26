@@ -61,13 +61,20 @@ async function main() {
   const picker = document.getElementById("country-picker");
   picker.replaceChildren(...EDITIONS.map((e) => new Option(e.name, e.id)));
   picker.value = EDITION_ID;
-  // The menu reads as the brand text: as wide as the chosen name (a <select> is as wide as its longest option).
-  const sizer = document.createElement("span");
-  sizer.className = "brand-sizer";
-  sizer.textContent = picker.selectedOptions[0]?.textContent || "";
-  picker.after(sizer);
-  picker.style.width = `${Math.ceil(sizer.getBoundingClientRect().width) + 17}px`; // + the caret's padding
-  sizer.remove();
+  // Size the selector pill snugly to the chosen country name (a <select> otherwise expands to its longest option).
+  function sizePicker() {
+    const sizer = document.createElement("span");
+    sizer.className = "brand-sizer";
+    sizer.textContent = picker.selectedOptions[0]?.textContent || "";
+    picker.after(sizer);
+    const cs = getComputedStyle(picker);
+    const extra = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+      + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0) + 4;
+    picker.style.width = `${Math.ceil(sizer.getBoundingClientRect().width + extra)}px`;
+    sizer.remove();
+  }
+  sizePicker();
+  document.fonts?.ready?.then(sizePicker);
   picker.onchange = () => {
     // The page's default edition needs no parameter; another one carries ?country= (kept in shared links).
     const target = new URL(location.href);
@@ -381,6 +388,7 @@ async function main() {
   }
 
   function resize() {
+    sizePicker();
     dpr = window.devicePixelRatio || 1;
     const cw = Math.max(1, innerWidth), ch = Math.max(1, innerHeight);
     canvas.width = Math.round(cw * dpr);

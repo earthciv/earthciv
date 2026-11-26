@@ -48,8 +48,34 @@ svg.icon { display: inline-block; flex: none; }
   box-shadow: 0 2px 10px rgba(0,0,0,.5), inset 0 -3px 0 rgba(0,0,0,.25);
   font-variant-numeric: tabular-nums;
 }
-.brand { font-family: var(--serif); font-weight: bold; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-bright); white-space: nowrap; display: flex; align-items: center; flex: none; }
-.brand-emblem { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 13px; margin-right: 6px; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
+.country-switcher { display: flex; align-items: center; gap: 6px; flex: none; }
+.brand { position: relative; font-family: var(--serif); font-weight: bold; font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--gold-bright); white-space: nowrap; display: inline-flex; align-items: center; flex: none; }
+.brand-emblem {
+  position: absolute; left: 4px; top: 50%; transform: translateY(-50%); z-index: 1; pointer-events: none;
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 11px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.45);
+}
+/* The country switcher stays visibly framed and labelled at every viewport size: a gold-bordered selector pill
+   ("UNITED STATES", "CANADA") with a crisp dropdown chevron, paired with the "Countries" World Atlas pill. */
+#country-picker {
+  -webkit-appearance: none; appearance: none; margin: 0; height: 28px; padding: 0 26px 0 31px;
+  border: 1px solid var(--gold); border-radius: 5px;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; line-height: 26px; cursor: pointer;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ecd08e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px,
+    linear-gradient(180deg, #354c66, #1d2d3f);
+  box-shadow: inset 0 1px 0 rgba(255,235,190,.16), 0 1px 3px rgba(0,0,0,.45);
+}
+#country-picker:hover {
+  border-color: var(--gold-bright);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff2cc' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px,
+    linear-gradient(180deg, #435f7d, #253a50);
+}
+#country-picker option, #country-picker optgroup { color: #ead7a8; background: #172437; text-transform: none; letter-spacing: normal; font-weight: normal; }
+#country-picker optgroup { color: var(--gold); font-weight: 600; }
+.brand-sizer { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; font: inherit; letter-spacing: inherit; text-transform: inherit; }
 .yields { display: flex; gap: 14px; flex: none; }
 .yield {
   position: relative; display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; border-radius: 4px;
@@ -445,13 +471,19 @@ body.panel-open #lens-area { right: calc(394px + var(--dock-right, 0px)); }
 #topbar { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 #topbar::-webkit-scrollbar { display: none; }
 /* The "Turn" label is the first thing to go when the bar is short of room (it needs about 1360px). */
-@media (max-width: 1380px) { .turn { display: none; } }
+@media (max-width: 1380px) {
+  .turn { display: none; }
+  #topbar { gap: 11px; }
+  .yields { gap: 9px; }
+  .yield { font-size: 13.5px; }
+  .search { flex-basis: 150px; min-width: 120px; }
+}
 @media (max-width: 1200px) {
   #topbar { gap: 12px; }
   .yields { gap: 10px; }
   .yield { font-size: 13px; }
-  .btn .lbl { display: none; }
-  .btn { padding: 4px 7px; }
+  .tb-buttons .btn .lbl { display: none; }
+  .tb-buttons .btn { padding: 4px 7px; }
   .search { flex-basis: 180px; min-width: 130px; }
 }
 @media (max-width: 1000px) and (min-width: 701px) {
@@ -465,32 +497,35 @@ body.panel-open #lens-area { right: calc(394px + var(--dock-right, 0px)); }
   body.panel-open #minimap-wrap { display: none; }
   body.panel-open #lens-area { left: calc(12px + var(--dock-left, 0px)); }
 }
-/* The yields row gives way first when the bar is short of room (topbar.js marks it .clipped). Phones scroll the
-   whole bar instead. */
-@media (max-width: 1000px) and (min-width: 701px) {
-  .yields { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+/* The yields row gives way first when the bar is short of room (topbar.js marks it .clipped), keeping the country
+   switcher, search and buttons visible at every desktop width. Phones scroll the whole bar instead. */
+@media (min-width: 701px) {
+  .yields { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 0 5px; margin: 0 -5px; }
   .yields::-webkit-scrollbar { display: none; }
   .yields.clipped { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
 }
 
 /* ---------- phones ---------- */
 @media (max-width: 700px) {
-  #topbar { gap: 10px; padding: 0 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #topbar { gap: 8px; padding: 0 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   #topbar::-webkit-scrollbar { display: none; }
   .brand-text { display: none; }
   .spacer { display: none; }
-  .search { flex: 0 0 160px; min-width: 160px; order: -1; margin-left: 4px; }
-  .brand { order: -2; }
+  .search { flex: 0 0 150px; min-width: 150px; order: -1; margin-left: 2px; }
+  .country-switcher { order: -2; gap: 5px; }
+  .brand { font-size: 12px; letter-spacing: .04em; }
+  .brand-emblem { left: 4px; width: 18px; height: 18px; font-size: 10px; }
+  #country-picker { padding: 0 22px 0 26px; background-position: right 7px center; }
   .search-kbd { display: none; }
   .yields { gap: 10px; }
   /* Fades at the ends of the scrolling bar (ui/topbar.js sets .more-l / .more-r). Sticky pseudo-elements stay at
-     the visible edges; the negative margins cancel their width and the 10px flex gap so they add no scroll width. */
+     the visible edges; the negative margins cancel their width and the 8px flex gap so they add no scroll width. */
   #topbar::before, #topbar::after {
     content: ""; position: sticky; flex: none; align-self: stretch; width: 30px; z-index: 1; pointer-events: none;
     opacity: 0; transition: opacity .15s;
   }
-  #topbar::before { order: -3; left: 0; margin-right: -40px; background: linear-gradient(90deg, #1b2a3a 20%, rgba(27,42,58,0)); }
-  #topbar::after { order: 99; right: 0; margin-left: -40px; background: linear-gradient(270deg, #1b2a3a 20%, rgba(27,42,58,0)); }
+  #topbar::before { order: -3; left: -8px; margin-right: -38px; background: linear-gradient(90deg, #1b2a3a 25%, rgba(27,42,58,0)); }
+  #topbar::after { order: 99; right: -8px; margin-left: -38px; background: linear-gradient(270deg, #1b2a3a 25%, rgba(27,42,58,0)); }
   #topbar.more-l::before, #topbar.more-r::after { opacity: 1; }
 
   #lens-area { left: 0; right: 0; bottom: 0; gap: 6px; align-items: stretch; z-index: 13; }
@@ -549,32 +584,4 @@ body.panel-open #lens-area { right: calc(394px + var(--dock-right, 0px)); }
   }
   .yr-total > b { font-size: 30px; }
   .yr-row { padding: 7px 8px; }
-}
-
-/* The country menu is the brand text ("CANADA", "UNITED STATES") with a small caret; main.js sizes it to the chosen
-   name. Where the brand text gives way (the rules above that hide .brand-text), the emblem itself opens the menu. */
-.brand { position: relative; }
-#country-picker {
-  -webkit-appearance: none; appearance: none; margin: 0; padding: 2px 15px 2px 2px; margin-left: -2px; border: 0; border-radius: 4px;
-  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer;
-  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 5'%3E%3Cpath d='M0 0h8L4 5z' fill='%23c9a45c'/%3E%3C/svg%3E") no-repeat right 3px center / 8px 5px;
-}
-#country-picker:hover { background-color: rgba(201,164,92,.12); }
-#country-picker option { color: #ead7a8; background: #172437; text-transform: none; letter-spacing: normal; font-weight: normal; }
-.brand-sizer { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; }
-.brand::after {
-  content: ""; display: none; position: absolute; left: 27px; top: 50%; margin-top: -2px; pointer-events: none;
-  border-style: solid; border-width: 4px 3.5px 0; border-color: var(--gold) transparent transparent; opacity: .85;
-}
-@media (max-width: 1320px) and (min-width: 701px) {
-  body.tb-ext #country-picker { position: absolute; inset: 0; width: auto !important; padding: 0; opacity: 0; }
-  body.tb-ext .brand-emblem { margin-right: 9px; }
-  body.tb-ext .brand::after { display: block; }
-  body.tb-ext .brand:has(#country-picker:focus-visible) .brand-emblem { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
-}
-@media (max-width: 1000px) {
-  #country-picker { position: absolute; inset: 0; width: auto !important; padding: 0; opacity: 0; }
-  .brand-emblem { margin-right: 9px; }
-  .brand::after { display: block; }
-  .brand:has(#country-picker:focus-visible) .brand-emblem { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 }

@@ -3,7 +3,7 @@
   "id": "us",
   "name": "United States",
   "emblem": "★",
-  "title": "usaciv — the United States as a strategy game",
+  "title": "EarthCiv — the United States as a strategy game",
   "map_label": "Hex map of the contiguous United States",
   "nation": {
     "vs": "US",

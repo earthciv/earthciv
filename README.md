@@ -3,8 +3,8 @@
 **Live: [karpathy.ai/usaciv](https://karpathy.ai/usaciv)** · Source code:
 [usaciv-source.zip](https://karpathy.ai/usaciv/usaciv-source.zip) (also linked from the in-app help, `?`)
 
-> **This copy adds a Canada edition**, live at [usaciv-canada.pages.dev](https://usaciv-canada.pages.dev/), which opens
-> on Canada (the U.S. edition is at [?country=us](https://usaciv-canada.pages.dev/?country=us)). The original project is by
+> **This copy adds a Canada edition and World Atlas**, live at [earthciv.org](https://earthciv.org/), opening on the
+> United States (Canada is at [?country=ca](https://earthciv.org/?country=ca)). The original project is by
 > Andrej Karpathy: [karpathy.ai/usaciv](https://karpathy.ai/usaciv), announced
 > [here](https://x.com/karpathy/status/2125779541952246039). See [Canada edition](#canada-edition) below.
 
@@ -69,8 +69,8 @@ by a small Python pipeline that uses only the standard library, from public down
 
 ## Canada edition
 
-This copy's site opens on Canada (`data-default-country="ca"` in `web/index.html`); the top-left country menu switches
-to the United States (`?country=us`). The same map renderer covers all 10 provinces and 3 territories, with 2021 Census
+This copy's site opens on the United States (`data-default-country="us"` in `web/index.html`); the top-left country switcher switches
+to Canada (`?country=ca`) or opens the World Atlas of all countries. The same map renderer covers all 10 provinces and 3 territories, with 2021 Census
 urban areas (population from Statistics Canada's July 1, 2025 estimates), all five yields (GDP and workers by industry), 14 census-division and land-cover lenses, power plants and
 mines, oil and gas fields, highways and railways, ports and airports, freight routes between provinces (Commerce
 advisor), Canadian Forces bases and where serving members and veterans live (Military advisor), wonders (Parks Canada's most-visited parks, canals and historic
@@ -219,6 +219,12 @@ files, URLs, checksums and caveats.
 | PLACES county data | CDC | Wellbeing lens |
 | Disaster Declarations Summaries | FEMA (OpenFEMA) | Disasters lens |
 | Billion-Dollar Weather and Climate Disasters | NOAA NCEI | Billion-dollar disasters by state |
+
+The world atlas (the globe button in the top bar) lists every EarthCiv edition and community port in
+`web/data/ports.json`. Clicking a country also shows its population, GDP per person and life expectancy from the World
+Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
+is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
+rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures).
 
 ### Reading the map honestly
 
