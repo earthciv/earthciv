@@ -150,29 +150,31 @@ export function install(app) {
   };
 
   // --- prominent top-bar launch button & country-picker hook -----------------------------------------------------
-  // Place a high-visibility "All Ports" button right beside the top-left country picker so it is immediately
+  // Place a high-visibility "Countries" button right beside the top-left country picker so it is immediately
   // discoverable at every screen width (desktop, laptop and phone) instead of collapsing to an unlabeled icon.
   let btn = null;
   const topbar = document.getElementById("topbar");
+  const switcher = topbar?.querySelector(".country-switcher");
   const brand = topbar?.querySelector(".brand");
-  const launchHtml = () => `${GLOBE_SVG}<span class="ports-launch-lbl">All Ports</span><span class="ports-launch-count">${basePorts.length ? allPorts().length : CATALOG_PORT_COUNT + customPorts.length}</span>`;
-  if (topbar && brand) {
+  const launchHtml = () => `${GLOBE_SVG}<span class="ports-launch-lbl">Countries</span><span class="ports-launch-count">${basePorts.length ? allPorts().length : CATALOG_PORT_COUNT + customPorts.length}</span>`;
+  if (switcher || (topbar && brand)) {
     document.getElementById("btn-ports")?.remove();
     btn = document.createElement("button");
     btn.id = "btn-ports";
     btn.type = "button";
     btn.className = "ports-launch";
-    btn.title = "All Ports & World Atlas: browse and open merged & unmerged country ports inside EarthCiv";
-    btn.setAttribute("aria-label", "All Ports: browse and open merged and unmerged country ports");
+    btn.title = "Switch country or browse all countries & community ports in the World Atlas";
+    btn.setAttribute("aria-label", "Countries: browse and switch between every country edition and community port");
     btn.setAttribute("aria-pressed", "false");
     btn.innerHTML = launchHtml();
     btn.addEventListener("click", () => (app.mode === MODE ? app.setMode(null) : app.setMode(MODE, { id: null })));
-    brand.after(btn);
+    if (switcher) switcher.appendChild(btn);
+    else brand.after(btn);
   } else {
     btn = app.ui.addTopButton({
       id: "btn-ports",
-      label: "All Ports",
-      title: "All Ports & World Atlas: browse and open merged & unmerged country ports inside EarthCiv",
+      label: "Countries",
+      title: "Switch country or browse all countries & community ports in the World Atlas",
       onClick: () => (app.mode === MODE ? app.setMode(null) : app.setMode(MODE, { id: null })),
     });
     if (btn) {
@@ -190,6 +192,7 @@ export function install(app) {
 
   // Read the merged editions already populated in #country-picker before appending the atlas shortcut.
   const picker = document.getElementById("country-picker");
+  const activeEditionId = picker?.value || EDITION_ID;
   const builtinEditions = picker
     ? [...picker.querySelectorAll("option")]
         .filter((o) => o.value && o.value !== "__ports__")
@@ -198,13 +201,13 @@ export function install(app) {
   if (picker && !picker.querySelector('option[value="__ports__"]')) {
     const grp = document.createElement("optgroup");
     grp.label = "World Atlas";
-    const opt = new Option("All ports (merged & unmerged)…", "__ports__");
+    const opt = new Option("🌍 All countries & world atlas…", "__ports__");
     grp.appendChild(opt);
     picker.appendChild(grp);
     picker.addEventListener("change", (e) => {
       if (picker.value !== "__ports__") return;
       e.stopImmediatePropagation();
-      picker.value = EDITION_ID;
+      picker.value = activeEditionId;
       app.setMode(MODE, { id: null });
     }, true);
   }
@@ -300,7 +303,7 @@ export function install(app) {
           <div class="ports-map-head">
             <div class="ports-title-block">
               <div class="ports-kicker">EarthCiv · World Atlas</div>
-              <h2>All Ports &amp; Editions</h2>
+              <h2>All Countries &amp; Ports</h2>
             </div>
             <div class="ports-stats" id="ports-stats"></div>
             <div class="ports-head-actions">
@@ -359,7 +362,7 @@ export function install(app) {
 
       <div class="ports-viewer" id="ports-viewer" hidden>
         <div class="ports-vbar">
-          <button type="button" class="ports-btn" data-act="back-atlas" title="Back to World Atlas (Esc)">← All Ports</button>
+          <button type="button" class="ports-btn" data-act="back-atlas" title="Back to World Atlas (Esc)">← All Countries</button>
           <div class="ports-vtitle" id="ports-vtitle"></div>
           <label class="ports-vswitch-wrap">
             <span class="sr-only">Switch port</span>

@@ -3,24 +3,6 @@
   "updated": "2026-11-26",
   "ports": [
     {
-      "id": "ca",
-      "name": "Canada",
-      "emblem": "🍁",
-      "status": "merged",
-      "editionId": "ca",
-      "scope": "country",
-      "region": "Americas",
-      "countries": ["CA"],
-      "center": [-96.5, 56.5],
-      "languages": ["en"],
-      "license": "MIT",
-      "repo": "earthciv/earthciv",
-      "author": "earthciv",
-      "url": null,
-      "embed": true,
-      "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors."
-    },
-    {
       "id": "us",
       "name": "United States",
       "emblem": "★",
@@ -37,6 +19,24 @@
       "url": null,
       "embed": true,
       "description": "Built-in EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data."
+    },
+    {
+      "id": "ca",
+      "name": "Canada",
+      "emblem": "🍁",
+      "status": "merged",
+      "editionId": "ca",
+      "scope": "country",
+      "region": "Americas",
+      "countries": ["CA"],
+      "center": [-96.5, 56.5],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "earthciv/earthciv",
+      "author": "earthciv",
+      "url": null,
+      "embed": true,
+      "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors."
     },
     {
       "id": "europeciv",

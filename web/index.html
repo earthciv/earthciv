@@ -1,42 +1,44 @@
 <!doctype html>
-<html lang="en" data-default-country="ca">
+<html lang="en" data-default-country="us">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>usaciv — Canada as a strategy game</title>
-  <meta name="description" content="The real Canada drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data. Switch to the United States edition from the country menu.">
+  <title>EarthCiv — the United States as a strategy game</title>
+  <meta name="description" content="The real United States drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data. Switch countries or browse all 40+ editions from the country switcher.">
   <meta name="theme-color" content="#131e2a">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='31' fill='%23120d06'/%3E%3Ccircle cx='32' cy='32' r='29' fill='%23c9a45c'/%3E%3Ccircle cx='32' cy='32' r='24' fill='%232a4d8f'/%3E%3Cpath fill='%23f8f0d8' d='M32 14l4.9 11.3 12.2 1.1-9.3 8.1 2.8 12-10.6-6.4-10.6 6.4 2.8-12-9.3-8.1 12.2-1.1z'/%3E%3C/svg%3E">
-  <!-- This deployment opens on the Canada edition (data-default-country above; ?country=us shows the U.S. edition, and
+  <!-- This deployment opens on the United States edition (data-default-country above; ?country=ca shows Canada, and
        js/app/country.js reads both). Social cards: crawlers need absolute URLs. If you host your own copy, change
-       https://usaciv-canada.pages.dev/ to its address (og:url, og:image, twitter:image, canonical).
-       og-image-ca.png is the app's share image of the Canadian home view (composed at 1600x840, scaled to 1200x630), as
-       og-image.png is of the U.S. one. -->
-  <link rel="canonical" href="https://usaciv-canada.pages.dev/">
+       https://earthciv.org/ to its address (og:url, og:image, twitter:image, canonical).
+       og-image.png is the app's share image of the U.S. home view (composed at 1600x840, scaled to 1200x630), as
+       og-image-ca.png is of the Canadian one. -->
+  <link rel="canonical" href="https://earthciv.org/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="usaciv">
-  <meta property="og:title" content="Canada as a strategy-game map">
-  <meta property="og:description" content="The real Canada drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data (Statistics Canada, Natural Resources Canada, Parks Canada, NOAA, Natural Earth, WRI). A U.S. edition is one click away.">
-  <meta property="og:url" content="https://usaciv-canada.pages.dev/">
-  <meta property="og:image" content="https://usaciv-canada.pages.dev/og-image-ca.png">
+  <meta property="og:site_name" content="EarthCiv">
+  <meta property="og:title" content="EarthCiv — the United States as a strategy-game map">
+  <meta property="og:description" content="The real United States drawn like a 4X strategy map: hex terrain, cities with yields, lenses and resources, all from public data. Switch to Canada or explore 40+ community country ports in one click.">
+  <meta property="og:url" content="https://earthciv.org/">
+  <meta property="og:image" content="https://earthciv.org/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Hex map of Canada with city banners, in the style of a strategy game">
+  <meta property="og:image:alt" content="Hex map of the United States with city banners, in the style of a strategy game">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Canada as a strategy-game map">
-  <meta name="twitter:description" content="The real Canada drawn like a 4X strategy map, from public data. A U.S. edition is one click away.">
-  <meta name="twitter:image" content="https://usaciv-canada.pages.dev/og-image-ca.png">
-  <meta name="twitter:image:alt" content="Hex map of Canada with city banners, in the style of a strategy game">
+  <meta name="twitter:title" content="EarthCiv — the United States as a strategy-game map">
+  <meta name="twitter:description" content="The real United States drawn like a 4X strategy map, from public data. Switch countries from the top bar.">
+  <meta name="twitter:image" content="https://earthciv.org/og-image.png">
+  <meta name="twitter:image:alt" content="Hex map of the United States with city banners, in the style of a strategy game">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header id="topbar">
-    <div class="brand">
-      <span class="brand-emblem" aria-hidden="true">🍁</span>
-      <select id="country-picker" aria-label="Country" title="Switch country">
-        <option value="ca">Canada</option>
-        <option value="us">United States</option>
-      </select>
+    <div class="country-switcher" role="group" aria-label="Country switcher">
+      <div class="brand">
+        <span class="brand-emblem" aria-hidden="true">★</span>
+        <select id="country-picker" aria-label="Switch country" title="Switch country">
+          <option value="us" selected>United States</option>
+          <option value="ca">Canada</option>
+        </select>
+      </div>
     </div>
     <div id="yields" class="yields" aria-label="National yields"></div>
     <div class="spacer"></div>
@@ -54,7 +56,7 @@
     </div>
   </header>
 
-  <canvas id="map" role="img" aria-label="Hex map of Canada"></canvas>
+  <canvas id="map" role="img" aria-label="Hex map of the contiguous United States"></canvas>
 
   <div id="tooltip" class="tooltip" hidden></div>
   <aside id="city-panel" class="panel" hidden role="region" aria-label="Details"></aside>
