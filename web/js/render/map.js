@@ -15,7 +15,7 @@ import { LABEL_FONT, LABEL_SPACING, stateIndex, stateOutline } from "../world.js
 import { drawIcon, hasIcon } from "../icons.js";
 import { drawTerrainGlyphs, GLYPHS_MIN_RPX } from "./art/terrain.js";
 import { drawCityTile, cityTileVisible, cityIsDot, metroSpill } from "./art/city.js";
-import { drawWater, drawRivers, strokeSegs } from "./art/water.js";
+import { drawWater, drawRivers } from "./art/water.js";
 import { lodFor } from "./art/lod.js";
 
 export const OCEAN_BG = OCEAN_DEEP_CSS;
@@ -142,26 +142,54 @@ export function drawStatic(ctx, vp, w, opts) {
   };
   upTo(Z.WATER);
 
-  // Corners grown by ~0.7px so neighbouring fills overlap (no seams).
+  // Corners grown by ~0.7px so neighbouring fills overlap (no seams). Consecutive same-colour cells share one path
+  // and fill() call (exact same draw order, far fewer draw calls across ocean, lakes and flat lens bands).
   const grow = (R + 0.7 / s) / R;
-  const K = grid.corners.map(([x, y]) => [x * grow, y * grow]);
-  const tile = (i) => {
-    const x = grid.cx(i), y = grid.cy(i);
-    ctx.beginPath();
-    ctx.moveTo(x + K[0][0], y + K[0][1]);
-    for (let k = 1; k < 6; k++) ctx.lineTo(x + K[k][0], y + K[k][1]);
-    ctx.fillStyle = w.colors[i];
-    ctx.fill();
+  const K = grid.corners;
+  const k0x = K[0][0] * grow, k0y = K[0][1] * grow;
+  const k1x = K[1][0] * grow, k1y = K[1][1] * grow;
+  const k2x = K[2][0] * grow, k2y = K[2][1] * grow;
+  const k3x = K[3][0] * grow, k3y = K[3][1] * grow;
+  const k4x = K[4][0] * grow, k4y = K[4][1] * grow;
+  const k5x = K[5][0] * grow, k5y = K[5][1] * grow;
+  const fillTiles = (wantWater) => {
+    const colors = w.colors, water = w.water;
+    let cur = null;
+    for (let idx = 0; idx < cells.length; idx++) {
+      const i = cells[idx];
+      if (!!water[i] !== wantWater) continue;
+      const col = colors[i];
+      if (col !== cur) {
+        if (cur !== null) {
+          ctx.fillStyle = cur;
+          ctx.fill();
+        }
+        ctx.beginPath();
+        cur = col;
+      }
+      const x = grid.cx(i), y = grid.cy(i);
+      ctx.moveTo(x + k0x, y + k0y);
+      ctx.lineTo(x + k1x, y + k1y);
+      ctx.lineTo(x + k2x, y + k2y);
+      ctx.lineTo(x + k3x, y + k3y);
+      ctx.lineTo(x + k4x, y + k4y);
+      ctx.lineTo(x + k5x, y + k5y);
+      ctx.closePath();
+    }
+    if (cur !== null) {
+      ctx.fillStyle = cur;
+      ctx.fill();
+    }
   };
 
   // 1. Water tiles, then the water art (texture, per-cell decoration, coast foam).
-  for (const i of cells) if (w.water[i]) tile(i);
-  drawWater(ctx, vp, w, cells, { Rpx, s, lod });
+  fillTiles(true);
+  drawWater(ctx, vp, w, cells, { Rpx, s, lod, range: { r0, r1, c0, c1 } });
   lap("water");
 
   // 2. Land tiles.
   upTo(Z.LAND);
-  for (const i of cells) if (!w.water[i]) tile(i);
+  fillTiles(false);
   lap("land");
   if (w.dim) drawBandEdge(ctx, w, r0, r1, c0, c1, s);
 
@@ -196,7 +224,7 @@ export function drawStatic(ctx, vp, w, opts) {
   ctx.rect(0, 0, W, H);
   ctx.clip();
   drawRivers(ctx, w, { s, Rpx, lod, lens: !!opts.lens });
-  drawBorders(ctx, w, s, Rpx, !!opts.lens);
+  drawBorders(ctx, vp, w, s, Rpx, !!opts.lens);
   ctx.restore();
 
   // 6. City tiles.
@@ -319,25 +347,90 @@ function drawEdgeFog(ctx, vp, W, H) {
 }
 
 
-function drawBorders(ctx, w, s, Rpx, lens) {
-  // Inner colour band per state (Civ-style), then the edge lines.
+// Spatial-tiled Path2D cache for borders (state bands and coast/state/nation lines): built once per world so
+// zoomed-in pans only submit tiles touching the viewport and never rebuild thousands of path commands in JS.
+const BORDER_TILE_KM = 400;
+const borderTileCache = new WeakMap();
+function borderTiles(w) {
+  let cached = borderTileCache.get(w);
+  if (cached && cached.bands === w.bands && cached.stateLines === w.stateLines) return cached.tiles;
+  const byKey = new Map();
+  const tileFor = (x, y) => {
+    const key = `${Math.floor(Math.round(x) / BORDER_TILE_KM)},${Math.floor(Math.round(y) / BORDER_TILE_KM)}`;
+    let t = byKey.get(key);
+    if (!t) byKey.set(key, (t = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, bands: new Map(), coast: null, state: null, nation: null }));
+    return t;
+  };
+  const grow = (t, x, y) => {
+    if (x < t.x0) t.x0 = x;
+    if (x > t.x1) t.x1 = x;
+    if (y < t.y0) t.y0 = y;
+    if (y > t.y1) t.y1 = y;
+  };
+  const INSET = 0.16;
   for (const [st, segs] of w.bands) {
-    ctx.beginPath();
     for (let k = 0; k < segs.length; k += 8) {
-      ctx.moveTo(segs[k], segs[k + 1]);
-      ctx.lineTo(segs[k + 2], segs[k + 3]);
-      ctx.lineTo(segs[k + 6], segs[k + 7]);
-      ctx.lineTo(segs[k + 4], segs[k + 5]);
-      ctx.closePath();
+      const ax = segs[k], ay = segs[k + 1], bx = segs[k + 2], by = segs[k + 3];
+      const ix0 = segs[k + 4], iy0 = segs[k + 5], ix1 = segs[k + 6], iy1 = segs[k + 7];
+      // Bucket by the owning cell's centre so every boundary edge of one cell lands in the same Path2D (preserving
+      // exact single-pass alpha compositing where two edges meet at a corner).
+      const cx = ax - (ax - ix0) / INSET, cy = ay - (ay - iy0) / INSET;
+      const t = tileFor(cx, cy);
+      grow(t, ax, ay); grow(t, bx, by); grow(t, ix0, iy0); grow(t, ix1, iy1);
+      let p = t.bands.get(st);
+      if (!p) t.bands.set(st, (p = new Path2D()));
+      p.moveTo(ax, ay);
+      p.lineTo(bx, by);
+      p.lineTo(ix1, iy1);
+      p.lineTo(ix0, iy0);
+      p.closePath();
     }
-    ctx.fillStyle = css(w.stateColor[st], lens ? 0.45 : 0.62);
-    ctx.fill();
   }
+  const addLines = (segs, field) => {
+    for (let k = 0; k < segs.length; k += 4) {
+      const ax = segs[k], ay = segs[k + 1], bx = segs[k + 2], by = segs[k + 3];
+      const t = tileFor((ax + bx) * 0.5, (ay + by) * 0.5);
+      grow(t, ax, ay); grow(t, bx, by);
+      const p = t[field] || (t[field] = new Path2D());
+      p.moveTo(ax, ay);
+      p.lineTo(bx, by);
+    }
+  };
+  addLines(w.coastLines, "coast");
+  addLines(w.stateLines, "state");
+  addLines(w.nationLines, "nation");
+  const tiles = [...byKey.values()];
+  borderTileCache.set(w, { bands: w.bands, stateLines: w.stateLines, tiles });
+  return tiles;
+}
+
+function drawBorders(ctx, vp, w, s, Rpx, lens) {
+  const tiles = borderTiles(w);
+  const pad = 4 / s;
+  const vis = [];
+  for (const t of tiles) {
+    if (t.x1 < vp.x0 - pad || t.x0 > vp.x1 + pad || t.y1 < vp.y0 - pad || t.y0 > vp.y1 + pad) continue;
+    vis.push(t);
+  }
+  if (!vis.length) return;
+  // Inner colour band per state (Civ-style), then the edge lines.
+  const alpha = lens ? 0.45 : 0.62;
+  for (const t of vis) {
+    for (const [st, path] of t.bands) {
+      ctx.fillStyle = css(w.stateColor[st], alpha);
+      ctx.fill(path);
+    }
+  }
+  const strokeField = (field, style, width) => {
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width;
+    for (const t of vis) if (t[field]) ctx.stroke(t[field]);
+  };
   // The smoothed shore (render/art/water.js drawShore) draws the waterline; a stroke along the hex edges here would
   // bring the hex staircase back, so it is only drawn when hexes are too small for the shore pass's lobes.
-  if (Rpx < 4) strokeSegs(ctx, w.coastLines, "rgba(240,226,180,.5)", 1.1 / s);
-  strokeSegs(ctx, w.stateLines, "rgba(15,10,5,.55)", Math.max(0.8, Math.min(2, Rpx * 0.08)) / s);
-  strokeSegs(ctx, w.nationLines, "rgba(255,232,160,.85)", Math.max(1.2, Math.min(3, Rpx * 0.12)) / s);
+  if (Rpx < 4) strokeField("coast", "rgba(240,226,180,.5)", 1.1 / s);
+  strokeField("state", "rgba(15,10,5,.55)", Math.max(0.8, Math.min(2, Rpx * 0.08)) / s);
+  strokeField("nation", "rgba(255,232,160,.85)", Math.max(1.2, Math.min(3, Rpx * 0.12)) / s);
 }
 
 
@@ -452,10 +545,32 @@ function drawResources(ctx, vp, w, r0, r1, c0, c1, Rpx, filterSpec = null) {
   const prio = overview ? (it) => -(norm?.get(it) ?? 0) : (it) => typeById.get(it.type).cat * 2 - (norm?.get(it) ?? 0);
   cells.sort((a, b) => prio(a[1][0]) - prio(b[1][0]));
 
-  const placed = []; // [x, y, r]
   // Zoomed out, icons keep clear of each other (fewer, more important ones); zoomed in they may touch.
+  // Spatial hash grid keeps decluttering O(N) instead of O(N²) while testing the exact same distance predicate.
   const gap = overview ? 1.6 ** 2 : (1.3 - 0.45 * smoothstep(13, 30, Rpx)) ** 2;
-  const free = (x, y, r) => placed.every(([px, py, pr]) => (px - x) ** 2 + (py - y) ** 2 > (pr + r) ** 2 * gap);
+  const maxD = resourceIconSize(Rpx, 1) * Math.sqrt(gap) + 1;
+  const invCell = 1 / Math.max(8, maxD);
+  const buckets = new Map();
+  const free = (x, y, r) => {
+    const gx = Math.floor(x * invCell), gy = Math.floor(y * invCell);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const list = buckets.get(`${gx + dx},${gy + dy}`);
+        if (!list) continue;
+        for (let q = 0; q < list.length; q += 3) {
+          const px = list[q] - x, py = list[q + 1] - y, pr = list[q + 2] + r;
+          if (px * px + py * py <= pr * pr * gap) return false;
+        }
+      }
+    }
+    return true;
+  };
+  const place = (x, y, r) => {
+    const key = `${Math.floor(x * invCell)},${Math.floor(y * invCell)}`;
+    let list = buckets.get(key);
+    if (!list) buckets.set(key, (list = []));
+    list.push(x, y, r);
+  };
   const draws = [], extras = [];
   for (const [i, list] of cells) {
     const n = Math.min(perCell, list.length);
@@ -466,7 +581,7 @@ function drawResources(ctx, vp, w, r0, r1, c0, c1, Rpx, filterSpec = null) {
       const size = resourceIconSize(Rpx, norm?.get(it) ?? 0);
       const [sx, sy] = toS(grid.cx(i) + slots[k][0] * R, grid.cy(i) + slots[k][1] * R);
       if (!free(sx, sy, size / 2)) continue;
-      placed.push([sx, sy, size / 2]);
+      place(sx, sy, size / 2);
       draws.push({ it, sx, sy, size, dim: w.dim && w.dim[i] });
       shown++;
       last = [sx, sy, size];

@@ -72,7 +72,7 @@ export function drawTerrainGlyphs(ctx, cells, w, { Rpx, s, lod, bridges } = {}) 
   Rpx = Rpx ?? R * s;
   lod = lod ?? lodFor(Rpx);
   const dev = deviceScale(ctx); // device px per km
-  const dpr = dev / s || 1;
+  const dpr = Math.round((dev / s || 1) * 1000) / 1000 || 1;
   const upx = bucketPx(R * dev, { min: 6, max: 256 });
   ctx.save();
   drawTextures(ctx, cells, w, s, dpr, lod, Rpx);
@@ -80,8 +80,11 @@ export function drawTerrainGlyphs(ctx, cells, w, { Rpx, s, lod, bridges } = {}) 
   const ground = [], upright = [];
   // Bridges join relief across neighbouring hexes; a lone specimen hex (the dev gallery) is drawn without them.
   bridges = bridges ?? !(Array.isArray(cells) && cells.length === 1);
-  const env = { w, R, Rpx, lod, upx, bridges, ground: null, upright: null, memo: new Map() };
-  const plans = planCache(w, `${lod}|${upx}|${Rpx}|${bridges}`);
+  const env = { w, R, Rpx, lod, upx, bridges, spill: metroSpill(w), ground: null, upright: null, memo: new Map() };
+  // planCell only reads env.Rpx via cityIsDot (thresholds at 9, 18, 26 px), so quantising to that band lets smooth
+  // zoom steps and idle warm-up reuse cached plans instead of re-planning every visible cell on every wheel notch.
+  const cityBand = Rpx < 9 ? 0 : Rpx < 18 ? 1 : Rpx < 26 ? 2 : 3;
+  const plans = planCache(w, `${lod}|${upx}|${cityBand}|${bridges}`);
   for (const i of cells) {
     let pl = plans.get(i);
     if (!pl) {
@@ -115,7 +118,7 @@ export function drawTerrainGlyphs(ctx, cells, w, { Rpx, s, lod, bridges } = {}) 
 // recently used first out, each capped at PLAN_CACHE_CELLS cells. Plans hold their sprites, so a palette change
 // that clears the sprite cache (sprites.js clearSprites, unused today) would also need to clear this one.
 const NONE = [];
-const PLAN_CACHE_ZOOMS = 3, PLAN_CACHE_CELLS = 40000;
+const PLAN_CACHE_ZOOMS = 6, PLAN_CACHE_CELLS = 40000;
 const planCaches = new WeakMap(); // world → Map<zoom key, Map<cell, {g, u}>> (Map order = recency)
 function planCache(w, key) {
   let byKey = planCaches.get(w);
@@ -651,7 +654,7 @@ function planCell(env, i) {
   const { w, R, lod } = env;
   if (w.water[i]) return;
   const city = w.cityByCell.get(i);
-  const spill = metroSpill(w).get(i);
+  const spill = env.spill.get(i);
   const tiled = (city && !cityIsDot(city, env.Rpx)) || (spill && !cityIsDot(spill, env.Rpx) && !cityIsDot(spill.of, env.Rpx));
   const x = w.grid.cx(i), y = w.grid.cy(i);
   const a = w.raw.owner[i] === FOREIGN ? FOREIGN_ALPHA : 1;

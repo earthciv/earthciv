@@ -92,10 +92,12 @@ export function drawSprite(ctx, spr, x, y, k) {
 const patternTiles = new Map();
 const patterns = new WeakMap(); // ctx → Map<key, CanvasPattern>
 export function makePattern(ctx, key, sizePx, dpr, paint) {
-  const k = `${key}|${sizePx}|${dpr}`;
+  // Key by the rounded pixel size `n`, not raw float `dpr`: deviceScale(ctx)/s fluctuates by ~1e-7 across zoom
+  // steps due to float32 DOMMatrix storage, which would otherwise miss the cache and leak a tile canvas per notch.
+  const n = Math.max(1, Math.round(sizePx * dpr));
+  const k = `${key}|${sizePx}|${n}`;
   let tile = patternTiles.get(k);
   if (!tile) {
-    const n = Math.max(1, Math.round(sizePx * dpr));
     tile = newCanvas(n, n);
     const g = tile.getContext("2d");
     g.setTransform(n / sizePx, 0, 0, n / sizePx, 0, 0);

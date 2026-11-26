@@ -255,7 +255,15 @@ export function drawWaterGlyphs(ctx, cells, w, opts = {}) {
   const px = (v) => v / s; // css px → km
 
   const lakes = new Path2D(), shelf = new Path2D();
-  const drawn = cells instanceof Set ? cells : new Set(cells);
+  const rg = opts.range;
+  const cols = grid.cols;
+  const drawn = rg ? null : cells instanceof Set ? cells : new Set(cells);
+  const inDrawn = rg
+    ? (j) => {
+        const jr = (j / cols) | 0, jc = j - jr * cols;
+        return jr >= rg.r0 && jr <= rg.r1 && jc >= rg.c0 && jc <= rg.c1;
+      }
+    : (j) => drawn.has(j);
   const deep = []; // [x, y, alpha] soft depth blobs in lakes
   const crests = new Path2D(), glints = new Path2D();
   let nLake = 0, nShelf = 0, nCrest = 0, nGlint = 0;
@@ -277,7 +285,7 @@ export function drawWaterGlyphs(ctx, cells, w, opts = {}) {
       for (let d = 0; d < 6; d++) {
         const j = grid.neighbour(i, d);
         if (j < 0 || water[j] !== WATER_OCEAN) continue;
-        if (!drawn.has(j)) continue; // the glow spills onto that neighbour: only where it is drawn too
+        if (!inDrawn(j)) continue; // the glow spills onto that neighbour: only where it is drawn too
         shelf.moveTo(x + K[d][0], y + K[d][1]);
         shelf.lineTo(x + K[(d + 1) % 6][0], y + K[(d + 1) % 6][1]);
         nShelf++;
@@ -485,20 +493,24 @@ function shoreGeom(w) {
   }
 
   // The smoothed water region (even-odd): a rectangle well beyond the grid plus every loop. Adding the rectangle
-  // a second time flips the parity, which gives the smoothed land region.
+  // a second time flips the parity, which gives the smoothed land region. Keep each loop's Path2D too so drawShore
+  // can build a view-culled clip path (loops whose bbox lies wholly outside the view cannot enclose any pixel in it).
   const pad = 6 * R;
   const rect = [xMin - pad, yMin - pad, xMax - xMin + 2 * pad, yMax - yMin + 2 * pad];
   const waterRegion = new Path2D();
   waterRegion.rect(...rect);
   for (const L of loops) {
-    waterRegion.moveTo(L.x[0], L.y[0]);
-    for (let k = 1; k < L.x.length; k++) waterRegion.lineTo(L.x[k], L.y[k]);
-    waterRegion.closePath();
+    const lp = new Path2D();
+    lp.moveTo(L.x[0], L.y[0]);
+    for (let k = 1; k < L.x.length; k++) lp.lineTo(L.x[k], L.y[k]);
+    lp.closePath();
+    L.path = lp;
+    waterRegion.addPath(lp);
   }
   const landRegion = new Path2D(waterRegion);
   landRegion.rect(...rect);
 
-  G = { water, wMask, lMask, loops, chunks, waterRegion, landRegion };
+  G = { water, wMask, lMask, loops, chunks, rect, waterRegion, landRegion };
   geomCache.set(w, G);
   return G;
 }
@@ -556,6 +568,23 @@ export function drawShore(ctx, w, cells, opts = {}) {
   const near = atLeast(lod, "near"), close = lod === "close";
   const K = grid.corners;
   const view = visibleRect(ctx);
+  // Clip regions culled to loops whose bbox touches the padded view (a loop wholly outside cannot enclose any pixel
+  // inside, so even-odd parity is exact everywhere in view while skipping offscreen islands).
+  let clipWater = G.waterRegion, clipLand = G.landRegion;
+  if (view) {
+    const clipPad = R * 2;
+    let visCount = 0;
+    for (const L of G.loops) if (!outside(L.bbox, view, clipPad)) visCount++;
+    if (visCount < G.loops.length) {
+      const vw = new Path2D();
+      vw.rect(...G.rect);
+      for (const L of G.loops) if (!outside(L.bbox, view, clipPad)) vw.addPath(L.path);
+      const vl = new Path2D(vw);
+      vl.rect(...G.rect);
+      clipWater = vw;
+      clipLand = vl;
+    }
+  }
 
   // 1. Lobes: wedges (cell centre → shore edge) in the neighbour's colour, clipped to the region they change to.
   if (Rpx >= 4) {
@@ -583,7 +612,7 @@ export function drawShore(ctx, w, cells, opts = {}) {
     }
     if (toLand.size) {
       ctx.save();
-      ctx.clip(G.landRegion, "evenodd");
+      ctx.clip(clipLand, "evenodd");
       for (const [colour, P] of toLand) {
         ctx.fillStyle = colour;
         ctx.fill(P);
@@ -592,7 +621,7 @@ export function drawShore(ctx, w, cells, opts = {}) {
     }
     if (toWater.size) {
       ctx.save();
-      ctx.clip(G.waterRegion, "evenodd");
+      ctx.clip(clipWater, "evenodd");
       for (const [colour, P] of toWater) {
         ctx.fillStyle = colour;
         ctx.fill(P);
@@ -628,7 +657,7 @@ export function drawShore(ctx, w, cells, opts = {}) {
 
   // 2. Water side. Strokes are centred on the shoreline and clipped, so each width shows by half.
   ctx.save();
-  ctx.clip(G.waterRegion, "evenodd");
+  ctx.clip(clipWater, "evenodd");
   if (lens) {
     ctx.strokeStyle = "rgba(225,240,245,.45)";
     ctx.lineWidth = px(2.2);
@@ -690,7 +719,7 @@ export function drawShore(ctx, w, cells, opts = {}) {
 
   // 3. Land side: a sandy beach rim on sea shores, a pale grassy-sand edge on lakes, with a brighter line at the waterline.
   ctx.save();
-  ctx.clip(G.landRegion, "evenodd");
+  ctx.clip(clipLand, "evenodd");
   if (nSea) {
     ctx.strokeStyle = "rgba(226,208,156,.55)";
     ctx.lineWidth = Math.max(R * 0.13, px(2.6));

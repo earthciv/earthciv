@@ -175,38 +175,103 @@ export function lensScale(lens) {
   return (v) => (v - d0) / (d1 - d0);
 }
 
+const lensPrepCache = new WeakMap(); // lens → {w, terrain, values, tv, baseRgb, baseCss, dimRgb, dimCss}
+
+function terrainCss(w) {
+  if (w._terrainCssFor !== w.terrainColors) {
+    w._terrainCss = w.terrainColors.map((c) => css(c));
+    w._terrainCssFor = w.terrainColors;
+  }
+  return w._terrainCss;
+}
+
+function lensPrepared(w, lens) {
+  let e = lensPrepCache.get(lens);
+  if (e && e.w === w && e.terrain === w.terrainColors && e.values === lens.values) return e;
+  const n = w.grid.size;
+  const stops = lens.ramp.map(parseHex);
+  const t = lensScale(lens);
+  const { owner } = w.raw;
+  const tv = new Float32Array(n);
+  const baseRgb = new Array(n);
+  const baseCss = new Array(n);
+  const rawC = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const base = w.terrainColors[i];
+    if (owner[i] < 0) {
+      tv[i] = NaN;
+      const c = w.water[i] ? base : shade(desaturate(base, 0.7), -0.2);
+      baseRgb[i] = c;
+      baseCss[i] = css(c);
+      continue;
+    }
+    const v = lens.values[i];
+    const norm = v == null ? NaN : t(v);
+    tv[i] = norm;
+    const c = v == null ? NO_DATA : rampColor(stops, norm);
+    rawC[i] = c;
+    const shaded = shade(c, w.shadeK[i] * 0.6);
+    baseRgb[i] = shaded;
+    baseCss[i] = css(shaded);
+  }
+  e = { w, terrain: w.terrainColors, values: lens.values, tv, rawC, baseRgb, baseCss, dimRgb: null, dimCss: null };
+  lensPrepCache.set(lens, e);
+  return e;
+}
+
 // Sets w.rgb / w.colors for the terrain view (lens = null) or a lens. `band` = [t0, t1] in normalised lens
 // units (0..1 along the ramp): cells whose value falls outside it are dimmed, and w.dim[i] is set.
 export function applyLens(w, lens, band = null) {
   const n = w.grid.size;
-  const rgb = new Array(n);
-  const dim = new Uint8Array(n);
   if (!lens) {
-    for (let i = 0; i < n; i++) rgb[i] = w.terrainColors[i];
-  } else {
-    const stops = lens.ramp.map(parseHex);
-    const t = lensScale(lens);
-    const { owner } = w.raw;
-    for (let i = 0; i < n; i++) {
-      const base = w.terrainColors[i];
-      if (owner[i] < 0) {
-        rgb[i] = w.water[i] ? base : shade(desaturate(base, 0.7), -0.2);
-        continue;
+    w.rgb = w.terrainColors.slice();
+    w.colors = terrainCss(w).slice();
+    w.dim = null;
+    return;
+  }
+  const e = lensPrepared(w, lens);
+  if (!band) {
+    w.rgb = e.baseRgb.slice();
+    w.colors = e.baseCss.slice();
+    w.dim = null;
+    return;
+  }
+  if (!e.dimRgb) {
+    e.dimRgb = new Array(n);
+    e.dimCss = new Array(n);
+  }
+  const { owner } = w.raw;
+  const { tv, rawC, baseRgb, baseCss, dimRgb, dimCss } = e;
+  const b0 = band[0], b1 = band[1];
+  const rgb = new Array(n);
+  const colors = new Array(n);
+  const dim = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (owner[i] < 0) {
+      rgb[i] = baseRgb[i];
+      colors[i] = baseCss[i];
+      continue;
+    }
+    const norm = tv[i];
+    if (norm === norm && norm >= b0 && norm <= b1) {
+      rgb[i] = baseRgb[i];
+      colors[i] = baseCss[i];
+    } else {
+      // Out of band: mostly grey, pushed toward a cool slate so it recedes like fog rather than turning muddy.
+      let dc = dimRgb[i];
+      if (!dc) {
+        dc = shade(mix(desaturate(rawC[i], 0.92), DIM_RGB, 0.66), w.shadeK[i] * 0.6);
+        dimRgb[i] = dc;
+        dimCss[i] = css(dc);
       }
-      const v = lens.values[i];
-      const tv = v == null ? null : t(v);
-      let c = tv == null ? NO_DATA : rampColor(stops, tv);
-      if (band && (tv == null || tv < band[0] || tv > band[1])) {
-        // Out of band: mostly grey, pushed toward a cool slate so it recedes like fog rather than turning muddy.
-        c = mix(desaturate(c, 0.92), DIM_RGB, 0.66);
-        dim[i] = 1;
-      }
-      rgb[i] = shade(c, w.shadeK[i] * 0.6);
+      rgb[i] = dc;
+      colors[i] = dimCss[i];
+      dim[i] = 1;
     }
   }
   w.rgb = rgb;
-  w.dim = band ? dim : null;
-  w.colors = rgb.map((c) => css(c));
+  w.dim = dim;
+  w.colors = colors;
 }
 
 // --- state labels ---------------------------------------------------------------------------------------------

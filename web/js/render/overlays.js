@@ -13,7 +13,22 @@ import { hexPath } from "./map.js";
 
 const DEFAULT_COLOR = "#ffe08a";
 const cacheByHighlight = new WeakMap();
+const stateCellsCache = new WeakMap();
+const resourceHitMapCache = new WeakMap();
 let version = 0;
+
+function cellsByState(w) {
+  let byState = stateCellsCache.get(w);
+  if (byState) return byState;
+  const owner = w.raw.owner;
+  byState = Array.from({ length: w.raw.states.length }, () => []);
+  for (let i = 0; i < w.grid.size; i++) {
+    const o = owner[i];
+    if (o >= 0 && o < byState.length) byState[o].push(i);
+  }
+  stateCellsCache.set(w, byState);
+  return byState;
+}
 
 /** Forget cached highlight geometry (main.js calls this from app.invalidate()). */
 export function invalidateHighlight() {
@@ -25,28 +40,39 @@ function geometry(w, h) {
   let g = cacheByHighlight.get(h);
   if (g && g.sig === sig && g.w === w) return g;
   const { grid } = w;
-  const owner = w.raw.owner;
-  const mask = new Uint8Array(grid.size);
-  let count = 0;
-  if (h.cells) for (const i of h.cells) if (i >= 0 && i < grid.size && !mask[i]) { mask[i] = 1; count++; }
-  if (h.states && h.states.size) {
-    for (let i = 0; i < grid.size; i++) if (!mask[i] && h.states.has(owner[i])) { mask[i] = 1; count++; }
+  const size = grid.size;
+  const hasStates = !!(h.states && h.states.size);
+  let cells;
+  if (!hasStates && h.cells) {
+    let allValid = true;
+    for (const i of h.cells) if (!(i >= 0 && i < size)) { allValid = false; break; }
+    cells = allValid ? h.cells : new Set([...h.cells].filter((i) => i >= 0 && i < size));
+  } else {
+    cells = new Set();
+    if (h.cells) for (const i of h.cells) if (i >= 0 && i < size) cells.add(i);
+    if (hasStates) {
+      const byState = cellsByState(w);
+      for (const st of h.states) {
+        const list = byState[st];
+        if (list) for (let k = 0; k < list.length; k++) cells.add(list[k]);
+      }
+    }
   }
+  const count = cells.size;
   // Even-odd "everything but the group" path, and the group's outer edges.
   const dim = new Path2D();
   dim.rect(-1e5, -1e5, 2e5 + w.raw.width, 2e5 + w.raw.height);
   const edge = new Path2D();
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (let i = 0; i < grid.size; i++) {
-    if (!mask[i]) continue;
+  const C = grid.corners;
+  for (const i of cells) {
     const x = grid.cx(i), y = grid.cy(i);
-    const C = grid.corners;
     dim.moveTo(x + C[0][0], y + C[0][1]);
     for (let k = 1; k < 6; k++) dim.lineTo(x + C[k][0], y + C[k][1]);
     dim.closePath();
     for (let d = 0; d < 6; d++) {
       const j = grid.neighbour(i, d);
-      if (j >= 0 && mask[j]) continue;
+      if (j >= 0 && cells.has(j)) continue;
       const [ax, ay] = C[d], [bx, by] = C[(d + 1) % 6];
       edge.moveTo(x + ax, y + ay);
       edge.lineTo(x + bx, y + by);
@@ -54,7 +80,7 @@ function geometry(w, h) {
     x0 = Math.min(x0, x - grid.R); y0 = Math.min(y0, y - grid.R);
     x1 = Math.max(x1, x + grid.R); y1 = Math.max(y1, y + grid.R);
   }
-  g = { sig, w, mask, count, dim, edge, bbox: count ? { x0, y0, x1, y1 } : null };
+  g = { sig, w, cells, count, dim, edge, bbox: count ? { x0, y0, x1, y1 } : null };
   cacheByHighlight.set(h, g);
   return g;
 }
@@ -105,7 +131,7 @@ export function drawHighlight(ctx, cam, w, state, opts = {}) {
     for (const id of h.cities) {
       const city = byId ? byId.get(id) : null;
       if (!city || city.cell == null) continue;
-      if (h.dimOthers && !g.mask[city.cell]) {
+      if (h.dimOthers && !g.cells.has(city.cell)) {
         // Lift the city's own hex out of the dimming.
         hexPath(ctx, w.grid, city.cell, 1);
         ctx.fillStyle = "rgba(255,240,200,.08)";
@@ -115,7 +141,12 @@ export function drawHighlight(ctx, cam, w, state, opts = {}) {
     }
   }
   if (h.resources && h.resources.size && opts.items) {
-    const placed = new Map((opts.resourceHits || []).map((p) => [p.item, p]));
+    const hits = opts.resourceHits;
+    let placed = hits ? resourceHitMapCache.get(hits) : null;
+    if (!placed) {
+      placed = new Map((hits || []).map((p) => [p.item, p]));
+      if (hits) resourceHitMapCache.set(hits, placed);
+    }
     for (const idx of h.resources) {
       const it = opts.items[idx];
       if (!it) continue;

@@ -8,7 +8,36 @@ const el = () => document.getElementById("tooltip");
 
 const nameOf = (table, id) => table.find((t) => t.id === id)?.name;
 
+// Cache the last shown content and measured box so pointermove inside the same cell/mark only updates
+// left/top (avoiding innerHTML rewrites, MutationObserver churn and forced synchronous layout at 60-120 Hz).
+let lastKind = null;
+let lastCell = null; // {w, i, lens, showResources}
+let lastCity = null;
+let lastHtml = null;
+let boxW = 0, boxH = 0, boxChildren = -1, boxTextLen = -1;
+if (typeof window !== "undefined") {
+  window.addEventListener("resize", () => { boxW = 0; boxH = 0; });
+}
+
+function position(t, mx, my) {
+  // Re-measure if unmeasured or if an observer (e.g. City View) mutated the tooltip's DOM after show().
+  if (!boxW || t.childNodes.length !== boxChildren || t.textContent.length !== boxTextLen) {
+    const r = t.getBoundingClientRect();
+    boxW = r.width;
+    boxH = r.height;
+    boxChildren = t.childNodes.length;
+    boxTextLen = t.textContent.length;
+  }
+  t.style.left = Math.max(4, Math.min(window.innerWidth - boxW - 8, mx + 16)) + "px";
+  t.style.top = Math.max(4, Math.min(window.innerHeight - boxH - 8, my + 16)) + "px";
+}
+
 export function showCellTooltip(mx, my, w, i, lens, showResources = true) {
+  const t = el();
+  if (!t.hidden && lastKind === "cell" && lastCell && lastCell.w === w && lastCell.i === i && lastCell.lens === lens && lastCell.showResources === showResources && lastCell.resources === w.resources) {
+    position(t, mx, my);
+    return;
+  }
   const raw = w.raw;
   const lines = [];
   const city = w.cityByCell.get(i);
@@ -36,16 +65,19 @@ export function showCellTooltip(mx, my, w, i, lens, showResources = true) {
   const res = showResources && w.resources?.byCell.get(i);
   if (res) {
     for (const it of res.slice(0, 4)) {
-      const t = w.resources.typeById.get(it.type);
+      const ty = w.resources.typeById.get(it.type);
       const num = it.value == null ? "" : Math.abs(it.value) < 1e6 ? int(it.value) : compact(it.value);
-      const val = num ? ` · ${num}${t.unit ? " " + esc(t.unit) : ""}` : "";
-      const kind = it.name && it.name !== t.name ? ` <span class="muted">· ${esc(t.name)}${val}</span>` : `<span class="muted">${val}</span>`;
-      lines.push(`<span style="color:${esc(t.color || "#efe4c6")}">${glyph(t, 13)}</span> ${esc(it.name || t.name)}${kind}`);
+      const val = num ? ` · ${num}${ty.unit ? " " + esc(ty.unit) : ""}` : "";
+      const kind = it.name && it.name !== ty.name ? ` <span class="muted">· ${esc(ty.name)}${val}</span>` : `<span class="muted">${val}</span>`;
+      lines.push(`<span style="color:${esc(ty.color || "#efe4c6")}">${glyph(ty, 13)}</span> ${esc(it.name || ty.name)}${kind}`);
     }
     if (res.length > 4) lines.push(`<span class="muted">+${res.length - 4} more</span>`);
   }
   if (city) lines.push(`<span class="muted">Click to open the city</span>`);
   else if (o >= 0) lines.push(`<span class="muted">Click to open ${esc(raw.states[o].name)}</span>`);
+  lastKind = "cell";
+  lastCell = { w, i, lens, showResources, resources: w.resources };
+  lastCity = null;
   show(mx, my, lines.join("<br>"));
 }
 
@@ -56,22 +88,42 @@ export function showCellTooltip(mx, my, w, i, lens, showResources = true) {
 export function showHtmlTooltip(mx, my, content) {
   if (content == null || content === "") return hideTooltip();
   const html = typeof content === "string" ? content : esc(content.text ?? "");
+  lastKind = "html";
+  lastCell = null;
+  lastCity = null;
   show(mx, my, html);
 }
 
 export function showCityTooltip(mx, my, city) {
+  const t = el();
+  if (!t.hidden && lastKind === "city" && lastCity === city) {
+    position(t, mx, my);
+    return;
+  }
+  lastKind = "city";
+  lastCity = city;
+  lastCell = null;
   show(mx, my, `<b>${esc(city.full)}</b><br><span class="muted">Click to open the city</span>`);
 }
 
 function show(mx, my, html) {
   const t = el();
-  t.innerHTML = html;
-  t.hidden = false;
-  const r = t.getBoundingClientRect();
-  t.style.left = Math.max(4, Math.min(window.innerWidth - r.width - 8, mx + 16)) + "px";
-  t.style.top = Math.max(4, Math.min(window.innerHeight - r.height - 8, my + 16)) + "px";
+  if (t.hidden || html !== lastHtml) {
+    t.innerHTML = html;
+    t.hidden = false;
+    lastHtml = html;
+    boxW = 0;
+  }
+  position(t, mx, my);
 }
 
 export function hideTooltip() {
-  el().hidden = true;
+  const t = el();
+  if (t.hidden && lastHtml === null) return;
+  t.hidden = true;
+  lastKind = null;
+  lastCell = null;
+  lastCity = null;
+  lastHtml = null;
+  boxW = 0;
 }

@@ -103,10 +103,11 @@ export function mount(ctx) {
       for (const r of counties.rows) if (fin(r.v.poverty) && fin(r.v.population)) { a += r.v.poverty * r.v.population; w += r.v.population; }
       return w ? a / w : null;
     })();
+    const povColor = colorScale({ type: "seq", domain: [0, 1], ramp: RAMPS.heat });
     povHist = histogram(pHost, {
       values: counties.rows.map((r) => ({ key: r.key, v: r.v.poverty, w: r.v.population })), bins: 30, domain: [0, 0.45], height: 120,
       fmt: (v) => fmtShort("pct", v), unitLabel: canada ? "census divisions" : "counties", label: canada ? "Histogram of census division low-income rates" : "Histogram of county poverty rates",
-      colorOf: (_, t) => colorScale({ type: "seq", domain: [0, 1], ramp: RAMPS.heat })(t),
+      colorOf: (_, t) => povColor(t),
       markers: fin(usPov) ? [{ v: usPov, label: `${canada ? "Canada" : "Lower 48"} ${pct(usPov)}` }] : [],
       onHover: (bin) => link.hover(bin ? rowsHighlight(counties, bin.keys.map((k) => counties.byKey.get(k)), { dim: true }) : null),
     });

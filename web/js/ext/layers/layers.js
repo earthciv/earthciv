@@ -88,7 +88,7 @@ export function makeLayers(model, on, { tips = {}, app = null } = {}) {
     id: "hubs", z: 65, minRpx: 10,
     visible: () => !!on.hubs && (m.ports.length > 0 || m.airports.length > 0),
     sig: ver,
-    list: (Rpx) => visibleSites(m, "hubs", [...m.ports, ...m.airports], Rpx),
+    list: (Rpx) => visibleSites(m, "hubs", m.hubs, Rpx),
     draw(ctx, vp, w, o) {
       drawSites(ctx, vp, o, hubs.list(o.Rpx), (it, size) => {
         if (it.kind === "port") drawPort(ctx, it.x, it.y, size, { tier: it.tier, type: it.data.type });
