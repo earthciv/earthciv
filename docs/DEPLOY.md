@@ -1,7 +1,8 @@
 # Deploying
 
-The site is static. `python -m pipeline package` writes it to `dist/usaciv/`: everything in `web/` except the dev
-pages, plus `usaciv-source.zip`, a copy of this project that the in-app help links to.
+The site is static. Packaging writes `dist/usaciv/` with the site, generated social preview pages and images,
+and `usaciv-source.zip`, a copy of the project linked from the in-app help. Preview pages expose their city or
+lens in the URL path so social crawlers can read the card from the original HTML.
 
 Production is the Cloudflare Pages project `usaciv-canada`, created by direct upload. It answers at
 https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org.
@@ -24,7 +25,8 @@ git status --short web/data/ca                        # empty unless the data wa
 ## Deploy
 
 ```sh
-uv run python -m pipeline package
+uv run --group harness python -m playwright install chromium-headless-shell  # once
+uv run --group harness python -m pipeline package
 npx --yes wrangler@4.168.0 pages deploy dist/usaciv --project-name=usaciv-canada --branch=main
 ```
 
@@ -36,5 +38,7 @@ deployment records the commit.
 - https://earthciv.org/ opens on the world map. Clicking a country opens its card; the Play buttons open the United
   States (`?country=us`) and Canada (`?country=ca`), and the World button in each edition brings the world map back.
 - An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
+- **Share → Copy link** on a city or a lens creates a `/share/` URL. Its HTML has the matching title and preview
+  image, and opening it in a browser restores the map view.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
 - The browser console shows no errors on either edition.

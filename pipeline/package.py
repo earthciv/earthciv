@@ -2,8 +2,7 @@
 site, ready to upload as /usaciv/. (dist/usaciv/ is the same folder unzipped, kept for local testing.)
 
 The site gets a copy of the source code as usaciv-source.zip, linked from the in-app help, so anyone can download,
-run and remix it. Both zips are deterministic (sorted entries, fixed timestamps), so rebuilding from unchanged files
-gives byte-identical archives.
+run and remix it. Archive entries are sorted and given fixed timestamps. Social cards are rendered with headless Chromium.
 """
 
 from __future__ import annotations
@@ -11,8 +10,10 @@ from __future__ import annotations
 import shutil
 import zipfile
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from .core.paths import ROOT, WEB
+from .share_pages import build_share_pages
 
 NAME = "usaciv"
 DIST = ROOT / "dist"
@@ -58,30 +59,38 @@ def cmd_package() -> None:
     missing = [p for p in ("data/us/cities.json", "data/us/world.json", "index.html") if not (WEB / p).exists()]
     if missing:
         raise SystemExit(f"web/ is incomplete ({', '.join(missing)} missing): run `uv run python -m pipeline all` first")
-    if SITE.exists():
-        shutil.rmtree(SITE)
-    SITE.mkdir(parents=True)
+    DIST.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=DIST) as temp:
+        stage = Path(temp) / NAME
+        stage.mkdir()
+        share_count = build_share_pages(WEB, stage)
 
-    # 1. The site: web/ without the dev pages.
-    n_site = 0
-    for f in _files(WEB, ["."]):
-        rel = f.relative_to(WEB)
-        if rel.parts[0] in SITE_SKIP_DIRS:
-            continue
-        dst = SITE / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(f, dst)
-        n_site += 1
+        # 1. The site: web/ without the dev pages, plus generated social previews.
+        for f in _files(WEB, ["."]):
+            rel = f.relative_to(WEB)
+            if rel.parts[0] in SITE_SKIP_DIRS or (stage / rel).exists():
+                continue
+            dst = stage / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, dst)
+        index = stage / "index.html"
+        page = index.read_text(encoding="utf-8").replace("<html ", "<html data-share-pages ", 1)
+        index.write_text(page, encoding="utf-8")
+        n_site = sum(1 for _ in _files(stage, ["."]))
 
-    # 2. The source code, served next to the site.
-    src_files = list(_files(ROOT, SOURCE_ITEMS))
-    src_size = _zip(SITE / SOURCE_ZIP, src_files, ROOT, NAME)
+        # 2. The source code, served next to the site.
+        src_files = list(_files(ROOT, SOURCE_ITEMS))
+        src_size = _zip(stage / SOURCE_ZIP, src_files, ROOT, NAME)
 
-    # 3. The whole site as one zip, for uploading.
-    bundle = ROOT / f"{NAME}.zip"
-    site_size = _zip(bundle, _files(SITE, ["."]), SITE, NAME)
+        # 3. The whole site as one zip, for uploading.
+        bundle = ROOT / f"{NAME}.zip"
+        site_size = _zip(bundle, _files(stage, ["."]), stage, NAME)
+        if SITE.exists():
+            shutil.rmtree(SITE)
+        stage.rename(SITE)
     (DIST / f"{NAME}-site.zip").unlink(missing_ok=True)  # older layout
 
     mb = lambda b: f"{b / 1e6:.1f} MB"
     print(f"{bundle.name}  ({mb(site_size)})  ← upload this: it unzips to {NAME}/ ({n_site} site files + {SOURCE_ZIP})")
+    print(f"  {share_count} share pages with preview images")
     print(f"  {SOURCE_ZIP}: {len(src_files)} files, {mb(src_size)}")
