@@ -1,6 +1,6 @@
 // Which edition the page shows. `?country=ca` or `?country=us` picks one; without it, the page's default edition
-// applies: index.html declares it as <html data-default-country="…"> (this deployment opens on Canada). Pages that
-// declare none, such as the dev tools, and anything running outside a browser, use the U.S. edition.
+// applies: index.html declares it as <html data-default-country="…"> (this deployment opens on the United States). Pages
+// that declare none, such as the dev tools, and anything running outside a browser, use the U.S. edition.
 const COUNTRIES = ["us", "ca"];
 const declared = typeof document !== "undefined" ? document.documentElement?.dataset?.defaultCountry : null;
 export const DEFAULT_COUNTRY = COUNTRIES.includes(declared) ? declared : "us";

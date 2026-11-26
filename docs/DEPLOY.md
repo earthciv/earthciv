@@ -33,6 +33,6 @@ deployment records the commit.
 
 ## Checks after a deploy
 
-- https://earthciv.org/ opens on Canada, and the country menu switches to the United States (`?country=us`).
+- https://earthciv.org/ opens on the United States, and the country switcher switches to Canada (`?country=ca`) or opens the World Atlas.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
 - The browser console shows no errors on either edition.
