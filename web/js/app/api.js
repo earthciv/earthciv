@@ -11,7 +11,7 @@
 import { parseHash, formatHash } from "./urlstate.js";
 import { icon } from "../ui/icon.js";
 import { hasIcon } from "../icons.js";
-import { esc } from "../format.js";
+import { esc } from "./escape.js";
 
 // --- events ------------------------------------------------------------------------------------------------------
 

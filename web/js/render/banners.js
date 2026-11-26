@@ -18,7 +18,7 @@
 //
 // Each banner is painted once into an offscreen sprite (per city, layout, selection and device scale) and then
 // blitted, so panning costs one drawImage per banner.
-import { canada } from "../app/country.js";
+import { VIEW } from "../app/text.js";
 import { css, luminance, shade } from "../color.js";
 import { drawIcon, hasIcon } from "../icons.js";
 import { compact, popShort } from "../ext/cityView/fmt.js"; // format.js plus a 1000K → 1.0M roll-over fix
@@ -561,9 +561,10 @@ function badgeFor(badges, city) {
 function popFloor(Rpx) {
   return FLOOR_SCALE * (Rpx < 5 ? 2e6 : Rpx < 8 ? 7e5 : Rpx < 14 ? 2.5e5 : Rpx < 24 ? 1.5e5 : Rpx < 40 ? 1e5 : Rpx < 70 ? 4e4 : 0);
 }
-// Canada has 12% of the U.S. population (41.7M against 342M in 2025), so its floors are the U.S. floors scaled by that
-// share: a city's banner appears at the zoom where a U.S. city of the same share of its nation would.
-const FLOOR_SCALE = canada ? 0.12 : 1;
+// The floors are the U.S. edition's. Another edition scales them by its share of the U.S. population (manifest
+// view.banner_floor_scale; Canada: 0.12, 41.7M against 342M in 2025), so a city's banner appears at the zoom where a
+// U.S. city of the same share of its nation would.
+const FLOOR_SCALE = VIEW.banner_floor_scale ?? 1;
 
 /**
  * Draw the banners and return the hit list: [{x, y, w, h, city, specialty}] in screen css px.

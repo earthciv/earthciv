@@ -2,10 +2,10 @@
 
   fetch   [source ...]   download raw files (cached; --force to re-download)
   process [source ...]   raw → data/interim/<source>.json
-  build   [builder ...]  interim → web/data/*.json, in dependency order. Up-to-date
+  build   [builder ...]  interim → web/data/us/*.json, in dependency order. Up-to-date
                          builders are skipped (--force rebuilds); --deps also runs
                          the upstream builders of the named ones
-  check                  validate web/data/*.json and print a data-quality report
+  check                  validate web/data/us/*.json and print a data-quality report
   all                    fetch + process + build everything, then check
   list                   show sources and builders
   serve                  serve web/ on http://127.0.0.1:8765
@@ -79,7 +79,7 @@ def cmd_process(names):
 
 
 def output_path(name: str) -> Path:
-    """Where a REQUIRES/PRODUCES name lives: "_x" and sources → data/interim, "x.json" → web/data."""
+    """Where a REQUIRES/PRODUCES name lives: "_x" and sources → data/interim, "x.json" → web/data/us."""
     if name.startswith("_") or not name.endswith(".json"):
         return INTERIM / f"{name}.json"
     return WEB_DATA / name

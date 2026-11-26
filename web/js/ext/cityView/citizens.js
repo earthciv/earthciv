@@ -10,19 +10,30 @@
 import { esc, int, pct } from "../../format.js";
 import { compact } from "./fmt.js";
 import { CATEGORY_COLOR, figureCanvas, loadPainter } from "./figures.js";
-import { canada } from "../../app/country.js";
+import { TEXT } from "../../app/edition.js";
+import { NATION, defaults, rich, txt } from "../../app/text.js";
 
-// The country compared against ("US: 1 in 14", "Canada: 1 in 14") and its share.
-const NAT = canada ? "Canada" : "US";
-const NAT_IN = canada ? "in Canada" : "in the U.S.";
-const NAT_SHARE = canada ? "Canada's share" : "the U.S. share";
+// The nation compared against ("US: 1 in 14", "Canada: 1 in 14") and its share (manifest `nation`).
+const NAT = NATION.vs;
+const NAT_IN = NATION.in;
+const NAT_SHARE = NATION.the_poss + " share";
+
+defaults({
+  "citizens.origins_sub": "where residents were born",
+  "citizens.none": "No citizen tables were published for {name}, so there are no citizen figures here.",
+  "citizens.row_missing": "This table was not published for {name}, so this row is left out.",
+  "citizens.median_age": "Median age",
+  "citizens.degree": "Adults 25+ with a bachelor's degree or higher",
+  "citizens.born_abroad": "Residents born in another country",
+  "citizens.note": "{vintage}. Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share.",
+});
 
 const ROWS = [
   { id: "workforce", title: "Workforce", sub: "by occupation", noun: ["worker", "workers"], n: null },
   { id: "age", title: "Generations", sub: "by age", noun: ["resident", "residents"], n: null },
   { id: "commute", title: "Commute", sub: "how workers get to work", noun: ["worker", "workers"], n: null },
   { id: "education", title: "Education", sub: "adults 25 and over", noun: ["adult", "adults 25+"], n: 10 },
-  { id: "nativity", title: "Origins", sub: canada ? "born in Canada or abroad, and their parents" : "where residents were born", noun: ["resident", "residents"], n: 10 },
+  { id: "nativity", title: "Origins", sub: txt("citizens.origins_sub"), noun: ["resident", "residents"], n: 10 },
 ];
 
 // [singular verb phrase, plural verb phrase] per category, for "1 in 7 workers in X is …" / "7 in 10 … are …".
@@ -80,27 +91,11 @@ const SHORT = {
 // The Canadian edition's categories (citizens.json from the 2021 Census): NOC 2021 groups its managers with business
 // and finance professionals and its farm work with mining; education follows Canadian certificates; origins are the
 // census generation status.
-if (canada) {
-  Object.assign(PHRASE.workforce, {
-    executive: ["is a manager or business and finance professional", "are managers or business and finance professionals"],
-    farmer: ["farms, fishes, logs or mines", "farm, fish, log or mine"],
-    builder: ["works in a skilled trade (building, installing or repairing)", "work in skilled trades (building, installing or repairing)"],
-  });
-  Object.assign(PHRASE.education, {
-    less_than_hs: ["has no certificate, diploma or degree", "have no certificate, diploma or degree"],
-    high_school: ["finished high school but has no further certificate", "finished high school but have no further certificate"],
-    some_college: ["has a trades, college or CEGEP certificate (below a bachelor's)", "have a trades, college or CEGEP certificate (below a bachelor's)"],
-    graduate: ["has a master's, doctorate, medical degree or other degree above a bachelor's", "have a master's, doctorate, medical degree or other degree above a bachelor's"],
-  });
-  PHRASE.nativity = {
-    third_plus: ["was born in Canada to parents born in Canada", "were born in Canada to parents born in Canada"],
-    second: ["was born in Canada with a parent born abroad", "were born in Canada with a parent born abroad"],
-    first: ["was born outside Canada", "were born outside Canada"],
-  };
-  Object.assign(SHORT.workforce, { executive: "Managers & finance", farmer: "Farm & resources", builder: "Trades" });
-  Object.assign(SHORT.education, { less_than_hs: "No certificate", some_college: "Trades & college" });
-  SHORT.nativity = { third_plus: "3rd generation+", second: "2nd generation", first: "Born abroad" };
-}
+// An edition whose categories differ from the U.S. ones gives its own phrases and short labels in its text pack
+// ("citizens.phrases", "citizens.short"; Canada: NOC 2021 groups its managers with business and finance professionals
+// and its farm work with mining, education follows Canadian certificates, origins are the census generation status).
+for (const [row, v] of Object.entries(TEXT["citizens.phrases"] || {})) PHRASE[row] = { ...(PHRASE[row] || {}), ...v };
+for (const [row, v] of Object.entries(TEXT["citizens.short"] || {})) SHORT[row] = { ...(SHORT[row] || {}), ...v };
 
 /** Largest-remainder rounding of counts into n figures (the pipeline's method, for rows without figures). */
 export function largestRemainder(counts, keys, n) {
@@ -158,8 +153,7 @@ export function citizensHtml(m, data) {
   if (!data || !data.cities) return `<p class="muted cv-note">The citizen mix is not available.</p>`;
   const row0 = data.cities[c.id];
   if (!row0) {
-    return canada ? `<p class="muted cv-note">Statistics Canada published none of the citizen tables for ${esc(c.name)}, so there are no citizen figures here.</p>`
-      : `<p class="muted cv-note">Census published none of the citizen tables for ${esc(c.name)} in the ${esc(data.vintage || "ACS 1-year")} release (it leaves out small areas), so there are no citizen figures here.</p>`;
+    return `<p class="muted cv-note">${rich("citizens.none", { name: c.name, vintage: data.vintage || "" })}</p>`;
   }
   const nat = data.national || {};
   const groups = data.groups || {};
@@ -184,7 +178,7 @@ export function citizensHtml(m, data) {
     const head = `<div class="cv-cz-h"><b>${esc(rd.title)}</b><span>${esc(rd.sub)}</span></div>`;
     if (!row) {
       return `<div class="cv-cz-row missing" data-row="${rd.id}">${head}
-        <p class="muted cv-note">${canada ? "Statistics Canada did not publish" : "Census did not publish"} this table for ${esc(c.name)}${canada ? "" : ` in the ${esc(data.vintage || "ACS 1-year")} release`}, so this row is left out.</p></div>`;
+        <p class="muted cv-note">${rich("citizens.row_missing", { name: c.name, vintage: data.vintage || "" })}</p></div>`;
     }
     const { keys, n, figs, natFigs } = rowModel(rd, row, nat[rd.id], groups, data.figures || {});
     if (!figs) return `<div class="cv-cz-row missing" data-row="${rd.id}">${head}<p class="muted cv-note">No counts for this row.</p></div>`;
@@ -204,10 +198,10 @@ export function citizensHtml(m, data) {
       const sh = row.shares?.[k], us = nat[rd.id]?.shares?.[k];
       const sp = specs.get(`${rd.id}|${k}`);
       const chev = sp ? `<em class="${sp.ratio >= 1 ? "up" : "down"}" title="${sp.ratio.toFixed(1)}× ${NAT_SHARE}">${sp.ratio >= 1 ? "▲" : "▼"}</em>` : "";
-      return `<span class="cv-cz-k${figs[k] ? "" : " zero"}" data-k="${esc(k)}" title="${esc(label[rd.id]?.[k] || k)}: ${sh != null ? pct(sh, 1) : "–"}${us != null ? ` (US ${pct(us, 1)})` : ""}${figs[k] ? "" : ". Rounds to no figure."}"><i style="background:${esc(CATEGORY_COLOR[rd.id]?.[k] || "#888")}"></i>${esc(SHORT[rd.id]?.[k] || k)} <small>${sh != null ? pct(sh, 0) : "–"}</small>${chev}</span>`;
+      return `<span class="cv-cz-k${figs[k] ? "" : " zero"}" data-k="${esc(k)}" title="${esc(label[rd.id]?.[k] || k)}: ${sh != null ? pct(sh, 1) : "–"}${us != null ? ` (${esc(NAT)} ${pct(us, 1)})` : ""}${figs[k] ? "" : ". Rounds to no figure."}"><i style="background:${esc(CATEGORY_COLOR[rd.id]?.[k] || "#888")}"></i>${esc(SHORT[rd.id]?.[k] || k)} <small>${sh != null ? pct(sh, 0) : "–"}</small>${chev}</span>`;
     }).join("");
     // U.S. comparison bar (shares), aligned with the figures' order.
-    const usBar = nat[rd.id]?.shares ? `<div class="cv-cz-us" title="${canada ? "Canada's" : "U.S."} mix, same order"><span>${canada ? "CA" : "US"}</span><div>${keys.map((k) => {
+    const usBar = nat[rd.id]?.shares ? `<div class="cv-cz-us" title="${esc(NATION.poss)} mix, same order"><span>${esc(NATION.code)}</span><div>${keys.map((k) => {
       const s = nat[rd.id].shares[k] || 0;
       return s > 0 ? `<i style="flex:${s};background:${esc(CATEGORY_COLOR[rd.id]?.[k] || "#888")}" title="${esc(SHORT[rd.id]?.[k] || k)}: ${pct(s, 1)} ${NAT_IN}."></i>` : "";
     }).join("")}</div></div>` : "";
@@ -225,16 +219,14 @@ export function citizensHtml(m, data) {
     ? `<p class="cv-warn">Micropolitan area: the 1-year survey's margins of error are large here, so read these figures as rough.</p>` : "";
   return `
     <div class="cv-cz-top">
-      ${chip(med, usMed, (v) => v.toFixed(1), "median age", canada ? "Median age (2021 Census, table 98-10-0020)" : "Median age (ACS B01002)")}
-      ${chip(ba, usBa, (v) => pct(v, 0), "have a degree", canada ? "Adults 25+ with a bachelor's degree or higher (2021 Census, table 98-10-0384)" : "Adults 25+ with a bachelor's degree or higher (ACS C15003)")}
-      ${chip(fb, usFb, (v) => pct(v, 0), "born abroad", canada ? "Residents born outside Canada (2021 Census generation status, table 98-10-0324)" : "Residents born in another country (ACS B05002)")}
+      ${chip(med, usMed, (v) => v.toFixed(1), "median age", txt("citizens.median_age"))}
+      ${chip(ba, usBa, (v) => pct(v, 0), "have a degree", txt("citizens.degree"))}
+      ${chip(fb, usFb, (v) => pct(v, 0), "born abroad", txt("citizens.born_abroad"))}
     </div>
     ${great}
     ${unreliable}
     <div class="cv-cz${row0.reliable === false ? " unreliable" : ""}">${rows}</div>
-    <p class="cv-note">${canada
-      ? `${esc(data.vintage || "2021 Census")}, tables 98-10-0449 (occupation, NOC 2021), 98-10-0020 (age), 98-10-0457 and 98-10-0455 (commute, work from home), 98-10-0384 (education) and 98-10-0324 (generation status). Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share. ▲▼ = at least 1.5× or at most 0.67× Canada's share. Commute counts workers, not all residents; the census week, in May 2021, fell during COVID-19 restrictions, when many worked from home.`
-      : `${esc(data.vintage || "ACS 1-year")}, tables C24010, B01001, C08301, C15003 and B05002. Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share. ▲▼ = at least 1.5× or at most 0.67× the U.S. share. Commute counts workers, not all residents.`}</p>`;
+    <p class="cv-note">${rich("citizens.note", { vintage: data.vintage || "" })}</p>`;
 }
 
 /** Paint the figure canvases and wire the read-outs. */

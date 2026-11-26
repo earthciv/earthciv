@@ -3,16 +3,25 @@ import { esc, fin, ratio } from "../core/util.js";
 import { pct, int, count3 } from "../core/fmt.js";
 import { shareBar, barList, donut, smallMultiples } from "../core/charts.js";
 import { createTable } from "../core/table.js";
-import { section, tiles, segmented, lensButton, sourcesHtml, topBy, frameBtn } from "../core/view.js";
+import { section, tiles, segmented, lensButton, editionSources, topBy, frameBtn } from "../core/view.js";
 import { LAND_KEYS, LAND_LABEL, LAND_COLOR, rowsHighlight } from "../core/data.js";
-import { canada, regionsName } from "../../../app/country.js";
+import { NATION, TERMS, defaults, hasText, rich, txt } from "../../../app/text.js";
+
+defaults({
+  "advisor.land.farmland_sub": "crops + pasture",
+  "advisor.land.cover_note": "Share of the land in each cover type, averaged over every hex. Hover a type to light up the hexes where it is the largest cover; click to keep them lit.",
+  "advisor.land.regions_title": "The regions' make-up",
+  "advisor.land.regions_note": "Each region's land by cover type. Sort by any cover; hover one to outline it, click to open it.",
+});
 
 // NRCan's land cover has no pasture class (its cropland includes hay and pasture), so the Canadian edition drops it.
-const KEYS = canada ? LAND_KEYS.filter((k) => k !== "pasture") : LAND_KEYS;
+// The cover types the map has (Canada's land cover has no pasture class): set when the view mounts.
+let KEYS = LAND_KEYS;
 
 const LENS_OF = { forest: "forest", crop: "farmland", pasture: "farmland", developed: "developed" };
 
 export function mount(ctx) {
+  KEYS = (ctx.app.w.raw.tables?.cover || []).some((c) => c.key === "pasture") ? LAND_KEYS : LAND_KEYS.filter((k) => k !== "pasture");
   const { app, data, el, link } = ctx;
   const w = app.w;
   const P = w.raw.pct;
@@ -45,14 +54,12 @@ export function mount(ctx) {
 
   el.insertAdjacentHTML("beforeend", tiles([
     { label: "Forest", value: pct(share.forest, 0), sub: "of the land", color: LAND_COLOR.forest },
-    { label: "Farmland", value: pct(share.crop + (share.pasture || 0), 0), sub: canada ? "cropland, incl. hay & pasture" : "crops + pasture", color: LAND_COLOR.crop },
+    { label: "Farmland", value: pct(share.crop + (share.pasture || 0), 0), sub: txt("advisor.land.farmland_sub"), color: LAND_COLOR.crop },
     { label: "Built-up", value: pct(share.developed, 1), sub: "developed land", color: LAND_COLOR.developed },
   ]));
 
   // --- composition ----------------------------------------------------------------------------------------------
-  const cBody = section(el, canada
-    ? { title: "What covers the country", kicker: "Canada", note: "Share of the land in each cover type (NRCan 2020 land cover, 7 samples per hex, averaged over every hex). Hover a type to light up the hexes where it is the largest cover; click to keep them lit." }
-    : { title: "What covers the country", kicker: "Lower 48", note: "Share of the land in each cover type (NLCD 2021, averaged over every hex). Hover a type to light up the hexes where it is the largest cover; click to keep them lit." });
+  const cBody = section(el, { title: "What covers the country", kicker: hasText("advisor.land.kicker") ? txt("advisor.land.kicker") : NATION.name, note: rich("advisor.land.cover_note") });
   let pinned = null;
   const parts = [...KEYS.map((k) => ({ key: k, label: LAND_LABEL[k], value: share[k], color: LAND_COLOR[k], text: pct(share[k]) })), { key: "other", label: "Other (barren rock, sand, ice)", value: other, color: "#6c6358", text: pct(other) }].sort((a, b) => (a.key === "other") - (b.key === "other") || b.value - a.value);
   const domHighlight = (k, dim = true) => (dominant.has(k) ? { cells: new Set(dominant.get(k)), dimOthers: dim, color: LAND_COLOR[k] } : null);
@@ -88,9 +95,7 @@ export function mount(ctx) {
   });
 
   // --- per state ------------------------------------------------------------------------------------------------
-  const sBody = section(el, canada
-    ? { title: "The provinces' make-up", note: "Each province's and territory's land by cover type. Sort by any cover; hover one to outline it, click to open it." }
-    : { title: "The states' make-up", note: "Each state's land by cover type. Sort by any cover; hover a state to outline it, click to open it." });
+  const sBody = section(el, { title: txt("advisor.land.regions_title"), note: rich("advisor.land.regions_note") });
   const stRows = states.rows.filter((r) => KEYS.some((k) => fin(r.v[`land_${k}`])));
   const comp = (r) => `<span class="adv-minibar">${KEYS.map((k) => {
     const v = r.v[`land_${k}`];
@@ -99,7 +104,7 @@ export function mount(ctx) {
   const domOf = (r) => KEYS.reduce((b, k) => ((r.v[`land_${k}`] ?? -1) > (r.v[`land_${b}`] ?? -1) ? k : b), KEYS[0]);
   let sortKey = "forest";
   const colsFor = (k) => [
-    { key: "name", label: canada ? "Province" : "State", align: "l", width: "minmax(0,1.1fr)", value: (r) => r.name, text: (r) => r.name },
+    { key: "name", label: TERMS.region.short, align: "l", width: "minmax(0,1.1fr)", value: (r) => r.name, text: (r) => r.name },
     { key: "comp", label: "Land", align: "l", width: "minmax(0,1.6fr)", value: (r) => r.v[`land_${k}`], html: comp, title: `Sort by ${LAND_LABEL[k].toLowerCase()}` },
     { key: "share", label: LAND_LABEL[k], value: (r) => r.v[`land_${k}`], html: (r) => `<span class="dot" style="background:${LAND_COLOR[k]}"></span>${pct(r.v[`land_${k}`], 0)}` },
     { key: "dom", label: "Largest", align: "l", width: "minmax(0,.9fr)", value: (r) => LAND_LABEL[domOf(r)], text: (r) => LAND_LABEL[domOf(r)] },
@@ -118,7 +123,7 @@ export function mount(ctx) {
   const gridHost = document.createElement("div");
   sBody.append(tableHost, gridHost);
   const table = createTable(tableHost, {
-    caption: canada ? "Land cover by province or territory" : "Land cover by state", rank: true, maxHeight: 320, rows: stRows, columns: colsFor(sortKey), sort: { key: "share", dir: "desc" },
+    caption: `Land cover by ${TERMS.region.one.toLowerCase()}`, rank: true, maxHeight: 320, rows: stRows, columns: colsFor(sortKey), sort: { key: "share", dir: "desc" },
     onHover: (r) => link.hover(r ? rowsHighlight(states, [r]) : null),
     onClick: (r) => states.focus(r),
   });
@@ -150,7 +155,7 @@ export function mount(ctx) {
   const fBody = section(el, { title: "Who works the land", note: `${esc(food?.description || "Workers in agriculture, forestry, fishing & hunting.")} Ranked by share of the employed.` });
   const fHost = document.createElement("div");
   let fLevel = "states";
-  segmented(fBody, { label: "Areas", value: fLevel, options: [{ value: "states", label: regionsName }, { value: "metros", label: "Metros" }], onChange: (v) => { fLevel = v; drawFood(); } });
+  segmented(fBody, { label: "Areas", value: fLevel, options: [{ value: "states", label: TERMS.region.many }, { value: "metros", label: "Metros" }], onChange: (v) => { fLevel = v; drawFood(); } });
   fBody.appendChild(fHost);
   function drawFood() {
     fHost.innerHTML = "";
@@ -166,15 +171,7 @@ export function mount(ctx) {
   }
   drawFood();
 
-  el.insertAdjacentHTML("beforeend", canada ? sourcesHtml(data, ["nrcan_cover", "statcan_census_areas"], [
-    "Land cover is NRCan's 2020 map, sampled from a 5 km image at 7 points per hex, so small features (a river valley's farms, a small town) blur into their surroundings.",
-    "NRCan has no pasture class: its cropland includes hay and pasture. Other covers the barren land, rock and ice of the north.",
-    "Farm workers are counted where they live (2021 Census) and include forestry and fishing.",
-  ]) : sourcesHtml(data, ["nlcd", "acs_1yr"], [
-    "Land cover is NLCD 2021 resampled to about 2 km, so small features (a river valley's farms, a small town) blur into their surroundings.",
-    "Grassland includes lawns and parks (NLCD developed open space); built-up counts only low to high-intensity development.",
-    "Farm workers are counted where they live (ACS) and include forestry and fishing.",
-  ]));
+  el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.land"));
 
   return {
     onMapHover(h) {

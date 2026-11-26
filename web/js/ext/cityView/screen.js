@@ -11,18 +11,40 @@ import { sparkline, meter, bar } from "./charts.js";
 import { popSeries, rankCount, resourceValue, LAND } from "./model.js";
 import { citizensHtml, mountCitizens } from "./citizens.js";
 import { badgeHtml, cityDistricts, districtsHtml } from "./districts.js";
-import { canada } from "../../app/country.js";
+import { declares, edition } from "../../app/edition.js";
+import { CURRENCY, LABEL_YEARS, NATION, TERMS, defaults, rich, txt } from "../../app/text.js";
 
-// The country's words: the U.S. edition's metro and micro areas, or Canada's CMAs and CAs (census metropolitan areas
-// and census agglomerations), compared with Canada's figures.
-const NAT = canada ? "Canada" : "US";
-const NAT_SHARE = canada ? "Canada's share" : "the U.S. share";
-const AREAS = canada ? "CMAs and CAs" : "metro and micro areas";
-// GDP per person divides by the population of the GDP's year in the Canadian edition (CMA GDP ends earlier).
+// The edition's words (manifest): its city areas (the U.S. edition's metro and micro areas, Canada's CMAs and CAs) and
+// the nation its figures are compared with.
+const NAT = NATION.vs;
+const NAT_SHARE = NATION.the_poss + " share";
+const AREAS = TERMS.area.areas;
+const RANKED = TERMS.area.ranked ?? TERMS.area.many;
+const AREA = TERMS.area.one;
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+// GDP per person divides by the population of the GDP's year where the row gives it (gdp_population; Canada's CMA GDP
+// ends earlier than its population estimates).
 const perPerson = (c) => {
-  const pop = canada ? c.gdp_population : c.population;
+  const pop = c.gdp_population ?? c.population;
   return c.gdp != null && pop ? c.gdp / pop : null;
 };
+
+defaults({
+  "cv.workforce_compare": "its {adj} share",
+  "cv.growth_source": "Population estimates",
+  "cv.population_note": "July 1 population estimates.",
+  "cv.rent": "Median rent / month",
+  "cv.no_gdp_industries": "No industry breakdown for this area.",
+  "cv.economy_note": "GDP in current {currency_words}, counted where the work is done.",
+  "cv.economy_note.no_gdp": "No GDP figure for this area.",
+  "cv.economy_note.estimated": "",
+  "cv.economy_note.undisclosed": "",
+  "cv.gdp_undisclosed": "The publisher withholds some figures to protect individual businesses: {industries}. This is the area's GDP minus every disclosed industry.",
+  "cv.gdp_estimated": "Includes an estimate where the publisher withholds a figure.",
+  "cv.workforce_note": "Employed residents by industry, counted where they live.",
+  "cv.resources_note": "Sites on the {area}'s hexes. Mapped sites only, not the {area}'s full capacity.",
+  "cv.foot": "Ranks are among all {count} {areas} on the map.",
+});
 
 const TABS = [
   ["citizens", "Citizens", "pop"],
@@ -70,12 +92,12 @@ function header(m) {
     : `<span class="chip">${esc(s.abbr)}</span>`)).join("");
   const g = Number.isFinite(c.growth) ? c.growth : null;
   const yrs = Array.isArray(c.growth_years) ? c.growth_years : null;
-  const growth = g == null ? "" : `<span class="cv-growth ${g >= 0 ? "good" : "bad"}" title="Population change ${yrs ? `${yrs[0]}–${yrs[1]}` : ""}, ${canada ? "Statistics Canada's July 1 population estimates. Canada" : "Census population estimates. U.S."}: ${signed(n.growth)}">${g >= 0 ? "▲" : "▼"} ${Math.abs(g * 100).toFixed(1)}%${yrs ? ` <small>since ${yrs[0]}</small>` : ""}</span>`;
+  const growth = g == null ? "" : `<span class="cv-growth ${g >= 0 ? "good" : "bad"}" title="Population change ${yrs ? `${yrs[0]}–${yrs[1]}` : ""}, ${esc(txt("cv.growth_source"))}. ${esc(NATION.short)}: ${signed(n.growth)}">${g >= 0 ? "▲" : "▼"} ${Math.abs(g * 100).toFixed(1)}%${yrs ? ` <small>since ${yrs[0]}</small>` : ""}</span>`;
   const perCap = perPerson(c);
   const r = c.ranks || {};
   const N = (k) => countOf(cities, k);
-  const kind = canada ? (c.metro ? "Census metropolitan area" : "Census agglomeration") : c.metro === false ? "Micropolitan area" : "Metropolitan area";
-  const popYear = canada && yrs ? ` ${yrs[1]}` : ""; // the Canadian edition labels each figure's year
+  const kind = c.metro === false ? TERMS.area.micro_long ?? "Micropolitan area" : TERMS.area.metro_long ?? "Metropolitan area";
+  const popYear = LABEL_YEARS && yrs ? ` ${yrs[1]}` : ""; // an edition that labels years names the population's
   return `
   <div class="sheet-grip cv-grip" aria-hidden="true"></div>
   <header class="cv-head" style="--sc:${col}">
@@ -120,25 +142,27 @@ function citizens(m) {
         <span class="sv"><b>${v == null ? "–" : fmt(v)}</b>${sub ? `<small>${sub}</small>` : ""}</span></div>
       ${meter(v, tick, max ?? Math.max(v || 0, us || 0) * 1.35, better)}
     </div>`;
-  // Employed residents: no U.S. figure to set beside a count, so the share of residents (and the U.S. share). The
-  // Canadian edition divides its 2021 Census count by the 2021 Census population, and labels each figure's year.
-  const residents = canada ? c.census_population ?? c.population : c.population;
-  const natResidents = canada ? n.census_population ?? n.population : n.population;
+  // Employed residents: no national figure to set beside a count, so the share of residents (and the nation's share).
+  // Census counts divide by the census population where the rows give it (census_population; Canada).
+  const residents = c.census_population ?? c.population;
+  const natResidents = n.census_population ?? n.population;
+  const census = m.nation.census_year ?? null, income = m.nation.income_year ?? null;
   const empShare = c.employed != null && residents > 0 ? c.employed / residents : null;
   const usEmpShare = n.employed != null && natResidents > 0 ? n.employed / natResidents : null;
   const empSub = empShare == null ? ""
     : `${pct(empShare)} of residents${usEmpShare != null ? ` · ${NAT} ${pct(usEmpShare)}` : ""}`;
-  const yr = (y) => (canada ? ` (${y})` : "");
-  // Canada: the Labour Force Survey rate where it is published (CMAs), else the 2021 Census rate beside Canada's.
-  const lfs = !canada || c.unemployment != null;
-  const unemp = lfs ? [c.unemployment, n.unemployment, `Unemployment${canada ? ` (${c.unemployment_year ?? ""})` : ""}`]
-    : [c.unemployment_census, n.unemployment_census, "Unemployment (2021 Census)"];
+  const yr = (y) => (LABEL_YEARS && y ? ` (${y})` : "");
+  // The survey's rate where it is published, else the census rate beside the nation's census rate (Canada's Labour Force
+  // Survey covers CMAs, not census agglomerations).
+  const lfs = c.unemployment != null || c.unemployment_census == null;
+  const unemp = lfs ? [c.unemployment, n.unemployment, `Unemployment${LABEL_YEARS ? ` (${c.unemployment_year ?? ""})` : ""}`]
+    : [c.unemployment_census, n.unemployment_census, `Unemployment (${census} Census)`];
   const multi = m.tiles.length > 1;
   const tilesNote = multi
-    ? `On the map each ${canada ? "city" : "metro"} hex shows <b>≈ residents</b> (${canada ? "census division" : "county"} population density × hex area, an estimate) and its
+    ? `On the map each ${esc(AREA)} hex shows <b>≈ residents</b> (${esc(TERMS.division.one)} population density × hex area, an estimate) and its
        <b>main land use</b> (share of the hex's land)${m.residentsSum > 0
         ? `. Together the ${m.tiles.length} hexes hold about ${compact(m.residentsSum)} people by that estimate` : ""}.`
-    : `This ${canada ? "city" : "metro"} fits inside one map hex (about ${compact(m.hexArea)} km²), shown with its city.`;
+    : `This ${esc(AREA)} fits inside one map hex (about ${compact(m.hexArea)} km²), shown with its city.`;
   return `
   <section class="cv-sec" id="cv-citizens" data-sec="citizens" aria-labelledby="cv-h-citizens">
     <h3 id="cv-h-citizens">${icon("pop", "👥", { size: 15 })}Citizens</h3>
@@ -148,19 +172,18 @@ function citizens(m) {
       <div class="cv-card-h"><span>Population ${series.length ? `${series[0].year}–${series.at(-1).year}` : ""}</span>${
         ch != null ? `<span class="${ch >= 0 ? "good" : "bad"}">${signed(ch)}</span>` : ""}</div>
       ${sparkline(series, { fmt: (v) => popShort(v), title: `Population of ${c.name} by year` })}
-      <p class="cv-note">${canada ? "Statistics Canada's July 1 population estimates, on 2021 Census boundaries."
-        : "Census population estimates (July 1, today's metro borders). They differ slightly from the ACS count above."}</p>
+      <p class="cv-note">${esc(txt("cv.population_note"))}</p>
     </div>
     <div class="cv-stats">
-      ${row("pop", "👥", `Employed residents${yr(2021)}`, c.employed, null, int, null, residents, empSub, usEmpShare != null ? usEmpShare * residents : null)}
+      ${row("pop", "👥", `Employed residents${yr(census)}`, c.employed, null, int, null, residents, empSub, usEmpShare != null ? usEmpShare * residents : null)}
       ${row("unemployment", "😐", unemp[2], unemp[0], unemp[1], (x) => pct(x), "low")}
-      ${row("l-income", "💵", `Median household income${yr(2020)}`, c.median_income, n.median_income, dollars, "high")}
-      ${row("l-homeownership", "🔑", canada ? "Median rent incl. utilities / month (2021)" : "Median rent / month", c.median_rent, n.median_rent, dollars, null)}
-      ${row("l-home", "🏠", `Median home value${yr(2021)}`, c.home_value, n.home_value, dollars, null)}
-      ${row(null, "⚖️", `Rent burden (rent ÷ income)${yr(2021)}`, c.rent_burden, n.rent_burden, (x) => pct(x), "low")}
+      ${row("l-income", "💵", `Median household income${yr(income)}`, c.median_income, n.median_income, dollars, "high")}
+      ${row("l-homeownership", "🔑", `${txt("cv.rent")}${yr(census)}`, c.median_rent, n.median_rent, dollars, null)}
+      ${row("l-home", "🏠", `Median home value${yr(census)}`, c.home_value, n.home_value, dollars, null)}
+      ${row(null, "⚖️", `Rent burden (rent ÷ income)${yr(census)}`, c.rent_burden, n.rent_burden, (x) => pct(x), "low")}
     </div>
     <div class="cv-legend-tiles">${tileLegend(m)}<p>${tilesNote}</p></div>
-    ${canada ? "" /* CMAs and CAs are built from municipalities, not census divisions */ : `<h4 class="cv-h4">Member counties <span class="muted">(${(c.counties || []).length})</span></h4>
+    ${!Array.isArray(c.counties) ? "" /* areas not built from counties (Canada's CMAs and CAs: municipalities) */ : `<h4 class="cv-h4">Member counties <span class="muted">(${(c.counties || []).length})</span></h4>
     <div class="cv-counties" data-counties><p class="muted cv-note">Loading counties…</p></div>`}
   </section>`;
 }
@@ -208,9 +231,9 @@ function economy(m) {
   const r = c.ranks || {};
   const cities = m.cityList;
   const perCap = perPerson(c);
-  // The Canadian edition compares with Canada's GDP only in the same year (CMA GDP ends earlier than Canada's).
-  const sameYear = !canada || (c.gdp_year != null && c.gdp_year === n.gdp_year);
-  const usPerCap = sameYear && n.gdp && n.population ? n.gdp / (canada ? n.gdp_population ?? n.population : n.population) : null;
+  // Compared with the nation's GDP only in the same year (Canada's CMA GDP ends earlier than Canada's).
+  const sameYear = c.gdp_year != null && c.gdp_year === n.gdp_year;
+  const usPerCap = sameYear && n.gdp && n.population ? n.gdp / (n.gdp_population ?? n.population) : null;
   const yields = nat.yields.map((y) => {
     const v = c.yields?.[y.key];
     const rk = r[y.key];
@@ -222,13 +245,13 @@ function economy(m) {
   const gi = m.gdpInds;
   const maxShare = gi.length ? Math.max(...gi.map((d) => Math.max(d.share, d.natShare))) : 1;
   const gdpRow = (d) => d.undisclosed
-    ? `<div class="cv-ind und" title="BEA withholds some county figures to protect individual businesses: ${esc(d.missing.map((k) => nat.industries?.[k] || k).join(", ") || "several industries")}. This is the metro's GDP minus every disclosed industry.">
+    ? `<div class="cv-ind und" title="${esc(txt("cv.gdp_undisclosed", { industries: d.missing.map((k) => nat.industries?.[k] || k).join(", ") || "several industries" }))}">
       <span class="cv-ind-ic" style="--bg:${esc(d.color)}">${icon(d.icon, "?", { size: 13 })}</span>
       <span class="cv-ind-n">${esc(d.short)}</span>
       <span class="cv-ind-v">${money(d.value)} <small>${pct(d.share, 0)}</small></span>
       ${bar(d.share / maxShare, "#7c8494", 0)}
     </div>`
-    : `<div class="cv-ind" title="${esc(d.label)}: ${money(d.value)} (${pct(d.share)} of the metro's GDP; U.S. ${pct(d.natShare)})${d.estimated ? ". Includes an estimate for small counties whose figure BEA withholds." : ""}">
+    : `<div class="cv-ind" title="${esc(d.label)}: ${money(d.value)} (${pct(d.share)} of the ${esc(AREA)}'s GDP; ${esc(NATION.short)} ${pct(d.natShare)})${d.estimated ? `. ${esc(txt("cv.gdp_estimated"))}` : ""}">
       <span class="cv-ind-ic" style="--bg:${esc(d.color)}">${icon(d.icon, "•", { size: 13 })}</span>
       <span class="cv-ind-n">${esc(d.short)}${lqBadge(d.lq)}</span>
       <span class="cv-ind-v">${d.estimated ? "≈" : ""}${money(d.value)} <small>${pct(d.share, 0)}</small></span>
@@ -242,22 +265,20 @@ function economy(m) {
       <div><span class="lbl">GDP per person</span><b>${money(perCap)}</b>${
         usPerCap ? `<small class="${perCap >= usPerCap ? "good" : "bad"}">${NAT} ${money(usPerCap)}</small>` : ""}</div>
       ${sameYear
-        ? `<div><span class="lbl">Share of ${canada ? "Canada's" : "U.S."} GDP</span><b>${c.gdp != null && n.gdp ? pct(c.gdp / n.gdp, 2) : "–"}</b><small>${pct(c.population / n.population, 2)} of people</small></div>`
-        : `<div><span class="lbl">Share of Canada's people</span><b>${pct(c.population / n.population, 2)}</b><small>${esc(String(c.growth_years?.[1] ?? ""))}</small></div>`}
+        ? `<div><span class="lbl">Share of ${esc(NATION.poss)} GDP</span><b>${c.gdp != null && n.gdp ? pct(c.gdp / n.gdp, 2) : "–"}</b><small>${pct(c.population / n.population, 2)} of people</small></div>`
+        : `<div><span class="lbl">Share of ${esc(NATION.poss)} people</span><b>${pct(c.population / n.population, 2)}</b><small>${esc(String(c.growth_years?.[1] ?? ""))}</small></div>`}
     </div>
-    <h4 class="cv-h4">Yields <span class="muted">rank among ${canada ? AREAS : "metros"}</span></h4>
+    <h4 class="cv-h4">Yields <span class="muted">rank among ${esc(RANKED)}</span></h4>
     <div class="cv-yields">${yields}</div>
-    <h4 class="cv-h4">GDP by industry <span class="muted">tick = ${canada ? "Canada's" : "U.S."} share</span></h4>
+    <h4 class="cv-h4">GDP by industry <span class="muted">tick = ${esc(NATION.poss)} share</span></h4>
     ${gi.length ? `<div class="cv-inds">${gi.slice(0, 8).map(gdpRow).join("")}</div>
       ${gi.length > 8 ? `<details class="cv-more"><summary>All ${gi.length} industries</summary><div class="cv-inds">${gi.slice(8).map(gdpRow).join("")}</div></details>` : ""}`
-      : `<p class="muted cv-note">${canada ? "Statistics Canada publishes city GDP as a total, without an industry breakdown. Workforce shows the industries residents work in." : "No industry breakdown for this metro."}</p>`}
-    <p class="cv-note">${canada
-      ? c.gdp != null
-        ? `Statistics Canada GDP at basic prices, ${esc(String(c.gdp_year))} (the latest year it publishes for CMAs), current Canadian dollars, counted where the work is done. Per person divides by the July 1, ${esc(String(c.gdp_year))} population.`
-        : "Statistics Canada publishes GDP for census metropolitan areas only, not for census agglomerations."
-      : `${esc(nat.gdp_vintage || "BEA GDP by county")}, current dollars, counted where the work is done; shares are of the metro's total GDP. ×N = the industry's share of GDP compared with its share of U.S. GDP.${
-      gi.some((d) => d.estimated) ? " ≈ includes an estimate where BEA withholds a small county's figure (its sector total, split in U.S. proportions)." : ""}${
-      gi.some((d) => d.undisclosed) ? " Undisclosed = GDP that BEA withholds for confidentiality." : ""}`}</p>
+      : `<p class="muted cv-note">${esc(txt("cv.no_gdp_industries"))}</p>`}
+    <p class="cv-note">${c.gdp != null
+      ? rich("cv.economy_note", { gdp_vintage: nat.gdp_vintage || "", gdp_year: c.gdp_year ?? "", currency_words: edition.currency?.words || "dollars" })
+        + (gi.some((d) => d.estimated) ? rich("cv.economy_note.estimated") : "")
+        + (gi.some((d) => d.undisclosed) ? rich("cv.economy_note.undisclosed") : "")
+      : rich("cv.economy_note.no_gdp")}</p>
   </section>`;
 }
 
@@ -265,7 +286,7 @@ function economy(m) {
 function workforce(m) {
   const cards = m.inds.map((d) => {
     const spec = d.lq != null && d.lq >= 1.25;
-    return `<div class="cv-bld${spec ? " spec" : ""}" title="${esc(d.label)}: ${int(d.jobs)} residents work here (${pct(d.share)}; ${canada ? "Canada" : "U.S."} ${pct(d.natShare)})">
+    return `<div class="cv-bld${spec ? " spec" : ""}" title="${esc(d.label)}: ${int(d.jobs)} residents work here (${pct(d.share)}; ${esc(NATION.short)} ${pct(d.natShare)})">
       ${medallion(d.icon, "•", d.color, 17)}
       <div class="cv-bld-t"><span class="cv-bld-n">${esc(d.short)}</span>
         <span class="cv-bld-v">${compact(d.jobs)} <small>${pct(d.share, 1)}</small></span></div>
@@ -275,11 +296,9 @@ function workforce(m) {
   return `
   <section class="cv-sec" id="cv-workforce" data-sec="workforce" aria-labelledby="cv-h-workforce">
     <h3 id="cv-h-workforce">${icon("y-production", "⚙️", { size: 15 })}Workforce</h3>
-    <p class="cv-lead">Where the ${canada ? "city's" : "metro's"} ${int(m.city.employed)} employed residents${canada ? " (2021)" : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with ${canada ? "Canada's share" : "its U.S. share"}.</p>
+    <p class="cv-lead">Where the ${esc(AREA)}'s ${int(m.city.employed)} employed residents${LABEL_YEARS && m.nation.census_year ? ` (${m.nation.census_year})` : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with ${esc(txt("cv.workforce_compare", { adj: NATION.adj }))}.</p>
     <div class="cv-blds">${cards || `<p class="muted cv-note">No industry data.</p>`}</div>
-    <p class="cv-note">${canada
-      ? "2021 Census, table 98-10-0448: employed people aged 15 and over by NAICS sector, counted where they live. The map's districts use the same table's detailed industries: see Districts."
-      : `${esc(m.nation.vintage)}, table C24030 (where residents work, by where they live). The map's districts come from jobs counted where the employers are (BLS QCEW): see Districts.`}</p>
+    <p class="cv-note">${rich("cv.workforce_note", { vintage: m.nation.vintage ?? "" })}</p>
   </section>`;
 }
 
@@ -301,14 +320,13 @@ function resources(m) {
   const summary = m.sites.length
     ? `<p class="cv-lead">${m.sites.length} mapped site${m.sites.length === 1 ? "" : "s"}${
       mw ? ` · ${mw >= 1000 ? `${(mw / 1000).toFixed(1)} GW` : `${Math.round(mw)} MW`} of mapped generating capacity` : ""}. Click one to fly there.</p>`
-    : `<p class="muted cv-note">No mapped resource sites in this ${canada ? "city" : "metro"}. Only large sites are mapped (each type has a size threshold).</p>`;
+    : `<p class="muted cv-note">No mapped resource sites in this ${esc(AREA)}. Only large sites are mapped (each type has a size threshold).</p>`;
   return `
   <section class="cv-sec" id="cv-resources" data-sec="resources" aria-labelledby="cv-h-resources">
     <h3 id="cv-h-resources">${icon("resources", "⛏️", { size: 15 })}Resources</h3>
     ${summary}
     <div class="cv-sites">${list}</div>
-    ${m.sites.length ? `<p class="cv-note">${canada ? "Sites on the city's hexes. Mapped sites only, not the city's full capacity."
-      : "Sites whose hex centre lies in one of the metro's counties. Mapped sites only, not the metro's full capacity."}</p>` : ""}
+    ${m.sites.length ? `<p class="cv-note">${rich("cv.resources_note", { area: AREA })}</p>` : ""}
   </section>`;
 }
 
@@ -322,7 +340,7 @@ const COMPARE = {
   ],
   housing: [
     ["Home value", (c) => c.home_value, money],
-    ["Rent / mo", (c) => c.median_rent, (v) => (v == null ? "–" : (canada ? "CA$" : "$") + int(v))],
+    ["Rent / mo", (c) => c.median_rent, (v) => (v == null ? "–" : CURRENCY + int(v))],
     ["Rent burden", (c) => c.rent_burden, (v) => pct(v, 0)],
     ["Jobless", (c) => c.unemployment, (v) => pct(v)],
   ],
@@ -333,7 +351,7 @@ export function compareTable(m, set = "size") {
   const cols = COMPARE[set] || COMPARE.size;
   const max = cols.map(([, f]) => Math.max(...rows.map((c) => Math.abs(f(c) ?? 0))) || 1);
   return `<div class="cv-cmp" role="table" aria-label="${esc(m.city.name)} and its peers">
-    <div class="cv-cmp-r cv-cmp-h" role="row"><span role="columnheader">${canada ? "City" : "Metro"}</span>${cols.map(([l]) => `<span role="columnheader">${esc(l)}</span>`).join("")}</div>
+    <div class="cv-cmp-r cv-cmp-h" role="row"><span role="columnheader">${esc(cap(AREA))}</span>${cols.map(([l]) => `<span role="columnheader">${esc(l)}</span>`).join("")}</div>
     ${rows.map((c, k) => `<div class="cv-cmp-r${k === 0 ? " me" : ""}" role="row">
       <span role="cell">${k === 0 ? `<b class="cv-cmp-n">${esc(c.name)}</b>` : `<button type="button" class="cv-cmp-n" data-peer="${esc(c.id)}" title="Open ${esc(c.full || c.name)} in the City View">${esc(c.name)}</button>`}<small>${esc((c.states || []).join("–"))}</small></span>
       ${cols.map(([, f, fmt], j) => {
@@ -349,7 +367,7 @@ function compare(m) {
   return `
   <section class="cv-sec" id="cv-compare" data-sec="compare" aria-labelledby="cv-h-compare">
     <h3 id="cv-h-compare">${icon("layers", "⚖️", { size: 15 })}Compare</h3>
-    <p class="cv-lead">The ${m.peers.length} ${canada ? AREAS : "metros"} closest in population. Click one to open it.</p>
+    <p class="cv-lead">The ${m.peers.length} ${esc(RANKED)} closest in population. Click one to open it.</p>
     <div class="cv-seg" role="group" aria-label="Metrics">
       <button type="button" data-set="size" aria-pressed="true">Size &amp; wealth</button>
       <button type="button" data-set="housing" aria-pressed="false">Housing &amp; jobs</button>
@@ -360,15 +378,11 @@ function compare(m) {
 
 function footer(m) {
   const nat = m.nation;
-  if (canada) {
-    const cmaGdpYear = m.city.gdp_year ?? m.cityList.find((c) => c.gdp_year != null)?.gdp_year ?? "";
-    return `<div class="cv-foot">Sources: Statistics Canada: ${esc(nat.census_vintage || "2021 Census of Population")}; population estimates
-      (July 1, ${esc(String(nat.year ?? ""))}); GDP (CMAs ${esc(String(cmaGdpYear))});
-      ${esc(nat.unemployment_vintage || "Labour Force Survey")}; NRCan and WRI sites. Ranks are among all ${m.cityList.length} ${AREAS} on the map.
-      <a href="#" data-pedia>Almanac ›</a></div>`;
-  }
-  return `<div class="cv-foot">Sources: ${esc(nat.vintage)}${nat.gdp_vintage ? `; GDP: ${esc(nat.gdp_vintage)}` : ""}; Census population
-    estimates; ACS 5-year county estimates; EIA, MSHA and USGS sites. Ranks are among all ${m.cityList.length} metro and micro areas on the map.
+  const cmaGdpYear = m.city.gdp_year ?? m.cityList.find((c) => c.gdp_year != null)?.gdp_year ?? "";
+  return `<div class="cv-foot">${rich("cv.foot", {
+    vintage: nat.vintage ?? "", gdp_vintage: nat.gdp_vintage ?? "", census_vintage: nat.census_vintage || "", year: nat.year ?? "",
+    gdp_year: cmaGdpYear, unemployment_vintage: nat.unemployment_vintage || "", count: m.cityList.length, areas: AREAS,
+  })}
     <a href="#" data-pedia>Almanac ›</a></div>`;
 }
 
@@ -461,8 +475,11 @@ export function render(el, m, h) {
   }, () => { if (czHost.isConnected) czHost.innerHTML = citizensHtml(m, null); });
   const dHost = el.querySelector("[data-districts]");
   const typeSlot = el.querySelector("[data-ctype]");
-  // (The Canadian edition has no military.json: its Encampment is the census's Defence services.)
-  Promise.all([h.loadData?.("districts"), canada ? null : Promise.resolve(h.loadData?.("military")).catch(() => null)]).then(([dd, mil]) => {
+  // Military Encampments join the districts unless districts.json says its own Encampment already covers them
+  // (rule.military_encampments false: Canada's is the census's Defence services).
+  Promise.resolve(h.loadData?.("districts")).then((dd) => Promise.resolve(
+    dd?.rule?.military_encampments === false || !declares("military") ? null : h.loadData?.("military"),
+  ).catch(() => null).then((mil) => [dd, mil])).then(([dd, mil]) => {
     if (!dHost.isConnected) return;
     dHost.innerHTML = districtsHtml(m, dd ?? null, mil ?? null);
     typeSlot.innerHTML = badgeHtml(m, dd ?? null);

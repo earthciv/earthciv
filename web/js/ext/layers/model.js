@@ -14,7 +14,7 @@
 import { prepareNetwork, prepareRoutes, portTier, airportTier } from "../../render/art/improvements.js";
 import { prepareCellSet, fortKind, isAirfieldName } from "../../render/art/sites.js";
 import { metroSpill } from "../../render/art/city.js";
-import { canada } from "../../app/country.js";
+import { VIEW } from "../../app/text.js";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -116,7 +116,8 @@ export function createModel(w) {
       m.parks = (data?.wonders || []).filter((x) => x.kind === "natural" && Array.isArray(x.cells) && x.cells.length > 1)
         .map((x) => ({ wonder: x, ...prepareCellSet(w, x.cells) }));
     } else if (name === "trade") {
-      m.routes = data ? prepareRoutes(w, data, { oneSide: canada }) : [];
+      // An edition can keep every arc on one side (manifest view.trade_arcs_one_side; Canada's curve north, over Canada).
+      m.routes = data ? prepareRoutes(w, data, { oneSide: !!VIEW.trade_arcs_one_side }) : [];
     }
     place(m);
     m._vis.clear();

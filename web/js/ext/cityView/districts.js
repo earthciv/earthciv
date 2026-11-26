@@ -10,11 +10,25 @@ import { esc, int, pct } from "../../format.js";
 import { compact, money } from "./fmt.js";
 import { icon } from "../../ui/icon.js";
 import { hasIcon } from "../../icons.js";
-import { canada } from "../../app/country.js";
+import { NATION, TERMS, defaults, rich, txt } from "../../app/text.js";
 
-// The Canadian edition's districts.json counts workers where they live (2021 Census), not jobs at employers.
-const JOBS = canada ? "Workers" : "Jobs";
-const jobs = canada ? "workers" : "jobs";
+// What districts.json counts (rule.counts): jobs at the employer (the default; the U.S. file), or "workers", employed
+// residents where they live (Canada's census).
+const countsWorkers = (ddata) => ddata?.rule?.counts === "workers";
+const JOBS = (ddata) => (countsWorkers(ddata) ? "Workers" : "Jobs");
+const jobsWord = (ddata) => (countsWorkers(ddata) ? "workers" : "jobs");
+const AREA = TERMS.area.one;
+
+defaults({
+  "cv.districts_source": "{vintage}",
+  "cv.no_districts": "No industry counts are published for {name}, so it has no industry districts.",
+  "cv.spread_like": "the nation's",
+  "cv.districts_counting": "",
+  "cv.districts_note": "{vintage}. ×N = location quotient.",
+  "cv.lower_bound": "The publisher withheld part of this in {n} member {divisions}, so it is a lower bound.",
+  "cv.lower_bound_row": "Lower bound: the publisher withheld it in {n} member {divisions}.",
+});
+const divisions = (n) => (n === 1 ? TERMS.division.one : TERMS.division.many);
 
 // Icons the district catalog names (d-*) are not drawn yet; until they are, a near icon from the set stands in,
 // and canvas plaques without any icon get the letter in `mark`.
@@ -98,7 +112,7 @@ export function badgeOf(ddata, id) {
 export function badgeHtml(m, ddata) {
   const b = badgeOf(ddata, m.city.id);
   if (!b) return "";
-  return `<span class="cv-type${b.district ? "" : " plain"}" style="--tc:${esc(b.color)}" title="City type: ${esc(b.text || b.label)} (${canada ? esc(ddata.vintage || "2021 Census") : `BLS QCEW ${esc(String(ddata.year || ""))}`})">
+  return `<span class="cv-type${b.district ? "" : " plain"}" style="--tc:${esc(b.color)}" title="City type: ${esc(b.text || b.label)} (${esc(txt("cv.districts_source", { vintage: ddata.vintage || "", year: ddata.year ?? "" }))})">
     <span class="cv-type-ic">${icon(b.icon, b.emoji || "◆", { size: 13 })}</span>${esc(b.label)}</span>`;
 }
 
@@ -115,23 +129,23 @@ function districtCard(d, row, ddata, mil) {
   const nat = ddata?.national || {};
   const c = d.cat || {};
   const lb = !!d.lower_bound;
-  const supTip = lb ? ` BLS withheld part of this in ${d.suppressed} member count${d.suppressed === 1 ? "y" : "ies"}, so it is a lower bound.` : "";
+  const supTip = lb ? ` ${txt("cv.lower_bound", { n: d.suppressed, divisions: divisions(d.suppressed) })}` : "";
   const facts = [];
   if (d.emp != null) {
-    facts.push(`<div><span>${JOBS}</span><b>${ge(lb)}${compact(d.emp)}</b><small>${d.share != null ? `${pct(d.share, 1)} of the ${canada ? "city" : "metro"}` : ""}</small></div>`);
+    facts.push(`<div><span>${JOBS(ddata)}</span><b>${ge(lb)}${compact(d.emp)}</b><small>${d.share != null ? `${pct(d.share, 1)} of the ${esc(AREA)}` : ""}</small></div>`);
   }
   if (d.avg_pay != null) {
-    facts.push(`<div><span>Avg pay</span><b>${money(d.avg_pay)}</b><small>${row?.avg_pay != null ? `metro ${money(row.avg_pay)}` : ""}</small></div>`);
+    facts.push(`<div><span>Avg pay</span><b>${money(d.avg_pay)}</b><small>${row?.avg_pay != null ? `${esc(AREA)} ${money(row.avg_pay)}` : ""}</small></div>`);
   }
   if (d.strength != null) {
-    facts.push(`<div title="${JOBS} above the national norm: ${jobs} − ${jobs} ÷ LQ (how districts are ranked)"><span>Above norm</span><b>${ge(lb)}${compact(Math.max(0, d.strength))}</b><small>${jobs}</small></div>`);
+    facts.push(`<div title="${JOBS(ddata)} above the national norm: ${jobsWord(ddata)} − ${jobsWord(ddata)} ÷ LQ (how districts are ranked)"><span>Above norm</span><b>${ge(lb)}${compact(Math.max(0, d.strength))}</b><small>${jobsWord(ddata)}</small></div>`);
   }
   let spec = "";
   if (d.sub && d.subName) {
     // the speciality's own withheld flag (districts.json sub_lower_bound; older files: the top-industries row)
     const slb = d.sub_lower_bound ?? !!(row?.top || []).find((t) => t.naics === d.sub)?.lower_bound;
     spec = `<p class="cv-dc-sub">${d.via === "specialty" ? "Qualifies through" : "Strongest speciality"}: <b>${esc(d.subName)}</b> ${lqTag(d.sub_lq, slb, slb ? `Location quotient: at least ${d.sub_lq.toFixed(2)}× the national share (BLS withheld part of it, so it is a lower bound)` : undefined)}${
-      d.sub_emp != null ? ` <small>${ge(slb)}${compact(d.sub_emp)} ${jobs}</small>` : ""}${
+      d.sub_emp != null ? ` <small>${ge(slb)}${compact(d.sub_emp)} ${jobsWord(ddata)}</small>` : ""}${
       d.via === "specialty" && d.lq != null ? `<br><small>The district's industries as a whole are ${d.lq.toFixed(2)}× the national share; this speciality alone passes the rule.</small>` : ""}</p>`;
   }
   let milHtml = "";
@@ -160,20 +174,22 @@ function topTable(row, ddata) {
   const top = row?.top || [];
   if (!top.length) return "";
   const max = Math.max(...top.map((t) => t.lq || 0), 1);
-  // The census has no pay or one-year change: the Canadian table keeps the industry, workers and quotient columns.
+  // Without pay figures (Canada's census has no pay or one-year change) the table keeps the industry, count and
+  // quotient columns.
+  const pay = ddata?.national?.avg_pay != null;
   return `<h4 class="cv-h4">Most specialised industries <span class="muted">by location quotient</span></h4>
-  <div class="cv-top${canada ? " cv-top-3" : ""}" role="table" aria-label="Most specialised industries">
-    <div class="cv-top-r cv-top-hd" role="row"><span role="columnheader">Industry</span><span role="columnheader">${JOBS}</span><span role="columnheader">×${canada ? "CA" : "US"}</span>${
-      canada ? "" : `<span role="columnheader">Pay</span><span role="columnheader">1 yr</span>`}</div>
+  <div class="cv-top${pay ? "" : " cv-top-3"}" role="table" aria-label="Most specialised industries">
+    <div class="cv-top-r cv-top-hd" role="row"><span role="columnheader">Industry</span><span role="columnheader">${JOBS(ddata)}</span><span role="columnheader">×${esc(NATION.code)}</span>${
+      pay ? `<span role="columnheader">Pay</span><span role="columnheader">1 yr</span>` : ""}</div>
     ${top.map((t) => {
       const title = ddata.industries?.[t.naics]?.title || `NAICS ${t.naics}`;
       const lb = !!t.lower_bound;
-      return `<div class="cv-top-r" role="row" title="${esc(title)} (NAICS ${esc(t.naics)})${lb ? `. Lower bound: BLS withheld it in ${t.suppressed} member count${t.suppressed === 1 ? "y" : "ies"}.` : ""}">
+      return `<div class="cv-top-r" role="row" title="${esc(title)} (NAICS ${esc(t.naics)})${lb ? `. ${esc(txt("cv.lower_bound_row", { n: t.suppressed, divisions: divisions(t.suppressed) }))}` : ""}">
         <span role="cell" class="cv-top-n">${esc(title)}<i style="width:${((Math.log(1 + (t.lq || 0)) / Math.log(1 + max)) * 100).toFixed(1)}%"></i></span>
         <span role="cell">${ge(lb)}${compact(t.emp)}</span>
-        <span role="cell"><b>${t.lq != null ? `${ge(lb)}${t.lq.toFixed(1)}` : "–"}</b></span>${canada ? "" : `
+        <span role="cell"><b>${t.lq != null ? `${ge(lb)}${t.lq.toFixed(1)}` : "–"}</b></span>${pay ? `
         <span role="cell">${money(t.avg_pay)}</span>
-        <span role="cell" class="${t.oty_pct == null ? "" : t.oty_pct >= 0 ? "good" : "bad"}">${signed(t.oty_pct)}</span>`}</div>`;
+        <span role="cell" class="${t.oty_pct == null ? "" : t.oty_pct >= 0 ? "good" : "bad"}">${signed(t.oty_pct)}</span>` : ""}</div>`;
     }).join("")}
   </div>`;
 }
@@ -188,19 +204,18 @@ export function districtsHtml(m, ddata, mil) {
   const b = badgeOf(ddata, id);
   let lead;
   if (!row) {
-    lead = canada ? `<p class="cv-lead">Statistics Canada publishes no industry counts for ${esc(m.city.name)}, so it has no industry districts.</p>`
-      : `<p class="cv-lead">BLS publishes no county employment for ${esc(m.city.name)}'s member counties, so it has no industry districts.</p>`;
-  } else if (canada) {
+    lead = `<p class="cv-lead">${rich("cv.no_districts", { name: m.city.name })}</p>`;
+  } else if (countsWorkers(ddata)) {
     lead = `<p class="cv-lead">${b?.district ? `<b class="cv-type-l" style="--tc:${esc(b.color)}">${esc(b.label)}</b> · ${esc(b.text || "")}. ` : ""}${
       int(row.emp)} employed residents (${esc(ddata.vintage || "2021 Census")}).</p>`;
   } else {
     const cnt = row.counties ? ` from ${row.counties[0]} of ${row.counties[1]} member count${row.counties[1] === 1 ? "y" : "ies"}` : "";
     lead = `<p class="cv-lead">${b?.district ? `<b class="cv-type-l" style="--tc:${esc(b.color)}">${esc(b.label)}</b> · ${esc(b.text || "")}. ` : ""}${
-      int(row.emp)} jobs counted${esc(cnt)}, average pay ${money(row.avg_pay)} (U.S. ${money(ddata.national?.avg_pay)}).</p>`;
+      int(row.emp)} jobs counted${esc(cnt)}${row.avg_pay != null ? `, average pay ${money(row.avg_pay)} (${esc(NATION.short)} ${money(ddata.national?.avg_pay)})` : ""}.</p>`;
   }
   const cards = list.length
     ? `<div class="cv-dcs">${list.map((d) => districtCard(d, row, ddata, mil)).join("")}</div>`
-    : row ? `<p class="muted cv-note">No district passes the rule here: the ${canada ? "city's workers are spread like Canada's" : "metro's jobs are spread like the nation's"}.</p>` : "";
+    : row ? `<p class="muted cv-note">No district passes the rule here: the ${esc(AREA)}'s ${countsWorkers(ddata) ? "workers" : "jobs"} are spread like ${esc(txt("cv.spread_like"))}.</p>` : "";
   const milRule = mil?.rule && list.some((d) => d.military) ? `<p><b>Encampment tier</b> (military.json): ${esc(mil.rule)}</p>` : "";
   return `${lead}
     ${cards}
@@ -210,10 +225,8 @@ export function districtsHtml(m, ddata, mil) {
     </div>
     <details class="cv-more cv-rule"><summary>How districts are chosen</summary>
       <p>${esc(ddata.rule?.text || "")}</p>${milRule}
-      <p>${canada ? "The census counts employed people aged 15 and over where they live, not where the jobs are, including the self-employed and members of the Canadian Armed Forces who live in private households."
-        : "QCEW counts jobs where the employer is, not where workers live; it leaves out the self-employed, most farm workers, railroads and uniformed military."}</p>
+      <p>${rich("cv.districts_counting")}</p>
     </details>
-    <p class="cv-note">${canada ? `${esc(ddata.vintage || "2021 Census")}, table 98-10-0448 (NAICS 2017). ×N = location quotient against Canada.`
-      : `${esc(ddata.vintage || "BLS QCEW")}, all ownerships (federal and state only for the Government plaza and Encampment). ×N = location quotient; ≥ = a lower bound (BLS withheld a county's figure).${
-      mil && list.some((d) => d.military) ? ` Encampment tier: ${esc(typeof mil.vintage === "object" ? [mil.vintage.installations, mil.vintage.acs].filter(Boolean).join("; ") : mil.vintage || "")}.` : ""}`}</p>`;
+    <p class="cv-note">${rich("cv.districts_note", { vintage: ddata.vintage || "" })}${
+      mil && list.some((d) => d.military) ? ` Encampment tier: ${esc(typeof mil.vintage === "object" ? [mil.vintage.installations, mil.vintage.acs].filter(Boolean).join("; ") : mil.vintage || "")}.` : ""}</p>`;
 }

@@ -1,8 +1,32 @@
-import { canada } from "../app/country.js";
+import { LABEL_YEARS, defaults, rich, txt } from "../app/text.js";
 import { css } from "../color.js";
 import { esc } from "../format.js";
 import { isCapital } from "../world.js";
-import { yieldGrid, amenities, censusGeography, industries, gdpRow, popLine, growthSpan, showPanel, hidePanel, yieldsTitle, censusTitle } from "./infoPanel.js";
+import { yieldGrid, amenities, censusGeography, hasGeography, industries, gdpRow, popLine, growthSpan, showPanel, hidePanel, yieldsTitle, censusTitle } from "./infoPanel.js";
+
+defaults({
+  "panel.city_industries": "Industries · where people work",
+  "panel.city_foot": "Green ×N = this industry's share of jobs is N× the national share.",
+  "panel.city_foot.unemployment_survey": "",
+  "panel.city_foot.unemployment_census": "",
+  "panel.city_foot.gdp": "",
+  "panel.city_foot.no_gdp": "",
+});
+
+// The sources under a city panel: the edition's own wording (text pack), with the parts that depend on the city's data
+// (a survey or a census unemployment rate; a GDP figure or none) chosen here.
+function cityFoot(city, nation) {
+  const vars = {
+    vintage: nation.vintage ?? "", gdp_vintage: nation.gdp_vintage ?? "", population_vintage: nation.population_vintage ?? "",
+    census_vintage: nation.census_vintage || nation.vintage || "", gdp_year: city.gdp_year ?? "",
+    unemployment_vintage: nation.unemployment_vintage || "Labour Force Survey",
+  };
+  return rich("panel.city_foot", {
+    ...vars,
+    unemployment: txt(city.unemployment != null ? "panel.city_foot.unemployment_survey" : "panel.city_foot.unemployment_census", vars),
+    gdp: txt(city.gdp != null ? "panel.city_foot.gdp" : "panel.city_foot.no_gdp", vars),
+  });
+}
 
 /**
  * ctx: {w, nation, onClose, onPedia, onState(stateIndex)}
@@ -29,19 +53,14 @@ export function openCityPanel(city, ctx) {
     title: city.name,
     titleHtml: `${isCapital(city) ? `<span class="cap" title="National capital">★</span> ` : ""}${esc(city.name)}`,
     sub: `${esc(city.full || "")}${states ? `<div class="chips">${states}</div>` : ""}`,
-    headExtra: popLine(city, growth),
+    headExtra: popLine(city, growth, nation),
     sections: [
-      { title: canada ? yieldsTitle(city) : "Yields", html: `<div class="yield-grid">${yieldGrid(nation, city.yields)}</div>` },
-      { title: "Amenities &amp; Housing", html: amenities(city, n) + gdpRow(city) },
-      canada && { title: "Census geography", html: censusGeography(city) },
-      city.jobs && { title: canada ? censusTitle("Industries · where people work") : "Districts · where people work", html: industries(city, nation) },
+      { title: LABEL_YEARS ? yieldsTitle(city, nation) : "Yields", html: `<div class="yield-grid">${yieldGrid(nation, city.yields)}</div>` },
+      { title: "Amenities &amp; Housing", html: amenities(city, n, nation) + gdpRow(city) },
+      hasGeography(city) && { title: esc(txt("panel.geography")), html: censusGeography(city) },
+      city.jobs && { title: esc(LABEL_YEARS ? censusTitle(txt("panel.city_industries"), nation) : txt("panel.city_industries")), html: industries(city, nation) },
     ],
-    foot: canada ? `Population: ${esc(nation.population_vintage || "")} (table 17-10-0148). Census figures: ${esc(nation.census_vintage || nation.vintage)} (tables 98-10-0448, 98-10-0061, 98-10-0253, 98-10-0256). Unemployment: ${city.unemployment != null
-      ? `${esc(nation.unemployment_vintage || "Labour Force Survey")} (table 14-10-0461).`
-      : "2021 Census. The Labour Force Survey does not publish census agglomerations, and the census week, in May 2021, fell during COVID-19 restrictions."}
-      ${city.gdp != null ? `GDP at basic prices, ${esc(city.gdp_year)} (the latest year published), on the boundaries in Statistics Canada table 36-10-0468-01; per person divides by the July 1, ${esc(city.gdp_year)} population.` : "The metro GDP table has no figure for this area."}
-      Green ×N = this industry's share of jobs is N× the Canadian share.` : `Source: ${esc(nation.vintage)} (tables C24030, B19025, B19013, B25064, B25077, B23025)${nation.gdp_vintage ? `; GDP: ${esc(nation.gdp_vintage)}` : ""}.
-      Green ×N = this industry's share of jobs is N× the U.S. share.`,
+    foot: cityFoot(city, nation),
     onClose: ctx.onClose,
     onPedia: ctx.onPedia,
     wire(panel) {

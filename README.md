@@ -3,8 +3,9 @@
 **Live: [karpathy.ai/usaciv](https://karpathy.ai/usaciv)** · Source code:
 [usaciv-source.zip](https://karpathy.ai/usaciv/usaciv-source.zip) (also linked from the in-app help, `?`)
 
-> **This copy adds a Canada edition and World Atlas**, live at [earthciv.org](https://earthciv.org/), opening on the
-> United States (Canada is at [?country=ca](https://earthciv.org/?country=ca)). The original project is by
+> **This copy adds a Canada edition and a world map**, live at [earthciv.org](https://earthciv.org/), which opens on
+> the world map: click any country to see its figures and open its map. The United States is at
+> [?country=us](https://earthciv.org/?country=us) and Canada at [?country=ca](https://earthciv.org/?country=ca). The original project is by
 > Andrej Karpathy: [karpathy.ai/usaciv](https://karpathy.ai/usaciv), announced
 > [here](https://x.com/karpathy/status/2125779541952246039). See [Canada edition](#canada-edition) below.
 
@@ -69,8 +70,10 @@ by a small Python pipeline that uses only the standard library, from public down
 
 ## Canada edition
 
-This copy's site opens on the United States (`data-default-country="us"` in `web/index.html`); the top-left country switcher switches
-to Canada (`?country=ca`) or opens the World Atlas of all countries. The same map renderer covers all 10 provinces and 3 territories, with 2021 Census
+This copy's site opens on the world map (`data-home="world"` in `web/index.html`), where Canada and the United States
+each have a Play button; they live at `?country=ca` and `?country=us`. Inside an edition, the top-left country switcher
+switches between them and the **World** button beside it opens the world map. Old links without `?country=` (such as
+`/#city=35620`) still open the United States (`data-default-country="us"`). The same map renderer covers all 10 provinces and 3 territories, with 2021 Census
 urban areas (population from Statistics Canada's July 1, 2025 estimates), all five yields (GDP and workers by industry), 14 census-division and land-cover lenses, power plants and
 mines, oil and gas fields, highways and railways, ports and airports, freight routes between provinces (Commerce
 advisor), Canadian Forces bases and where serving members and veterans live (Military advisor), wonders (Parks Canada's most-visited parks, canals and historic
@@ -104,7 +107,7 @@ uv run python -m pipeline package      # → usaciv.zip: one file to upload
 
 `usaciv.zip` unzips to a `usaciv/` folder: `web/` without the dev pages, plus `usaciv-source.zip`: this whole project, minus downloads and
 caches, which the in-app help links to. If you publish your own copy, change the address `earthciv.org` in
-`web/index.html` (the social-card tags), in `SITE_URL` in `web/js/app/share.js` (printed on share images) and in
+`web/index.html` (the social-card tags), in `SITE_URL` in `web/js/app/project.js` (printed on share images) and in
 `web/dev/trailer/storyboard.js`.
 
 To rebuild the data from the original publishers:
@@ -126,10 +129,10 @@ pipeline/
   check.py    validates web/data against docs/DATA_CONTRACTS.md and prints a data-quality report
 tests/        unittest suite (standard library only)
 web/
-  js/         main.js (app shell), camera, hex grid (mirrors pipeline/core/hexgrid.py),
-              render/ (map layers, banners, off-screen snapshots) and render/art/ (all the tile art),
-              ui/ (panels, lenses, Almanac, minimap), app/ (app API, search, sharing, URL state),
-              ext/ (extensions: City View, Advisors, map layers)
+  js/         boot.js (entry: the world map or an edition), main.js (an edition's app shell), camera, hex grid
+              (mirrors pipeline/core/hexgrid.py), render/ (map layers, banners, off-screen snapshots) and render/art/
+              (all the tile art), ui/ (panels, lenses, Almanac, minimap), app/ (app API, search, sharing, URL state,
+              home page), ext/ (extensions: City View, Advisors, map layers, the world map)
   data/       the generated JSON the browser loads
   dev/        the art gallery
 docs/         DATA_CONTRACTS.md: the shape of every web/data file, shared by pipeline and browser
@@ -220,8 +223,9 @@ files, URLs, checksums and caveats.
 | Disaster Declarations Summaries | FEMA (OpenFEMA) | Disasters lens |
 | Billion-Dollar Weather and Climate Disasters | NOAA NCEI | Billion-dollar disasters by state |
 
-The world atlas (the globe button in the top bar) lists every EarthCiv edition and community port in
-`web/data/ports.json`. Clicking a country also shows its population, GDP per person and life expectancy from the World
+The world map (the home page, and the **World** button inside an edition) shows every EarthCiv edition and community
+map listed in `web/data/ports.json`. Every country can be clicked, on the map, in the list beside it or through its
+search box: its card has a button that opens its map, and its population, GDP per person and life expectancy from the World
 Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
 is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
 rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures).

@@ -35,7 +35,7 @@ const say = (msg, err = false) => {
 
 let stage, sb;
 try {
-  stage = await loadStage("../data/");
+  stage = await loadStage("../data/us/");
   sb = buildStoryboard(stage, CONFIG);
 } catch (err) {
   say(`Could not load: ${err.message}`, true);

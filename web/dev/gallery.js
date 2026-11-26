@@ -413,8 +413,8 @@ async function renderBanners() {
     "the capital and a selected city; first as seen zoomed out (name plate), then zoomed in (with the yield strip).");
   let cities, nation;
   try {
-    [cities, nation] = await Promise.all(["cities", "nation"].map((n) => fetch(`../data/${n}.json`).then((r) => {
-      if (!r.ok) throw new Error(`data/${n}.json: HTTP ${r.status}`);
+    [cities, nation] = await Promise.all(["cities", "nation"].map((n) => fetch(`../data/us/${n}.json`).then((r) => {
+      if (!r.ok) throw new Error(`data/us/${n}.json: HTTP ${r.status}`);
       return r.json();
     })));
   } catch (err) {

@@ -3,8 +3,9 @@
 //
 // The first half is pure data (statDefs, buildReport): plain objects from nation.json, states.json, cities.json and
 // lenses.json, no DOM, so it is easy to check from the console (`window.__app.reports`). The second half renders.
-import { canada, countryName, regionsName } from "../app/country.js";
-import { cad, cadFull, compact, dollars, esc, int, money, pct } from "../format.js";
+import { edition } from "../app/edition.js";
+import { LABEL_YEARS, NATION, TERMS, defaults, txt } from "../app/text.js";
+import { compact, dollars, esc, int, isMoney, money, pct } from "../format.js";
 import { hasIcon } from "../icons.js";
 import { icon, glyph } from "./icon.js";
 import { DISTRICT_ICON } from "./infoPanel.js";
@@ -48,20 +49,30 @@ export function count3(n) {
 // Formats a value of a stat ("usd" → $, "rate" → %, anything else → compact count).
 export function fmtStat(def, v) {
   if (!fin(v)) return "–";
-  if (def.unit === "cad") return cad(v);
-  if (def.unit === "usd") return money(v);
+  if (isMoney(def.unit)) return money(v);
   if (def.unit === "rate") return pct(v);
   return compact(v);
 }
 
+defaults({
+  "report.population.description": "Residents.",
+  "report.unemployment.description": "Unemployed ÷ labour force.",
+  "report.growth_source": "population estimates",
+  "report.gdp_breakdown_note": "",
+  "report.gdp_years_hint": "{regions}: {year} GDP. Metros: {metro_year}.",
+  "report.gdp_per_person_hint": "{regions}: {year} GDP ÷ {year} residents.",
+  "report.gdp_per_person_hint.metros": " Metros: {metro_year} GDP ÷ {metro_year} residents; metros of {min}+ people.",
+  "report.gdp_industry_credit": "{gdp_vintage}",
+});
+
 // Every top-bar stat in display order: population, the yields from nation.json, unemployment.
-// Canadian figures come from different years (the July 1 population estimate, 2021 Census workers, the latest GDP and
-// Labour Force Survey annual average), so each Canadian stat carries its `year`, a `period` label and its own
-// source; the U.S. figures share the ACS year.
+// In an edition whose figures come from different years (manifest label_years; Canada: the July 1 population
+// estimate, 2021 Census workers, the latest GDP and Labour Force Survey annual average) each stat carries its `year`,
+// a `period` label and its own source; otherwise (the U.S.) the figures share one year.
 export function statDefs(nation) {
   const n = nation?.nation || {};
-  const census = canada ? { year: nation?.census_year ?? null, period: `${nation?.census_year ?? ""} Census`, source: nation?.census_vintage || "" } : {};
-  const people = canada ? { year: nation?.year ?? null, period: `${nation?.year ?? ""} estimate`, source: nation?.population_vintage || "" } : {};
+  const census = LABEL_YEARS ? { year: nation?.census_year ?? null, period: `${nation?.census_year ?? ""} Census`, source: nation?.census_vintage || "" } : {};
+  const people = LABEL_YEARS ? { year: nation?.year ?? null, period: `${nation?.year ?? ""} estimate`, source: nation?.population_vintage || "" } : {};
   const yields = (nation?.yields || []).map((y) => ({
     key: y.key,
     label: y.label,
@@ -72,21 +83,19 @@ export function statDefs(nation) {
     description: y.description || "",
     source: y.key === "gold" ? nation.gdp_vintage || nation.vintage || "" : nation.vintage || "",
     value: y.key === "gold" ? n.gdp ?? n.yields?.gold ?? null : n.yields?.[y.key] ?? null,
-    ...(canada ? (y.key === "gold" ? { year: n.gdp_year ?? null, period: `${n.gdp_year ?? ""}` } : census) : {}),
+    ...(LABEL_YEARS ? (y.key === "gold" ? { year: n.gdp_year ?? null, period: `${n.gdp_year ?? ""}` } : census) : {}),
   }));
   return [
     {
       key: "population", label: "Population", name: "Population", color: "#e8dcc0", iconId: "pop", emoji: "👥", unit: "people",
-      description: canada ? `Residents on July 1, ${nation?.year ?? ""}: Statistics Canada's population estimate, on 2021 Census boundaries.` : "Residents (ACS B01003).", source: nation?.vintage || "", value: n.population ?? null,
+      description: txt("report.population.description", { year: nation?.year ?? "" }), source: nation?.vintage || "", value: n.population ?? null,
       ...people,
     },
     ...yields,
-    (!canada || fin(n.unemployment)) && {
+    fin(n.unemployment) && {
       key: "unemployment", label: "Unemployment", name: "Unemployment rate", color: "#e8dcc0", iconId: "unemployment", emoji: "😐",
-      unit: "rate", description: canada
-        ? "Unemployed ÷ labour force aged 15+, the Labour Force Survey's annual average (tables 14-10-0464 and 14-10-0461). The survey's Canada total covers the ten provinces. It does not publish census agglomerations, so the rankings cover provinces, territories and CMAs."
-        : "Unemployed ÷ civilian labour force (ACS B23025).", source: canada ? nation?.unemployment_vintage || "" : nation?.vintage || "", value: n.unemployment ?? null,
-      ...(canada ? { year: n.unemployment_year ?? null, period: `${n.unemployment_year ?? ""}` } : {}),
+      unit: "rate", description: txt("report.unemployment.description"), source: nation?.unemployment_vintage || nation?.vintage || "", value: n.unemployment ?? null,
+      ...(LABEL_YEARS ? { year: n.unemployment_year ?? null, period: `${n.unemployment_year ?? ""}` } : {}),
     },
   ].filter(Boolean);
 }
@@ -120,22 +129,23 @@ function rank(list, valueOf, { asc = false, min = 0, fmt = count3, exact = int, 
     .map(({ r, v }, i) => ({ rank: i + 1, kind: r.kind, ref: r.ref, name: r.name, sub: subOf ? subOf(r.o) : r.sub, value: v, text: fmt(v), exact: exact ? exact(v) : "" }));
 }
 
-// Which states the "States" rankings cover. states.json holds the states drawn on the map; when the U.S. total
-// includes people outside them (Alaska and Hawaii are not on the map), say so rather than imply all 50 are ranked.
+// Which regions the region rankings cover: those in states.json, drawn on the map. A region the manifest names as
+// ranked beside them (terms.region.extra; the U.S.: DC) joins the label. When the national total includes people
+// outside them (manifest off_map; the U.S.: Alaska and Hawaii), say so rather than imply all are ranked.
 function stateScope(n, st) {
-  if (canada) return { label: regionsName, note: "" };
+  const many = TERMS.region.many, extra = TERMS.region.extra;
   const abbrs = new Set(st.map((r) => r.o.abbr).filter(Boolean));
-  const hasDC = abbrs.has("DC");
+  const hasExtra = !!extra && abbrs.has(extra.abbr);
   const sum = st.reduce((a, r) => a + (fin(r.o.population) ? r.o.population : 0), 0);
   const gap = fin(n.population) && n.population > 0 ? (n.population - sum) / n.population : 0;
-  const label = hasDC ? "States & DC" : "States";
+  const label = hasExtra ? `${many} & ${extra.name}` : many;
   if (!st.length || gap < 0.001) return { label, note: "" };
-  const missing = [["AK", "Alaska"], ["HI", "Hawaii"]].filter(([a]) => !abbrs.has(a)).map(([, name]) => name);
+  const missing = (edition.off_map || []).filter((o) => !abbrs.has(o.abbr)).map((o) => o.name);
   const outside = missing.length ? missing.join(" and ") : `${compact(n.population - sum)} residents`;
-  const what = `${st.length - (hasDC ? 1 : 0)} states on the map${hasDC ? " + DC" : ""}`;
+  const what = `${st.length - (hasExtra ? 1 : 0)} ${many.toLowerCase()} on the map${hasExtra ? ` + ${extra.name}` : ""}`;
   return {
-    label, inMap: `${hasDC ? "Map states & DC" : "Map states"}`,
-    note: `Ranks the ${what}; ${outside} ${missing.length > 1 ? "are" : "is"} in the U.S. total but not ranked.`,
+    label, inMap: `Map ${many.toLowerCase()}${hasExtra ? ` & ${extra.name}` : ""}`,
+    note: `Ranks the ${what}; ${outside} ${missing.length > 1 ? "are" : "is"} in the ${NATION.adj} total but not ranked.`,
   };
 }
 
@@ -174,27 +184,29 @@ export function buildReport(key, { nation, states, cities, lenses, lensVintage }
     rep.lens = { id: lens.id, name: lens.name || lens.id, unit: lens.unit || "", vintage };
   }
 
-  if (key === "population") reportPopulation(rep, n, st, metros);
+  if (key === "population") reportPopulation(rep, nation, n, st, metros);
   else if (key === "unemployment") reportUnemployment(rep, n, st, metros);
-  else if (def.unit === "usd" || def.unit === "cad") reportGold(rep, nation, n, st, metros);
+  else if (isMoney(def.unit)) reportGold(rep, nation, n, st, metros);
   else reportJobs(rep, def, nation, n, st, metros);
   return rep;
 }
 
-function reportPopulation(rep, n, st, metros) {
+function reportPopulation(rep, nation, n, st, metros) {
   const yrs = Array.isArray(n.growth_years) && n.growth_years.length === 2 ? n.growth_years : null;
   const since = yrs ? ` since ${yrs[0]}` : "";
-  if (fin(n.growth)) rep.context.push(`${signedPct(n.growth)}${since} (${canada ? "July 1 estimates" : "Census population estimates"})`);
-  // Canada: the employed are 2021 Census counts, so their share is of the 2021 Census population.
-  const emp = ratio(n.employed, canada ? n.census_population : n.population);
-  if (emp != null) rep.context.push(canada ? `${compact(n.employed)} employed in 2021, ${pct(emp)} of residents then` : `${compact(n.employed)} employed, ${pct(emp)} of residents`);
+  if (fin(n.growth)) rep.context.push(`${signedPct(n.growth)}${since} (${txt("report.growth_source")})`);
+  // Where the employed are census counts (census_population is the census's population; Canada), their share is of
+  // that population, so the ratio does not divide one year by another.
+  const emp = ratio(n.employed, n.census_population ?? n.population);
+  const census = LABEL_YEARS ? nation.census_year : null;
+  if (emp != null) rep.context.push(census ? `${compact(n.employed)} employed in ${census}, ${pct(emp)} of residents then` : `${compact(n.employed)} employed, ${pct(emp)} of residents`);
 
   const g = (o) => o.growth;
   const row = (x, prefix = "") => ({
     label: `${prefix}${x.r.name}`, sub: x.r.kind === "city" ? x.r.sub : "", value: x.v, text: signedPct(x.v), tone: x.v >= 0 ? "good" : "bad",
   });
   const groups = [];
-  if (fin(n.growth)) groups.push({ rows: [{ label: countryName, value: n.growth, text: signedPct(n.growth), tone: n.growth >= 0 ? "good" : "bad", strong: true }] });
+  if (fin(n.growth)) groups.push({ rows: [{ label: NATION.name, value: n.growth, text: signedPct(n.growth), tone: n.growth >= 0 ? "good" : "bad", strong: true }] });
   const extremes = (list, what) => {
     if (list.length < 2) return;
     const k = Math.min(3, Math.floor(list.length / 2));
@@ -202,7 +214,7 @@ function reportPopulation(rep, n, st, metros) {
     groups.push({ title: `Fastest-growing ${what}`, rows: top.map((x) => row(x)) });
     groups.push({ title: bottom.every((x) => x.v < 0) ? `Shrinking ${what}` : `Slowest-growing ${what}`, rows: bottom.map((x) => row(x)) });
   };
-  extremes(sorted(st, g), regionsName.toLowerCase());
+  extremes(sorted(st, g), TERMS.region.many.toLowerCase());
   extremes(sorted(metros, g, METRO_MIN), `metros (${compact(METRO_MIN)}+)`);
   if (groups.length) rep.breakdown = { title: yrs ? `Population change ${yrs[0]}–${yrs[1]}` : "Population change", note: rep.scope.note, groups };
 
@@ -225,7 +237,7 @@ function reportUnemployment(rep, n, st, metros) {
   const row = (label, x) => ({ label: `${label}: ${x.r.name}`, sub: x.r.kind === "city" ? x.r.sub : "", value: x.v, text: pct(x.v), tone: tone(x.v) });
   const spread = (list) => (list.length >= 3 ? [row("Highest", list[0]), row("Median", list[Math.floor(list.length / 2)]), row("Lowest", list.at(-1))] : []);
   const groups = [];
-  if (fin(n.unemployment)) groups.push({ rows: [{ label: countryName, value: n.unemployment, text: pct(n.unemployment), strong: true }] });
+  if (fin(n.unemployment)) groups.push({ rows: [{ label: NATION.name, value: n.unemployment, text: pct(n.unemployment), strong: true }] });
   const sRows = spread(ss), mRows = spread(sorted(metros, u, BIG_METRO_MIN));
   if (sRows.length) groups.push({ title: rep.scope.label, rows: sRows });
   if (mRows.length) groups.push({ title: `Large metros (${compact(BIG_METRO_MIN)}+)`, rows: mRows });
@@ -240,8 +252,8 @@ function reportUnemployment(rep, n, st, metros) {
 }
 
 function reportGold(rep, nation, n, st, metros) {
-  const currency = canada ? cad : money;
-  const exactCurrency = canada ? cadFull : dollars;
+  const currency = money;
+  const exactCurrency = dollars;
   const gdp = (o) => o.gdp ?? o.yields?.gold ?? null;
   // gdp_population (Canada) is the population in the GDP year, so per-person GDP divides numbers from one year.
   const pp = ratio(rep.total, n.gdp_population ?? n.population);
@@ -249,7 +261,7 @@ function reportGold(rep, nation, n, st, metros) {
   const popYear = fin(nation.year) ? nation.year : null;
   const years = n.gdp_year && popYear && n.gdp_year !== popYear ? `${n.gdp_year} GDP ÷ ${popYear} residents` : "GDP ÷ residents";
   if (pp != null) rep.context.push(`${currency(pp)} per person (${years})`);
-  if (n.gdp_year) rep.context.push(`Year ${n.gdp_year}, current ${canada ? "Canadian " : ""}dollars`);
+  if (n.gdp_year) rep.context.push(`Year ${n.gdp_year}, current ${edition.currency?.words || "dollars"}`);
 
   const rows = Object.entries(n.gdp_by_industry || {})
     .filter(([, v]) => fin(v))
@@ -262,19 +274,21 @@ function reportGold(rep, nation, n, st, metros) {
     });
   if (rows.length) {
     rep.breakdown = { title: "GDP by industry", groups: [{ rows }], collapseAfter: GDP_ROWS };
-    if (canada) rep.breakdown.note = `${n.gdp_industry_year ?? ""} GDP at basic prices, by province and territory summed (table 36-10-0711); shares of GDP at basic prices, which leaves out taxes less subsidies on products.`;
+    const note = txt("report.gdp_breakdown_note", { year: n.gdp_industry_year ?? "" });
+    if (note) rep.breakdown.note = note;
   }
 
   const perPerson = (o) => ratio(gdp(o), o.gdp_population ?? o.population);
   // Canadian metro GDP ends earlier than provincial GDP: the hint gives both years.
   const metroYear = metros.find((r) => fin(r.o.gdp) && r.o.gdp_year)?.o.gdp_year;
-  const yearsHint = canada && metroYear && metroYear !== n.gdp_year ? `${regionsName}: ${n.gdp_year} GDP. Metros: ${metroYear}, the latest year Statistics Canada publishes.` : "";
+  const yearsHint = metroYear && metroYear !== n.gdp_year ? txt("report.gdp_years_hint", { regions: TERMS.region.many, year: n.gdp_year, metro_year: metroYear }) : "";
   rep.boards.modes = [
     { id: "abs", label: "Largest GDP", hint: yearsHint, states: rank(st, gdp, { fmt: currency, exact: exactCurrency }), metros: rank(metros, gdp, { fmt: currency, exact: exactCurrency }) },
     {
       // Canada: each board divides by the population of its own GDP year (CMAs end earlier), so neither mixes years.
-      id: "rel", label: "Per person", hint: canada
-        ? `${regionsName}: ${n.gdp_year} GDP ÷ July 1, ${n.gdp_year} residents.${metroYear ? ` Metros: ${metroYear} GDP ÷ July 1, ${metroYear} residents; CMAs of ${compact(METRO_MIN)}+ people.` : ""}`
+      id: "rel", label: "Per person", hint: n.gdp_population != null
+        ? txt("report.gdp_per_person_hint", { regions: TERMS.region.many, year: n.gdp_year })
+          + (metroYear ? txt("report.gdp_per_person_hint.metros", { metro_year: metroYear, min: compact(METRO_MIN) }) : "")
         : `${years}; metros of ${compact(METRO_MIN)}+ people.`,
       states: rank(st, perPerson, { fmt: currency, exact: exactCurrency }), metros: rank(metros, perPerson, { fmt: currency, exact: exactCurrency, min: METRO_MIN }),
     },
@@ -285,18 +299,18 @@ function reportJobs(rep, def, nation, n, st, metros) {
   const key = def.key;
   const nShare = ratio(rep.total, n.employed);
   if (nShare != null) rep.context.push(`${pct(nShare)} of the ${compact(n.employed)} employed`);
-  const per1k = ratio(rep.total, canada ? n.census_population : n.population); // Canada: both 2021 Census counts
-  if (per1k != null) rep.context.push(`${Math.round(per1k * 1000)} per 1,000 residents${canada ? " (2021)" : ""}`);
+  const per1k = ratio(rep.total, n.census_population ?? n.population); // census counts over the census population
+  if (per1k != null) rep.context.push(`${Math.round(per1k * 1000)} per 1,000 residents${LABEL_YEARS && nation.census_year ? ` (${nation.census_year})` : ""}`);
 
   const inds = Array.isArray(def.yield?.industries) ? def.yield.industries : [];
   const gdpOf = inds.map((k) => n.gdp_by_industry?.[k]);
   if (inds.length && gdpOf.every(fin) && fin(n.gdp)) {
     const sum = gdpOf.reduce((a, b) => a + b, 0);
     const gYear = n.gdp_industry_year ?? n.gdp_year;
-    rep.context.push(`${inds.length > 1 ? "These industries produce" : "The industry produces"} ${(canada ? cad : money)(sum)} of GDP (${pct(sum / (n.gdp_basic ?? n.gdp))}${gYear ? `, ${gYear}` : ""}${canada ? ", at basic prices" : ""})`);
+    rep.context.push(`${inds.length > 1 ? "These industries produce" : "The industry produces"} ${money(sum)} of GDP (${pct(sum / (n.gdp_basic ?? n.gdp))}${gYear ? `, ${gYear}` : ""}${n.gdp_basic != null ? ", at basic prices" : ""})`);
   }
   // Worker counts are ACS (where people live); the GDP figures are BEA (where the work is done): credit both.
-  const gdpCredit = canada ? `Statistics Canada, ${n.gdp_industry_year ?? ""} GDP by industry at basic prices` : nation.gdp_vintage;
+  const gdpCredit = txt("report.gdp_industry_credit", { year: n.gdp_industry_year ?? "", gdp_vintage: nation.gdp_vintage ?? "" });
   if (inds.some((k) => fin(n.gdp_by_industry?.[k])) && gdpCredit && gdpCredit !== rep.source) {
     rep.source = `${rep.source ? `${rep.source} (workers); ` : ""}${gdpCredit} (GDP)`;
   }
@@ -307,7 +321,7 @@ function reportJobs(rep, def, nation, n, st, metros) {
       const { label, full } = industryLabel(nation, k);
       const s = ratio(v, n.employed);
       const g = n.gdp_by_industry?.[k];
-      const sub = [s != null ? `${pct(s)} of all jobs` : "", fin(g) ? `GDP ${(canada ? cad : money)(g)}` : ""].filter(Boolean).join(" · ");
+      const sub = [s != null ? `${pct(s)} of all jobs` : "", fin(g) ? `GDP ${money(g)}` : ""].filter(Boolean).join(" · ");
       return { label, full, iconId: industryIcon(k), emoji: DISTRICT_ICON[k] || "•", value: v, text: compact(v), sub };
     })
     .filter(Boolean)
@@ -326,7 +340,7 @@ function reportJobs(rep, def, nation, n, st, metros) {
     { id: "abs", label: "Most workers", states: rank(st, y), metros: rank(metros, y) },
     {
       id: "rel", label: "Specialisation",
-      hint: `Share of the area's employed in ${def.label.toLowerCase()} jobs ÷ the ${canada ? "Canadian" : "U.S."} share (${pct(nShare)}); metros of ${compact(METRO_MIN)}+ people.`,
+      hint: `Share of the area's employed in ${def.label.toLowerCase()} jobs ÷ the ${NATION.adj} share (${pct(nShare)}); metros of ${compact(METRO_MIN)}+ people.`,
       states: rank(st, lq, { fmt: fmtLq, exact: exactLq, subOf: shareSub }), metros: rank(metros, lq, { fmt: fmtLq, exact: exactLq, subOf: shareSub, min: METRO_MIN }),
     },
   ];
@@ -444,7 +458,7 @@ export function initYieldReports(opts) {
       ${modes.length ? `<section class="yr-sec"><h3>Leaderboards</h3>
         <div class="yr-controls">
           <div class="yr-tabs" role="tablist" aria-label="Areas">
-            <button role="tab" id="yr-tab-states" data-tab="states" aria-controls="yr-board" aria-selected="${tab === "states"}" tabindex="${tab === "states" ? 0 : -1}" ${hasStates ? "" : "disabled"}>${canada ? esc(rep.scope.label) : "States"}</button>
+            <button role="tab" id="yr-tab-states" data-tab="states" aria-controls="yr-board" aria-selected="${tab === "states"}" tabindex="${tab === "states" ? 0 : -1}" ${hasStates ? "" : "disabled"}>${esc(TERMS.region.many)}</button>
             <button role="tab" id="yr-tab-metros" data-tab="metros" aria-controls="yr-board" aria-selected="${tab === "metros"}" tabindex="${tab === "metros" ? 0 : -1}" ${hasMetros ? "" : "disabled"}>Metros</button>
           </div>
           ${modes.length > 1 ? `<div class="yr-modes" role="group" aria-label="Ranking">${modes

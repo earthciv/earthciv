@@ -1,0 +1,11 @@
+[
+  {"views": "*", "kinds": ["requests"], "reason": "Each edition's data now lives under /data/<id>/, and every page also loads editions.json and the edition's manifest and text pack."},
+  {"views": "ca/*cityview-*", "kinds": ["outline"], "reason": "Fix: citizen tooltips in the Canadian City View compare with Canada (\"(Canada 16.5%)\"); they said \"(US 16.5%)\"."},
+  {"views": "ca/help", "kinds": ["text", "outline", "pixels"], "reason": "Fix: a click on a Canadian city opens the city screen, as in the U.S.; the help still said \"city panel\" from before Canada had a City View."},
+  {"views": "us/*", "kinds": ["pixels"], "within": [[177, 13, 189, 27]], "reason": "Known flake on main: the country menu's arrow (an SVG background) is sometimes drawn a few pixels differently."},
+  {"views": "ca/*", "kinds": ["pixels"], "within": [[126, 13, 137, 26]], "reason": "Known flake on main: the country menu's arrow (an SVG background) is sometimes drawn a few pixels differently."},
+  {"views": "ca/phone-*", "kinds": ["pixels"], "within": [[105, 13, 118, 25], [268, 4, 277, 12]], "reason": "Known flake on main: on a phone, the country menu's arrow and the edge of the Countries pill are sometimes drawn a few pixels differently."},
+  {"views": "*/cityview-*", "kinds": ["pixels"], "within": [[276, 751, 370, 786]], "reason": "Known flake: the City View dock's Map button is sometimes 12 px wider."},
+  {"views": "ca/city-median", "kinds": ["pixels"], "within": [[451, 560, 488, 598]], "reason": "Known flake: one map badge drawn a little differently, once in five recordings."},
+  {"views": "ca/city-no-unemployment", "kinds": ["pixels"], "reason": "Known flake: faint differences across the map (at most 32 levels), also between two recordings of the unchanged site. Text and outline are still compared."}
+]

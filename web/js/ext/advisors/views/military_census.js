@@ -1,4 +1,5 @@
-// Military advisor, Canadian edition ("General"): the Canadian Forces' main bases and the largest DND lands (Treasury
+// Military advisor for military.json with census counts and no headcount by base (the Canadian edition's; "General"):
+// the Canadian Forces' main bases and the largest DND lands (Treasury
 // Board's Directory of Federal Real Property), serving members and veterans by province and city (2021 Census), and
 // garrison cities. Canada publishes no personnel by base or defence spending by province, so the U.S. troops-and-dollars
 // section has no counterpart; the rest follows the U.S. view (views/military.js).

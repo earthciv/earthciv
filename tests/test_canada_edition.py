@@ -326,7 +326,7 @@ class CanadianAdvisorDataTest(unittest.TestCase):
         # No `home` frame, so main.js frames all the land, as the U.S. edition does; the quick lens row and the
         # top bar's "Turn" label read like the U.S. ones ("Population", a short source label).
         self.assertNotIn("home", load("world"))
-        us_density = next(l for l in json.loads((ROOT / "web" / "data" / "lenses.json").read_text())["lenses"] if l["id"] == "density")
+        us_density = next(l for l in json.loads((ROOT / "web" / "data" / "us" / "lenses.json").read_text())["lenses"] if l["id"] == "density")
         ca_density = next(l for l in load("lenses")["lenses"] if l["id"] == "density")
         self.assertEqual(ca_density["name"], us_density["name"])
         nation = load("nation")
@@ -345,7 +345,7 @@ class CanadianCityViewTest(unittest.TestCase):
         cls.citizens = load("citizens")
 
     def test_districts_follow_the_us_catalog_and_rule(self):
-        us = json.loads((ROOT / "web" / "data" / "districts.json").read_text())
+        us = json.loads((ROOT / "web" / "data" / "us" / "districts.json").read_text())
         doc = self.districts
         self.assertEqual([d["id"] for d in doc["catalog"]], [d["id"] for d in us["catalog"]])
         self.assertEqual({k: doc["rule"][k] for k in ("min_lq", "min_jobs", "specialty_lq", "max_per_city", "badge_lq")},
@@ -379,7 +379,7 @@ class CanadianCityViewTest(unittest.TestCase):
         self.assertIn("industrial_zone", ids("Calgary"))  # oil and gas
 
     def test_citizen_rows_add_up(self):
-        doc, us = self.citizens, json.loads((ROOT / "web" / "data" / "citizens.json").read_text())
+        doc, us = self.citizens, json.loads((ROOT / "web" / "data" / "us" / "citizens.json").read_text())
         self.assertEqual(doc["figures"], us["figures"])
         self.assertEqual(list(doc["groups"]), list(us["groups"]))
         self.assertEqual([g["key"] for g in doc["groups"]["workforce"]], [g["key"] for g in us["groups"]["workforce"]])
@@ -419,13 +419,15 @@ class CanadianCityViewTest(unittest.TestCase):
 
 
 class DefaultEditionTest(unittest.TestCase):
-    def test_the_deployed_page_opens_on_us_with_visible_country_switcher(self):
+    def test_legacy_links_default_to_us_with_visible_country_switcher(self):
         html = (ROOT / "web" / "index.html").read_text()
         self.assertIn('data-default-country="us"', html)
         self.assertTrue((ROOT / "web" / "og-image.png").exists())
         self.assertTrue((ROOT / "web" / "og-image-ca.png").exists())
         self.assertIn('class="country-switcher"', html)
-        self.assertLess(html.index('value="us"'), html.index('value="ca"'))
+        index = json.loads((ROOT / "web" / "data" / "editions.json").read_text())
+        ids = [entry["id"] for entry in index["editions"]]
+        self.assertLess(ids.index("us"), ids.index("ca"))
         css = (ROOT / "web" / "css" / "style.css").read_text()
         self.assertNotRegex(css, r"#country-picker\s*\{[^}]*opacity:\s*0")
 

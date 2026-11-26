@@ -1,4 +1,6 @@
-import { DEFAULT_COUNTRY, canada, country, countryName } from "./app/country.js";
+import { DEFAULT_EDITION, EDITIONS, EDITION_ID, dataURL, declares, edition } from "./app/edition.js";
+import { editionUrl, pinEditionInUrl } from "./app/home.js";
+import { VIEW, defaults, txt } from "./app/text.js";
 import { Camera } from "./camera.js";
 import { prepareWorld, applyLens, stateIndex } from "./world.js";
 import * as mapRender from "./render/map.js";
@@ -23,15 +25,19 @@ import { initHelp } from "./app/help.js";
 
 const { drawStatic, drawOverlay, OCEAN_BG } = mapRender;
 
+// Data files come from the edition's own folder (app/edition.js). An optional file its manifest does not declare is
+// never requested: it loads as null and its feature stays off. A declared file that fails to load is reported.
 async function loadJSON(name, optional = false) {
+  if (optional && !declares(name)) return null;
+  const url = dataURL(name);
   try {
-    const path = `data/${canada ? "ca/" : ""}${name}.json`;
-    const r = await fetch(path);
-    if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url.pathname}: HTTP ${r.status}`);
     return await r.json();
   } catch (err) {
-    if (optional) return null;
-    throw err;
+    if (!optional) throw err;
+    console.error(`could not load ${name}.json`, err);
+    return null;
   }
 }
 
@@ -50,10 +56,12 @@ const PAN_LEAD = 0.6; // a pan that runs off the cache re-renders it shifted thi
 const DOUBLE_MS = 260;
 const SELECT_ANIM_MS = 33; // ~30 fps while a state's border highlight animates
 const isMobile = () => matchMedia("(max-width: 700px)").matches;
+defaults({ "load.error_hint": "Rebuild the data (see the README) and serve web/ over HTTP." });
 
 async function main() {
   const picker = document.getElementById("country-picker");
-  picker.value = country;
+  picker.replaceChildren(...EDITIONS.map((e) => new Option(e.name, e.id)));
+  picker.value = EDITION_ID;
   // Size the selector pill snugly to the chosen country name (a <select> otherwise expands to its longest option).
   function sizePicker() {
     const sizer = document.createElement("span");
@@ -68,17 +76,11 @@ async function main() {
   }
   sizePicker();
   document.fonts?.ready?.then(sizePicker);
-  picker.onchange = () => {
-    // The page's default edition needs no parameter; another one carries ?country= (kept in shared links).
-    const target = new URL(location.href);
-    if (picker.value === DEFAULT_COUNTRY) target.searchParams.delete("country");
-    else target.searchParams.set("country", picker.value);
-    target.hash = "";
-    location.assign(target.href);
-  };
-  document.title = canada ? "EarthCiv — Canada" : "EarthCiv — The real world, mapped like a strategy game";
-  document.querySelector(".brand-emblem").textContent = canada ? "🍁" : "★";
-  document.getElementById("map").setAttribute("aria-label", canada ? "Hex map of Canada" : "Hex map of the contiguous United States");
+  pinEditionInUrl(EDITION_ID);
+  picker.onchange = () => location.assign(editionUrl(picker.value, DEFAULT_EDITION));
+  document.title = edition.title || edition.name;
+  document.querySelector(".brand-emblem").textContent = edition.emblem || "";
+  document.getElementById("map").setAttribute("aria-label", edition.map_label || `Hex map of ${edition.name}`);
   const [world, cities, nation, lenses, sources, resources, statesData] = await Promise.all([
     loadJSON("world"), loadJSON("cities"), loadJSON("nation"),
     loadJSON("lenses", true), loadJSON("sources", true), loadJSON("resources", true), loadJSON("states", true),
@@ -322,10 +324,11 @@ async function main() {
   const HOME_M = 190; // fallback frame if the world has no owned cells: world.json margin is 200 km
   const HOME_PAD_X = 92;
   const HOME_PAD_Y = 26;
-  // Canada's cities run along the bottom of its home view, where the lens dock and the minimap sit (the U.S. edition's
-  // bottom corners are Baja and the Gulf): its home fit keeps the land above the lens dock (12 + 39 px tall, less
-  // HOME_PAD_Y), as phones stop above theirs, so Windsor's banner is not drawn under the dock.
-  const HOME_DOCK_BAND = canada ? 30 : 0;
+  // An edition whose cities run along the bottom of its home view, where the lens dock and the minimap sit, keeps
+  // its home fit above the lens dock (manifest view.home_dock_band, css px; Canada: 30, the dock's 12 + 39 px less
+  // HOME_PAD_Y), as phones stop above theirs, so its banners there are not drawn under the dock. The U.S. edition's
+  // bottom corners are Baja and the Gulf: 0.
+  const HOME_DOCK_BAND = VIEW.home_dock_band ?? 0;
   const landBox = (() => {
     const g = w.grid, own = w.raw.owner;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -567,7 +570,7 @@ async function main() {
   const stateName = (idx) => states?.[idx]?.name || w.raw.states[idx]?.name || "State";
 
   function describeCanvas() {
-    const parts = [canada ? "Hex map of Canada" : "Hex map of the contiguous United States", state.lens ? `coloured by the ${state.lens.name} lens` : "showing terrain"];
+    const parts = [edition.map_label || `Hex map of ${edition.name}`, state.lens ? `coloured by the ${state.lens.name} lens` : "showing terrain"];
     if (state.selectedCity) parts.push(`${state.selectedCity.name} selected`);
     else if (state.selectedState != null) parts.push(`${stateName(state.selectedState)} selected`);
     canvas.setAttribute("aria-label", parts.join(", "));
@@ -808,7 +811,7 @@ async function main() {
 
   const shareInfo = () => ({
     renderMap: renderShareMap,
-    countryName,
+    countryName: edition.name,
     lens: state.lens,
     formatValue: (lens, t) => formatLensValue(lens, lensValueAt(lens, t)),
     selection: state.selectedCity ? { kind: "city", name: state.selectedCity.name }
@@ -821,7 +824,7 @@ async function main() {
     beforeCopy: () => url.flush(),
     fileName: () => {
       const sel = shareInfo().selection;
-      return `${slug(countryName)}-${state.lens?.id || "terrain"}${sel ? "-" + slug(sel.name) : ""}.png`;
+      return `${slug(edition.name)}-${state.lens?.id || "terrain"}${sel ? "-" + slug(sel.name) : ""}.png`;
     },
     onToast: toast,
   });
@@ -1310,5 +1313,5 @@ main().catch((err) => {
   const el = document.getElementById("loading");
   if (!el) return;
   el.classList.add("error");
-  el.textContent = `Could not load the map data (${err.message}). ${canada ? "See the Canada rebuild command in the README." : 'Run "uv run python -m pipeline all" and serve web/ over HTTP.'}`;
+  el.textContent = `Could not load the map data (${err.message}). ${txt("load.error_hint")}`;
 });
