@@ -143,6 +143,18 @@ class WorldHomeTest(unittest.TestCase):
         self.assertIn("pinEditionInUrl(EDITION_ID)", main)
         self.assertIn("editionUrl(picker.value, DEFAULT_EDITION)", main)
 
+    def test_the_world_map_links_to_each_edition(self):
+        # Search engines follow links, not buttons, and only a link opens in a new tab: every control on the world map
+        # that opens an edition is an <a> from editionLink(), whose href is editionUrl() relative to the page
+        # (?country=<id>). The tiles, the country card's big button, the edition's own card and its search suggestion.
+        ports = self.read("js", "ext", "ports", "index.js")
+        m = re.search(r"const editionLink = \(id\) => \{\n(.*?)\n  \};", ports, re.S)
+        self.assertIsNotNone(m, "editionLink not found in web/js/ext/ports/index.js")
+        self.assertIn("new URL(editionUrl(id, DEFAULT_EDITION))", m.group(1))
+        self.assertIn('href="${esc(url.search || url.pathname)}" data-play="${esc(id)}"', m.group(1))
+        self.assertGreaterEqual(ports.count("${editionLink("), 4)
+        self.assertNotRegex(ports, r"<button[^>]*\bdata-play=", "a control that opens an edition must be a link")
+
 
 if __name__ == "__main__":
     unittest.main()

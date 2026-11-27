@@ -373,6 +373,19 @@ export function install(app) {
     else location.assign(editionUrl(id, DEFAULT_EDITION));
   }
 
+  // Every control here that opens an edition is a link to its address, so that search engines follow it and a visitor
+  // can open it in a new tab. The href is editionUrl() relative to this page: only the query differs (?country=us),
+  // or, for the default edition without WORLD_HOME, the page's own path. data-play names the edition: a plain click on
+  // the link to the edition underneath goes back to it without a reload, as openEdition() does (onOverlayClick).
+  const editionLink = (id) => {
+    const url = new URL(editionUrl(id, DEFAULT_EDITION));
+    return `href="${esc(url.search || url.pathname)}" data-play="${esc(id)}"`;
+  };
+
+  // A click that follows a link in this tab: not one that asks for a new tab or window (Ctrl, Cmd, Shift) or a
+  // download (Alt).
+  const followsHere = (e) => e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
+
   /** Open a map: an edition (a page load, or back to the one underneath), inside the viewer, or in a new tab. */
   function activatePort(p) {
     if (!p) return;
@@ -624,9 +637,17 @@ export function install(app) {
   function onOverlayClick(e) {
     const el = e.target.closest("button, a, [data-select], [data-open-port], .rt, .port-card");
     if (!el || !overlay.contains(el)) return;
-    if (el.tagName === "A") return; // links open themselves (and a link on a card does not also open the card)
-    if (el.classList.contains("rt")) return; // a click that just misses a star must not open the card's map
     const d = el.dataset;
+    if (el.tagName === "A") {
+      // Links open themselves (and a link on a card does not also open the card), except a plain click on the link to
+      // the edition underneath: that goes back to it, without a reload.
+      if (d.play && !home && d.play === EDITION_ID && followsHere(e)) {
+        e.preventDefault();
+        openEdition(d.play);
+      }
+      return;
+    }
+    if (el.classList.contains("rt")) return; // a click that just misses a star must not open the card's map
     // A star: the second click of a double-click is not a second choice (it would take the rating straight back).
     if (d.rate) return e.detail > 1 ? undefined : ratePort(d.rate, Number(d.stars));
     const act = d.act;
@@ -663,7 +684,6 @@ export function install(app) {
       return;
     }
     if (d.kind !== undefined) return setKind(!d.kind || d.kind === ui.kind ? null : d.kind);
-    if (d.play) return openEdition(d.play);
     if (d.removeCustom) {
       customPorts = customPorts.filter((x) => x.id !== d.removeCustom);
       saveCustomPorts(customPorts);
@@ -775,9 +795,13 @@ export function install(app) {
         const p = r.port;
         const n = (p.countries || []).length;
         const where = n > 2 ? plural(n, "country", "countries") : (p.countries || []).map(countryName).join(" · ");
-        return `<div class="wv-opt" role="option" id="wv-opt-${i}" aria-selected="false" data-open-port="${esc(p.id)}">
+        // An edition's suggestion is its link, out of the tab order like every suggestion (the arrow keys pick one).
+        const [tag, opens] = portKind(p) === "merged" && p.editionId
+          ? ["a", `${editionLink(p.editionId)} tabindex="-1"`]
+          : ["div", `data-open-port="${esc(p.id)}"`];
+        return `<${tag} class="wv-opt" role="option" id="wv-opt-${i}" aria-selected="false" ${opens}>
           <span class="wv-flag" aria-hidden="true">${esc(p.emblem || "🗺️")}</span><span class="wv-opt-name">${esc(p.name)}</span>
-          <span class="wv-opt-meta">${esc(KIND[portKind(p)].label)}${where ? ` · ${esc(where)}` : ""}</span></div>`;
+          <span class="wv-opt-meta">${esc(KIND[portKind(p)].label)}${where ? ` · ${esc(where)}` : ""}</span></${tag}>`;
       }).join("");
     }
     resultsEl.hidden = false;
@@ -959,9 +983,9 @@ export function install(app) {
     const editions = allPorts().filter((p) => p.status === "merged" && p.editionId);
     const nMapped = new Set(allPorts().flatMap((p) => p.countries || [])).size;
 
-    // An edition's card is one button. Where the edition has pictures (PICTURED) it shows a piece of its own map
-    // above the row that names it: the wide picture, or the squarer one where the cards are narrow. ports.css sizes
-    // the picture on the same media condition as the <source> here; the button's label already names the card.
+    // An edition's card is one link to it (editionLink). Where the edition has pictures (PICTURED) it shows a piece of
+    // its own map above the row that names it: the wide picture, or the squarer one where the cards are narrow.
+    // ports.css sizes the picture on the same media condition as the <source> here; the link's label names the card.
     const tile = (p) => {
       const iso = (p.countries || [])[0] || "";
       const current = !home && p.editionId === EDITION_ID;
@@ -973,9 +997,9 @@ export function install(app) {
           <source media="(max-width: 600px), (min-width: 901px) and (max-height: 760px)" srcset="${pic}-small.jpg" width="519" height="288">
           <img src="${pic}.jpg" alt="" width="716" height="208" decoding="async"></picture></span>
         <span class="wv-tile-row">${row}</span>`;
-      return `<button type="button" class="wv-tile${pic ? " wv-tile-pictured" : ""}" data-play="${esc(p.editionId)}" data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
+      return `<a class="wv-tile${pic ? " wv-tile-pictured" : ""}" ${editionLink(p.editionId)} data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
         ${body}
-      </button>`;
+      </a>`;
     };
     const row = (r) => {
       const n = r.list.length;
@@ -1031,10 +1055,12 @@ export function install(app) {
 
   function primaryHtml(p) {
     const a = actionOf(p);
-    const cls = KIND[portKind(p)].cls;
+    const k = portKind(p);
+    const cls = KIND[k].cls;
     const inner = `<span class="wv-primary-ic" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>
       <span class="wv-primary-text"><b>${esc(a.title)}</b><small>${esc(a.sub)}</small></span>`;
     if (a.href) return `<a class="wv-primary ${cls}" href="${esc(a.href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
+    if (k === "merged" && p.editionId) return `<a class="wv-primary ${cls}" ${editionLink(p.editionId)}>${inner}</a>`;
     return `<button type="button" class="wv-primary ${cls}" data-open-port="${esc(p.id)}">${inner}</button>`;
   }
 
@@ -1094,7 +1120,10 @@ export function install(app) {
 
     let actions = "";
     if (k === "merged") {
-      actions = `<button type="button" class="ports-btn ports-btn-primary" data-open-port="${esc(p.id)}">${PLAY_SVG} ${!home && p.editionId === EDITION_ID ? "Back to it" : "Play"}</button>`;
+      const label = `${PLAY_SVG} ${!home && p.editionId === EDITION_ID ? "Back to it" : "Play"}`;
+      actions = p.editionId
+        ? `<a class="ports-btn ports-btn-primary" ${editionLink(p.editionId)}>${label}</a>`
+        : `<button type="button" class="ports-btn ports-btn-primary" data-open-port="${esc(p.id)}">${label}</button>`;
     } else if ((k === "live" || k === "custom") && p.url && p.embed) {
       actions = `<button type="button" class="ports-btn ports-btn-primary" data-open-port="${esc(p.id)}">${PLAY_SVG} Open here</button>
         <a class="ports-btn" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab">New tab ${EXT_SVG}</a>`;

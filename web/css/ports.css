@@ -87,9 +87,9 @@ body.ports-open #topbar { visibility: hidden; }
   background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .6);
 }
-.wv-opt {
+.wv-opt { /* an edition's suggestion is a link */
   display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 6px 9px; border-radius: 6px;
-  cursor: pointer; font-size: 13.5px;
+  cursor: pointer; font-size: 13.5px; color: inherit; text-decoration: none;
 }
 .wv-opt[aria-selected="true"], .wv-opt:hover { background: rgba(201, 164, 92, .17); }
 .wv-opt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
@@ -208,9 +208,9 @@ body.ports-open #topbar { visibility: hidden; }
 .wv-lede { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }
 
 .wv-tiles { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 14px 0 2px; }
-.wv-tile {
+.wv-tile { /* a link to the edition (index.js editionLink) */
   display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 0 9px; border-radius: 9px; overflow: hidden;
-  cursor: pointer; text-align: left; color: var(--ink);
+  cursor: pointer; text-align: left; color: var(--ink); text-decoration: none;
   border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(158, 124, 54, .32), rgba(60, 45, 18, .4));
   box-shadow: inset 0 1px 0 rgba(255, 240, 200, .12);
 }
@@ -227,7 +227,7 @@ body.ports-open #topbar { visibility: hidden; }
   background: linear-gradient(180deg, #e6c47a, #b68d3e); color: #1a1208; font: 700 12.5px var(--sans);
 }
 .wv-tile:hover .wv-play { background: linear-gradient(180deg, #f5d995, #c99d48); }
-/* A picture card: a piece of the edition's own map above its row, all of it the one button. */
+/* A picture card: a piece of the edition's own map above its row, all of it the one link. */
 .wv-tiles-pictured { gap: 10px; }
 .wv-tile-pictured { display: block; padding: 0; }
 .wv-tile-pic { position: relative; display: block; line-height: 0; background: #0d2a47; border-bottom: 1px solid rgba(236, 208, 142, .5); }
