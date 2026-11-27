@@ -29,7 +29,7 @@ const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css?v=20261127", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
-const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
+const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 // Editions with pictures of their own map for their card here: home.jpg and home-small.jpg in the edition's folder,
 // declared by "home_pictures" in editions.json (docs/EDITIONS.md; pipeline/home_pictures.py makes them).

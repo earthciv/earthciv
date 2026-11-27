@@ -8,8 +8,8 @@
 EarthCiv draws real countries like a turn-based strategy map, from public data: terrain, cities, resources, roads
 and more, with every number traced to its source. It is a visualizer, not a game.
 
-- **It opens on a world map that lists the maps made in this style:** more than 40 maps of more than 50 countries
-  and territories. About 40 people built most of them in the day after usaciv was announced. Each of their maps
+- **It opens on a world map that lists the maps made in this style:** more than 60 maps of more than 50 countries
+  and territories. More than 50 people built most of them in the day after usaciv was announced. Each of their maps
   carries its author's name and, where its code is on GitHub, a link to the repository. Most of those with a live
   site open inside EarthCiv.
 - **Two countries are EarthCiv editions,** drawn by the map engine in this repository: the
@@ -23,8 +23,8 @@ edition here, and the Canada edition and the world map are built on his code.
 ## Add your map
 
 If you built a map of a country, a region or a city in this style, it belongs on the
-[world map](https://earthciv.org/). The first list came from a GitHub search for usaciv on November 26, 2026, so
-your map may already be there. The search box at the top of the world map finds a map by its name, its author or
+[world map](https://earthciv.org/). The list came from GitHub searches on November 26 and 27, 2026, so your map may
+already be there. The search box at the top of the world map finds a map by its name, its author or
 its repository's name (`owner/name`, not the full address).
 
 - **Not listed, or listed with a mistake?**
