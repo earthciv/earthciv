@@ -27,14 +27,13 @@
   <meta name="twitter:description" content="Explore every country in the world atlas and discover strategy-game maps built from real-world data.">
   <meta name="twitter:image" content="https://earthciv.org/og-world.jpg">
   <meta name="twitter:image:alt" content="The EarthCiv world atlas with country borders and markers for community maps">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261127">
 </head>
 <body>
   <header id="topbar">
-    <div class="country-switcher" role="group" aria-label="Country switcher">
+    <div class="country-switcher" role="group" aria-label="Map switcher">
       <div class="brand">
-        <span class="brand-emblem" aria-hidden="true">★</span>
-        <select id="country-picker" aria-label="Switch country" title="Switch country"></select>
+        <select id="country-picker" class="map-picker" aria-label="Switch map" title="Switch map"></select>
       </div>
     </div>
     <div id="yields" class="yields" aria-label="National yields"></div>
@@ -97,6 +96,6 @@
   </div>
 
   <div id="loading">Surveying the land…</div>
-  <script type="module" src="js/boot.js"></script>
+  <script type="module" src="js/boot.js?v=20261127"></script>
 </body>
 </html>

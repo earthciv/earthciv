@@ -4,9 +4,8 @@
 // of ?country=<id>.
 import { createEmitter, createHashState, createModes } from "../../app/api.js";
 import { REQUESTED_PICK } from "../../app/home.js";
-// Versioned so that a browser still holding the old atlas script (earthciv.org let browsers keep scripts for four
-// hours until 23:09 UTC on 2026-11-26) cannot run it on this page. Edition pages load ./index.js unversioned.
-import { install } from "./index.js?v=20261126";
+// Match the edition loader in ext/index.js so both paths use the current atlas and map menu.
+import { install } from "./index.js?v=20261127";
 
 export async function openWorldHome() {
   // Tidy the address before anything reads it: ?country=fr (not a built-in edition) becomes #country=FR, and the old

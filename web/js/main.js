@@ -19,11 +19,12 @@ import { initSearch } from "./app/search.js";
 import { createEmitter, createHashState, createModes, createUi, createMapToggles } from "./app/api.js";
 import { drawHighlight, drawOverlays, invalidateHighlight, highlightBounds } from "./render/overlays.js";
 import { resourceFilterSig, layerActive, layerError, Z as LAYER_Z } from "./render/map.js";
-import { installExtensions } from "./ext/index.js";
+import { installExtensions } from "./ext/index.js?v=20261127";
 import { initShare, shareLink } from "./app/share.js";
 import { initHelp } from "./app/help.js";
 import { createTapCard } from "./ui/tapCard.js";
-import { initMobile } from "./ui/mobile.js";
+import { initMobile } from "./ui/mobile.js?v=20261127";
+import { editionIcon, fitMenu, menuLabel } from "./ui/mapPicker.js";
 
 const { drawStatic, drawOverlay, OCEAN_BG } = mapRender;
 
@@ -65,29 +66,21 @@ const coarsePointer = () => matchMedia("(pointer: coarse)").matches;
 defaults({ "load.error_hint": "Rebuild the data (see the README) and serve web/ over HTTP." });
 
 async function main() {
+  // The map menu (ui/mapPicker.js) names this edition and lists the others. ext/ports adds the world map and the
+  // community maps to it, and shows the same menu above a community map.
   const picker = document.getElementById("country-picker");
-  picker.replaceChildren(...EDITIONS.map((e) => new Option(e.name, e.id)));
+  picker.replaceChildren(...EDITIONS.map((e) => new Option(menuLabel(editionIcon(e), e.name), e.id)));
   picker.value = EDITION_ID;
-  // Size the selector pill snugly to the chosen country name (a <select> otherwise expands to its longest option).
-  function sizePicker() {
-    const sizer = document.createElement("span");
-    sizer.className = "brand-sizer";
-    sizer.textContent = picker.selectedOptions[0]?.textContent || "";
-    picker.after(sizer);
-    const cs = getComputedStyle(picker);
-    const extra = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
-      + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0) + 4;
-    picker.style.width = `${Math.ceil(sizer.getBoundingClientRect().width + extra)}px`;
-    sizer.remove();
-  }
-  sizePicker();
-  document.fonts?.ready?.then(sizePicker);
+  fitMenu(picker);
+  document.fonts?.ready?.then(() => fitMenu(picker));
   pinEditionInUrl(EDITION_ID);
-  picker.onchange = () => location.assign(editionUrl(picker.value, DEFAULT_EDITION));
+  // Another edition is a page of its own. Every other entry of the menu belongs to ext/ports.
+  picker.onchange = () => {
+    if (EDITIONS.some((e) => e.id === picker.value)) location.assign(editionUrl(picker.value, DEFAULT_EDITION));
+  };
   document.title = edition.title || edition.name;
   if (edition.description) document.querySelector('meta[name="description"]')?.setAttribute("content", edition.description);
   declareCanonical(EDITION_ID, DEFAULT_EDITION);
-  document.querySelector(".brand-emblem").textContent = edition.emblem || "";
   document.getElementById("map").setAttribute("aria-label", edition.map_label || `Hex map of ${edition.name}`);
   const [world, cities, nation, lenses, sources, resources, statesData] = await Promise.all([
     loadJSON("world"), loadJSON("cities"), loadJSON("nation"),
@@ -400,7 +393,7 @@ async function main() {
   }
 
   function resize() {
-    sizePicker();
+    fitMenu(picker); // its font is smaller on a phone-sized window
     dpr = window.devicePixelRatio || 1;
     if (coarsePointer()) dpr = Math.min(dpr, MAX_TOUCH_DPR);
     topbarH = document.getElementById("topbar")?.offsetHeight || TOPBAR_H;

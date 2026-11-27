@@ -5,8 +5,9 @@ This copy extends [usaciv](https://karpathy.ai/usaciv), the original project by 
 [usaciv-canada.pages.dev/?country=ca](https://usaciv-canada.pages.dev/?country=ca).
 
 The deployed site opens on the world map (`data-home="world"` in `web/index.html`); Canada's Play button there opens
-`?country=ca`. Inside an edition, the country switcher at the top left switches between Canada and the United States
-(`?country=us`), and the World button beside it opens the world map. The country parameter is kept in shared links.
+`?country=ca`. Inside an edition, the map menu at the top left names the edition and opens any other map: the
+United States (`?country=us`), or a community map, which shows the same menu above it. The World button beside it
+opens the world map. The country parameter is kept in shared links.
 
 Run `uv run python -m pipeline serve` from the project root and open [the local site](http://127.0.0.1:8765/).
 The Canadian data files are bundled under `web/data/ca/` and load from the same static site as the U.S. edition.
@@ -72,8 +73,8 @@ scale.
   country, Arctic included. Canada's cities line the bottom of that frame, where the lens dock and the minimap sit, so
   the fit stops above the lens dock and the minimap is no taller than the U.S. one (152 px). Banner population floors
   are the U.S. floors scaled by Canada's share of the U.S. population (12%), so a city gets its banner at the zoom
-  where a U.S. city of the same share would; zoom in for more. The country menu is styled as the U.S. brand text and
-  shrinks to the emblem where the U.S. edition hides that text.
+  where a U.S. city of the same share would; zoom in for more. The map menu at the top left is the U.S. edition's,
+  naming Canada.
 - **City View.** The U.S. City View with Canadian data. Districts use the U.S. catalog and rule (location quotient of
   at least 1.25, specialities at 3, up to five, ranked by workers above the national norm) on 2021 Census counts of
   employed residents by detailed NAICS 2017 industry, so workers are counted where they live, not where the jobs are;

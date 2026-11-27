@@ -47,9 +47,13 @@ edition state in the hash (such as `/#city=35620`) open the default edition. Lin
 }
 ```
 
-The country menu lists the editions in this order. `id` is the folder name: lower case, the country's ISO 3166-1
-alpha-2 code where there is one. `name` and `emblem` repeat the manifest's, so the menu can be built without loading
-every manifest.
+The map menu at the top left lists the editions in this order, before the community maps. `id` is the folder name:
+lower case, the country's ISO 3166-1 alpha-2 code where there is one. `name` and `emblem` repeat the manifest's, so
+the menu can be built without loading every manifest.
+
+`emblem` is drawn on the round badge of the edition's card on the world map and of its share images. Beside the
+edition's name, in the menu and in lists, an emblem that is an emoji (🍁) is the edition's icon. One that is not, such
+as the U.S. star, would read as no icon there, so the country's flag takes its place (`web/js/ui/mapPicker.js`).
 
 `home_pictures` is optional. `true` says the edition's folder has two pictures of its own map, which the world map
 shows on the edition's card: `home.jpg` (716 × 208 px) where the card is wide, and `home-small.jpg` (519 × 288 px)
