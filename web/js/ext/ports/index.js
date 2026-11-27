@@ -17,12 +17,12 @@
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
 import { editionIcon, fitMenu, flagEmoji, mapIcon, menuLabel } from "../../ui/mapPicker.js";
-import { preventIosInputZoom } from "../../ui/mobile.js?v=20261127";
+import { preventIosInputZoom } from "../../ui/mobile.js";
 import { DEFAULT_EDITION, EDITIONS } from "../../app/edition-index.js";
 import { editionUrl } from "../../app/home.js";
 // The map script and the stylesheet are versioned (as ./home.js versions this file) so that a browser holding copies
 // from before this rewrite fetches new ones; see ./home.js.
-import { createWorldMap, portKind } from "./worldMap.js?v=20261126";
+import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
 
 const MODE = "ports";

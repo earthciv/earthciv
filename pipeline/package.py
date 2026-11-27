@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import shutil
 import zipfile
+from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -60,6 +61,19 @@ def _zip(path: Path, files, base: Path, prefix: str) -> int:
     return path.stat().st_size
 
 
+def _version_scripts(stage: Path) -> str:
+    """Give the entire module graph a fresh URL when any of its files change."""
+    scripts = stage / "js"
+    digest = sha256()
+    for path in _files(scripts, ["."]):
+        digest.update(path.relative_to(scripts).as_posix().encode("utf-8") + b"\0")
+        digest.update(sha256(path.read_bytes()).digest())
+    # Keep the directory at the same depth so relative imports and URLs to data, CSS and share pages still resolve.
+    name = f"js-{digest.hexdigest()[:16]}"
+    scripts.rename(stage / name)
+    return name
+
+
 def cmd_package() -> None:
     missing = [p for p in ("data/us/cities.json", "data/us/world.json", "index.html") if not (WEB / p).exists()]
     if missing:
@@ -68,20 +82,21 @@ def cmd_package() -> None:
     with TemporaryDirectory(dir=DIST) as temp:
         stage = Path(temp) / NAME
         stage.mkdir()
-        share_count = build_share_pages(WEB, stage)
-        page_count = build_crawler_files(WEB, stage)
-
         # 1. The site: web/ without the dev pages, plus generated social previews, robots.txt and sitemap.xml.
         for f in _files(WEB, ["."]):
             rel = f.relative_to(WEB)
-            if rel.parts[0] in SITE_SKIP_DIRS or (stage / rel).exists():
+            if rel.parts[0] in SITE_SKIP_DIRS:
                 continue
             dst = stage / rel
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(f, dst)
+        scripts = _version_scripts(stage)
         index = stage / "index.html"
         page = index.read_text(encoding="utf-8").replace("<html ", "<html data-share-pages ", 1)
+        page = page.replace('src="js/boot.js"', f'src="{scripts}/boot.js"', 1)
         index.write_text(page, encoding="utf-8")
+        share_count = build_share_pages(WEB, stage, scripts)
+        page_count = build_crawler_files(WEB, stage)
         n_site = sum(1 for _ in _files(stage, ["."]))
 
         # 2. The source code, served next to the site.

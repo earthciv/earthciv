@@ -5,7 +5,7 @@
 import { createEmitter, createHashState, createModes } from "../../app/api.js";
 import { REQUESTED_PICK } from "../../app/home.js";
 // Match the edition loader in ext/index.js so both paths use the current atlas and map menu.
-import { install } from "./index.js?v=20261127";
+import { install } from "./index.js";
 
 export async function openWorldHome() {
   // Tidy the address before anything reads it: ?country=fr (not a built-in edition) becomes #country=FR, and the old

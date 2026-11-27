@@ -19,11 +19,11 @@ import { initSearch } from "./app/search.js";
 import { createEmitter, createHashState, createModes, createUi, createMapToggles } from "./app/api.js";
 import { drawHighlight, drawOverlays, invalidateHighlight, highlightBounds } from "./render/overlays.js";
 import { resourceFilterSig, layerActive, layerError, Z as LAYER_Z } from "./render/map.js";
-import { installExtensions } from "./ext/index.js?v=20261127";
+import { installExtensions } from "./ext/index.js";
 import { initShare, shareLink } from "./app/share.js";
 import { initHelp } from "./app/help.js";
 import { createTapCard } from "./ui/tapCard.js";
-import { initMobile } from "./ui/mobile.js?v=20261127";
+import { initMobile } from "./ui/mobile.js";
 import { editionIcon, fitMenu, menuLabel } from "./ui/mapPicker.js";
 
 const { drawStatic, drawOverlay, OCEAN_BG } = mapRender;

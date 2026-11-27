@@ -18,7 +18,7 @@ def _route_key(value: str) -> str:
     return value
 
 
-def _write_page(out: Path, site: str, edition: str, country: str, card: dict, jpeg: bytes) -> None:
+def _write_page(out: Path, site: str, scripts: str, edition: str, country: str, card: dict, jpeg: bytes) -> None:
     kind, name = card["kind"], card["name"]
     route = Path("share", edition)
     app = "?" + urlencode({"country": edition})
@@ -75,7 +75,7 @@ def _write_page(out: Path, site: str, edition: str, country: str, card: dict, jp
     <p>{escape(description)}</p>
     <a id="open-map" href="{escape(site_root + app)}">Open map on EarthCiv</a>
   </main>
-  <script type="module" src="{site_root}js/app/open-share.js"></script>
+  <script type="module" src="{site_root}{scripts}/app/open-share.js"></script>
 </body>
 </html>
 """,
@@ -83,7 +83,7 @@ def _write_page(out: Path, site: str, edition: str, country: str, card: dict, jp
     )
 
 
-def build_share_pages(web: Path, out: Path) -> int:
+def build_share_pages(web: Path, out: Path, scripts: str) -> int:
     try:
         from playwright.sync_api import sync_playwright
     except ModuleNotFoundError as error:
@@ -111,7 +111,7 @@ def build_share_pages(web: Path, out: Path) -> int:
                 cards = page.evaluate("() => window.socialCards.then(({cards}) => cards)")
                 for card in cards:
                     jpeg = page.evaluate("(card) => window.socialCards.then(({render}) => render(card))", card)
-                    _write_page(out, site, id_, edition["name"], card, base64.b64decode(jpeg))
+                    _write_page(out, site, scripts, id_, edition["name"], card, base64.b64decode(jpeg))
                 count += len(cards)
         finally:
             server.shutdown()
