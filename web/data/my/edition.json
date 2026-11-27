@@ -57,7 +57,10 @@
     "lenses",
     "resources",
     "sources",
-    "counties"
+    "counties",
+    "infrastructure",
+    "wonders",
+    "disasters"
   ],
   "text": "text.json",
   "view": {
