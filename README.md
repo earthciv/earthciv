@@ -70,7 +70,8 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
 - `status` is `"live"` for a map with a public `https` address in `url`, and `"repo"` (with `"url": null`) for a map
   that has only source code. The two EarthCiv editions' own entries use `"merged"`, with an `editionId`.
 - `embed` says whether EarthCiv may show your site in a frame on its own page. Use `false` to have your site open
-  in a new tab instead, or if your host does not allow framing.
+  in a new tab instead, or if your host does not allow framing. A map shown in a frame is also listed in the map
+  menu at the top left of every edition and of every other map shown this way.
 - `scope` is `"country"`, `"multi"` (several countries) or `"region"` (part of a country, such as a region or a
   city).
 - `countries` holds the codes of the outlines the world map draws: each country's ISO 3166-1 alpha-2 code, in
@@ -152,8 +153,8 @@ by a small Python pipeline that uses only the standard library, from public down
 Canada is at [earthciv.org/?country=ca](https://earthciv.org/?country=ca), drawn by the same engine as the United
 States on a 25 km hex grid of its own. It covers all 10 provinces and 3 territories and has 152 cities: the 2021
 Census metropolitan areas and census agglomerations, with population from Statistics Canada's July 1, 2025 estimates.
-Inside an edition, the country switcher at the top left moves between Canada and the United States, and the
-**World** button beside it opens the world map.
+Inside an edition, the map menu at the top left names the edition and opens any other map: the other edition, or a
+community map, which then shows the same menu above it. The **World** button beside it opens the world map.
 
 The edition has all five yields (GDP and workers by industry), 14 census-division and land-cover lenses, power
 plants and mines, oil and gas fields, highways and railways, ports and airports, freight routes between provinces

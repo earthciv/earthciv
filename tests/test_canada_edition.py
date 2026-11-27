@@ -428,8 +428,10 @@ class DefaultEditionTest(unittest.TestCase):
         index = json.loads((ROOT / "web" / "data" / "editions.json").read_text())
         ids = [entry["id"] for entry in index["editions"]]
         self.assertLess(ids.index("us"), ids.index("ca"))
+        # The switcher is the map menu (tests/test_map_menu.py), styled by its class.
+        self.assertIn('<select id="country-picker" class="map-picker"', html)
         css = (ROOT / "web" / "css" / "style.css").read_text()
-        self.assertNotRegex(css, r"#country-picker\s*\{[^}]*opacity:\s*0")
+        self.assertNotRegex(css, r"(#country-picker|\.map-picker)[^{}]*\{[^}]*opacity:\s*0")
 
 
 if __name__ == "__main__":

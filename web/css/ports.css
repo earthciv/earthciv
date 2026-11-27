@@ -1,7 +1,7 @@
 /* World view (web/js/ext/ports): the world map, its country list and cards, and the viewer for community maps. */
 
-/* ---------- the "World" button beside the country picker (inside an edition) ---------- */
-#btn-ports.ports-launch {
+/* ---------- the "World" button beside the map menu: in an edition's top bar and above an open community map ---------- */
+.ports-launch {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
   height: 28px; padding: 4px 10px 4px 9px; border-radius: 16px; cursor: pointer;
   background: linear-gradient(180deg, #1f5c50, #123832);
@@ -11,30 +11,30 @@
   box-shadow: inset 0 1px 0 rgba(255, 240, 200, .24), 0 1px 3px rgba(0, 0, 0, .55), 0 0 12px rgba(67, 198, 163, .28);
   transition: background .15s, box-shadow .15s, transform .1s;
 }
-#btn-ports.ports-launch svg.icon { color: #7ae2c5; flex: none; }
-#btn-ports.ports-launch .ports-launch-lbl { display: inline !important; }
-#btn-ports.ports-launch .ports-launch-count {
+.ports-launch svg.icon { color: #7ae2c5; flex: none; }
+.ports-launch .ports-launch-lbl { display: inline !important; }
+.ports-launch .ports-launch-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 20px; height: 17px; padding: 0 5px; border-radius: 9px;
   background: var(--gold-bright); color: #161005;
   font: 700 11px/1 var(--sans); font-variant-numeric: tabular-nums;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
 }
-#btn-ports.ports-launch:hover {
+.ports-launch:hover {
   background: linear-gradient(180deg, #287566, #174941);
   box-shadow: inset 0 1px 0 rgba(255, 245, 210, .32), 0 1px 4px rgba(0, 0, 0, .6), 0 0 16px rgba(236, 208, 142, .38);
 }
-#btn-ports.ports-launch[aria-pressed="true"] {
+.ports-launch[aria-pressed="true"] {
   background: linear-gradient(180deg, #6b5524, #403214);
   border-color: #fff0be;
   box-shadow: inset 0 1px 0 rgba(255, 245, 210, .3), 0 0 14px rgba(236, 208, 142, .42);
 }
-#btn-ports.ports-launch[aria-pressed="true"] svg.icon { color: var(--gold-bright); }
+.ports-launch[aria-pressed="true"] svg.icon { color: var(--gold-bright); }
 @media (max-width: 1200px) and (min-width: 701px) {
-  #btn-ports.ports-launch { padding: 3px 8px 3px 7px; gap: 5px; font-size: 12.5px; }
+  .ports-launch { padding: 3px 8px 3px 7px; gap: 5px; font-size: 12.5px; }
 }
 @media (max-width: 700px) {
-  #btn-ports.ports-launch { padding: 3px 8px; gap: 5px; font-size: 12px; }
+  .ports-launch { height: 34px; padding: 0 8px; gap: 5px; font-size: 12px; } /* as tall as the map menu beside it */
 }
 
 /* ---------- the world view: its own top bar above the map and the country panel ---------- */
@@ -450,25 +450,26 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 
 /* ---------- the viewer: a community map open inside EarthCiv ---------- */
 .ports-viewer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Its bar starts as an edition's top bar does: the map menu that names the open map, then World (css/style.css has
+   the menu's look), at the same place and size, so the way to every other map stays where it was. */
 .ports-vbar {
+  position: relative; z-index: 1; /* its shadow falls on the map below */
   display: flex; align-items: center; gap: 10px; padding: 5px 12px; flex: none; /* one row: the map's name shortens */
   min-height: var(--topbar-h); /* where the world view's top bar was, at the same height */
-  background: linear-gradient(180deg, #213245, #14202e); border-bottom: 1px solid var(--gold);
+  background: linear-gradient(180deg, #24364a, #131e2a); border-bottom: 1px solid var(--gold);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .25);
 }
-.ports-vtitle { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.pv-emblem { font-size: 16px; }
-.pv-name {
-  font: normal 15px var(--serif); color: var(--gold-bright); letter-spacing: .04em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
-}
-.ports-vswitch-wrap { margin-left: auto; }
-#ports-vswitch {
-  height: 28px; max-width: 260px; padding: 0 8px; border-radius: 6px;
-  background: rgba(0, 0, 0, .4); border: 1px solid rgba(201, 164, 92, .5);
-  color: var(--ink); font: 12.5px var(--sans); cursor: pointer;
-}
-#ports-vswitch option, #ports-vswitch optgroup { background: #142130; color: var(--ink); }
-.ports-vactions { display: flex; align-items: center; gap: 6px; }
+/* The menu is as wide as the open map's name. In a bar too narrow for that, index.js (fitViewerBar) makes room a
+   step at a time, as an edition's top bar does on the narrowest phones: World drops its word (data-tight="1"), then
+   its count (2), then the menu gives up some padding and its letter spacing (3). After that the name is cut short. */
+.ports-vbar .country-switcher, .ports-vbar .brand { flex: 0 1 auto; min-width: 0; }
+.ports-vbar .country-switcher { height: auto; max-width: none; } /* a phone's top bar sets both for its own first row */
+.ports-vbar[data-tight] .ports-launch-lbl { display: none !important; }
+.ports-vbar[data-tight="2"] .ports-launch-count, .ports-vbar[data-tight="3"] .ports-launch-count { display: none; }
+.ports-vbar[data-tight="3"] .brand { letter-spacing: 0; }
+.ports-vbar[data-tight="3"] .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
+.ports-vkind { flex: none; }
+.ports-vactions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
 
 .ports-vstage { position: relative; flex: 1; min-height: 0; background: #0c2238; }
 .ports-iframe { display: block; width: 100%; height: 100%; border: 0; background: #0c2238; }
@@ -534,10 +535,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .wv-h { font-size: 18px; }
   .wv-head .wv-h { font-size: 20px; }
   .wv-primary { margin-top: 12px; }
-  /* The switcher already names the open map, so on narrower screens the separate title gives way to it. */
-  .ports-vtitle { display: none; }
-  .ports-vswitch-wrap { flex: 1; min-width: 0; }
-  #ports-vswitch { width: 100%; max-width: none; }
+  .ports-vkind { display: none; } /* the note under the map says whose it is */
 }
 @media (max-width: 700px) {
   .wv-bar { gap: 8px; padding: 0 8px; }
@@ -550,9 +548,11 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .wv-rows-none .wv-row { min-height: 40px; }
   .wv-fact-v { font-size: 13px; }
   .ports-tip { display: none; }
-  /* Phones: Back and New tab show as icons (the words stay for screen readers); GitHub stays on the map's card. */
-  .ports-vbar { gap: 6px; padding: 5px 8px; }
-  .ports-vbar .ports-btn { height: 26px; }
+  /* Phones: the bar is laid out as an edition's first row is, with the same finger-sized controls. New tab shows as
+     an icon (the words stay for screen readers); GitHub stays on the map's card. */
+  .ports-vbar { gap: 5px; padding: 5px 6px; }
+  .ports-vbar .country-switcher, .ports-vactions { gap: 5px; }
+  .ports-vbar .ports-btn { height: 34px; min-width: 34px; justify-content: center; padding: 0 8px; }
   .ports-vbar .ports-vlbl {
     position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
@@ -580,5 +580,5 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .wv-tile-pictured .wv-play { padding: 0 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ports-side, .wv-primary, #btn-ports.ports-launch { transition: none; }
+  .ports-side, .wv-primary, .ports-launch { transition: none; }
 }

@@ -2,7 +2,10 @@
 // edition and community map ("port") of a country.
 //
 //   * On a page with <html data-home="world"> the bare address opens straight onto it (app/home.js, ./home.js).
-//     Inside an edition, the "World" button beside the country picker opens it over the map (app mode "ports").
+//     Inside an edition, the "World" button beside the map menu opens it over the map (app mode "ports").
+//   * The map menu (ui/mapPicker.js) lists the world map, the EarthCiv editions and every community map that opens
+//     inside EarthCiv. It is the same menu in an edition's top bar and in the bar above an open community map, so
+//     any map is one pick away from any other.
 //   * Click or tap any country, pick it in the list beside the map, or find it with the search box (/): its card
 //     shows the country's World Bank figures, one big button that opens its best map (an EarthCiv edition, a
 //     community map shown inside EarthCiv, or one on its own site) and every other map of it. A country nobody has
@@ -13,6 +16,8 @@
 
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
+import { editionIcon, fitMenu, flagEmoji, mapIcon, menuLabel } from "../../ui/mapPicker.js";
+import { preventIosInputZoom } from "../../ui/mobile.js";
 import { DEFAULT_EDITION, EDITIONS } from "../../app/edition-index.js";
 import { editionUrl } from "../../app/home.js";
 // The map script and the stylesheet are versioned (as ./home.js versions this file) so that a browser holding copies
@@ -25,6 +30,7 @@ const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css?v=20261126", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
+const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 // Editions with pictures of their own map for their card here: home.jpg and home-small.jpg in the edition's folder,
 // declared by "home_pictures" in editions.json (docs/EDITIONS.md; pipeline/home_pictures.py makes them).
 const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
@@ -130,11 +136,8 @@ function saveCustomPorts(list) {
   }
 }
 
-/** 🇩🇪 from "DE" (regional indicator letters; some systems show the two letters instead of a flag). */
-function flagEmoji(iso) {
-  if (!/^[A-Z]{2}$/.test(iso || "")) return "🏳️";
-  return String.fromCodePoint(...[...iso].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
-}
+/** A map's icon beside its name: its emblem, or its country's flag where the emblem is not an emoji (the U.S. star). */
+const iconOf = (p) => mapIcon(p.emblem, (p.countries || [])[0]);
 
 const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -168,9 +171,11 @@ function formatFigure(key, v) {
 
 export function install(app) {
   injectCss();
+  preventIosInputZoom(); // the map menu's font is under 16 px; an edition has done this already, the home page has not
   const home = app.worldHome === true; // the world view is the page (no edition underneath); see ./home.js
 
   let catalogP = null;
+  let portsP = null;
   let basePorts = [];
   let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
   let customPorts = loadCustomPorts();
@@ -182,6 +187,7 @@ export function install(app) {
     onChange: () => ratings.sync(overlay, portById),
   });
   let map = null;
+  let worldUnseen = false; // the world map was built while a community map covered it (see closeViewer)
   let tipEl = null;
   let searchInput = null;
   let resultsEl = null;
@@ -205,24 +211,82 @@ export function install(app) {
   };
 
   // --- the edition underneath (when not home) and the way to the world from it -------------------------------------
-  const picker = document.getElementById("country-picker");
+  const picker = home ? null : document.getElementById("country-picker");
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
-  const editionName = EDITIONS.find((e) => e.id === EDITION_ID)?.name || "the map";
-  const editionEmblem = document.querySelector(".brand-emblem")?.textContent?.trim() || "★";
+  const editionUnder = EDITIONS.find((e) => e.id === EDITION_ID);
+  const editionName = editionUnder?.name || "the map";
+  const editionEmblem = editionUnder?.emblem || "★";
 
-  // The World button's badge: how many maps the world view lists (the catalog's own count once it has loaded).
-  let launchBtn = null;
+  // The World button, beside the map menu in an edition's top bar and above an open community map. Its badge says how
+  // many maps the world view lists (the catalog's own count once it has loaded).
+  const LAUNCH_HTML = `${GLOBE_SVG}<span class="ports-launch-lbl">World</span><span class="ports-launch-count" aria-hidden="true"></span>`;
   function syncLaunchCount() {
-    if (!launchBtn) return;
     const n = basePorts.length ? allPorts().length : CATALOG_PORT_COUNT + customPorts.length;
-    const badge = launchBtn.querySelector(".ports-launch-count");
-    if (badge) badge.textContent = String(n);
-    launchBtn.title = `World map: pick any country (${n} maps)`;
-    launchBtn.setAttribute("aria-label", `World map: pick any country, ${n} maps`);
+    for (const btn of document.querySelectorAll(".ports-launch")) {
+      const badge = btn.querySelector(".ports-launch-count");
+      if (badge) badge.textContent = String(n);
+      btn.title = `World map: pick any country (${n} maps)`;
+      btn.setAttribute("aria-label", `World map: pick any country, ${n} maps`);
+    }
+  }
+
+  // --- the map menu ------------------------------------------------------------------------------------------------
+  // One list for both of its places (an edition's top bar, the bar above an open community map): the world map, the
+  // editions, the community maps that open inside EarthCiv, and the links saved in this browser. An edition is listed
+  // exactly as main.js lists it, so the menu's width does not change when the community maps arrive.
+  function menuHtml() {
+    const all = allPorts();
+    const option = (value, label) => `<option value="${esc(value)}">${esc(label)}</option>`;
+    const group = (label, options) => (options.length ? `<optgroup label="${esc(label)}">${options.join("")}</optgroup>` : "");
+    const mapOption = (p) => option(p.id, menuLabel(iconOf(p), p.name));
+    return option(WORLD_VALUE, "🌍 World map")
+      + group("EarthCiv editions", EDITIONS.map((e) => option(e.id, menuLabel(editionIcon(e), e.name))))
+      + group("Community maps", all.filter((p) => p.status === "live" && p.embed && p.url).map(mapOption))
+      + group("Your links", all.filter((p) => p.status === "custom" && p.url).map(mapOption));
+  }
+
+  // Entries are rewritten only when they change, so a menu that is open keeps its list while the world loads.
+  const menuWritten = new WeakMap();
+  function fillMenu(select, current) {
+    if (!select) return;
+    const html = menuHtml();
+    if (menuWritten.get(select) !== html) {
+      select.innerHTML = html;
+      menuWritten.set(select, html);
+    }
+    if (select.value !== (current || "")) select.value = current || "";
+  }
+
+  // Both menus name the map on screen: the edition underneath, and the community map open above it.
+  function syncMenus() {
+    fillMenu(picker, EDITION_ID);
+    if (ui.activePortId) fillMenu(overlay?.querySelector("#ports-vswitch"), ui.activePortId);
+  }
+
+  // A pick from either menu. The menu itself goes back to naming the map on screen: the pick may open in a new tab
+  // or be a page load that the visitor comes back from.
+  function onMenuPick(select, current) {
+    const value = select.value;
+    select.value = current || "";
+    if (value === WORLD_VALUE) {
+      if (ui.activePortId) closeViewer();
+      else app.setMode(MODE, { id: null });
+      return;
+    }
+    const port = portById(value);
+    if (EDITIONS.some((e) => e.id === value)) openEdition(value);
+    else if (!port) return;
+    else if (app.mode === MODE) activatePort(port);
+    else app.setMode(MODE, { id: port.id });
+    // The keyboard's focus follows the pick to the menu that now names the map on screen: the other bar's, when the
+    // pick changed bars. Not on a touch screen, where focusing a menu can open it.
+    if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const menu = app.mode !== MODE ? picker : ui.activePortId ? overlay?.querySelector("#ports-vswitch") : null;
+    if (menu && menu !== select) menu.focus({ preventScroll: true });
   }
 
   if (!home) {
-    // A prominent "World" button right beside the top-left country picker, at every screen width.
+    // A prominent "World" button right beside the top-left map menu, at every screen width.
     const topbar = document.getElementById("topbar");
     const switcher = topbar?.querySelector(".country-switcher");
     const brand = topbar?.querySelector(".brand");
@@ -242,46 +306,60 @@ export function install(app) {
       btn?.classList.add("ports-launch");
     }
     if (btn) {
-      launchBtn = btn;
       btn.setAttribute("aria-pressed", "false");
-      btn.innerHTML = `${GLOBE_SVG}<span class="ports-launch-lbl">World</span><span class="ports-launch-count" aria-hidden="true"></span>`;
+      btn.innerHTML = LAUNCH_HTML;
       syncLaunchCount();
       app.on("mode", ({ name }) => btn.setAttribute("aria-pressed", String(name === MODE)));
     }
 
-    if (picker && !picker.querySelector('option[value="__ports__"]')) {
-      const grp = document.createElement("optgroup");
-      grp.label = "Every country";
-      grp.appendChild(new Option("🌍 World map…", "__ports__"));
-      picker.appendChild(grp);
+    if (picker) {
+      // The edition's menu gets the world map now and the community maps as soon as their list is here.
+      syncMenus();
       picker.addEventListener("change", (e) => {
-        if (picker.value !== "__ports__") return;
+        if (EDITIONS.some((ed) => ed.id === picker.value)) return; // another edition is a page load: main.js opens it
         e.stopImmediatePropagation();
-        picker.value = EDITION_ID;
-        app.setMode(MODE, { id: null });
+        onMenuPick(picker, EDITION_ID);
       }, true);
+      loadPorts().catch((err) => console.error("could not load ports.json", err));
     }
   }
 
   // --- data ----------------------------------------------------------------------------------------------------------
+  function fetchJson(url) {
+    return fetch(url).then((r) => {
+      if (!r.ok) throw new Error(`${url.pathname}: HTTP ${r.status}`);
+      return r.json();
+    });
+  }
+
+  // The list of maps alone (24 KB). An edition loads it as it starts, for its map menu; the world's outlines and
+  // figures wait until the world view opens.
+  function loadPorts() {
+    if (!portsP) {
+      portsP = fetchJson(new URL("ports.json", DATA_URL)).then((portsDoc) => {
+        basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
+        syncLaunchCount();
+        syncMenus();
+        return basePorts;
+      });
+      portsP.catch(() => (portsP = null)); // a failed load is retried the next time
+    }
+    return portsP;
+  }
+
   async function loadCatalog() {
     if (!catalogP) {
-      const fetchJson = (url) => fetch(url).then((r) => {
-        if (!r.ok) throw new Error(`${url.pathname}: HTTP ${r.status}`);
-        return r.json();
-      });
       catalogP = Promise.all([
-        fetchJson(new URL("ports.json", DATA_URL)),
+        loadPorts(),
         fetchJson(new URL("world-outlines.json", DATA_URL)),
         // Headline figures per country (pipeline/build_world_figures.py). The world view works without them.
         fetchJson(new URL("world-figures.json", DATA_URL)).catch((err) => {
           console.error("could not load world-figures.json", err);
           return null;
         }),
-      ]).then(([portsDoc, outlinesDoc, figuresDoc]) => {
+      ]).then(([ports, outlinesDoc, figuresDoc]) => {
         figures = figuresDoc;
-        basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
-        return { ports: basePorts, outlines: outlinesDoc };
+        return { ports, outlines: outlinesDoc };
       });
       catalogP.catch(() => (catalogP = null)); // a failed load is retried the next time
     }
@@ -312,8 +390,13 @@ export function install(app) {
     return copy;
   }
 
-  const allPorts = () => [...basePorts, ...customPorts];
-  const portById = (id) => allPorts().find((p) => p.id === id) || null;
+  // Function declarations: the map menu above is filled while install() is still running.
+  function allPorts() {
+    return [...basePorts, ...customPorts];
+  }
+  function portById(id) {
+    return allPorts().find((p) => p.id === id) || null;
+  }
   const countryName = (iso) => map?.getCountryName(iso) || iso;
 
   // The maps shown, after the map key filter.
@@ -386,12 +469,18 @@ export function install(app) {
   // download (Alt).
   const followsHere = (e) => e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
 
+  /** True for a map that opens inside EarthCiv, in the viewer: a community map that allows it, or a saved link. */
+  function opensInside(p) {
+    const k = portKind(p);
+    return (k === "live" || k === "custom") && !!p.url && !!p.embed;
+  }
+
   /** Open a map: an edition (a page load, or back to the one underneath), inside the viewer, or in a new tab. */
   function activatePort(p) {
     if (!p) return;
     const k = portKind(p);
     if (k === "merged" && p.editionId) return openEdition(p.editionId);
-    if ((k === "live" || k === "custom") && p.url && p.embed) return openPort(p);
+    if (opensInside(p)) return openPort(p);
     const href = p.url || (p.repo ? `https://github.com/${encodeURI(p.repo)}` : null);
     if (href) window.open(href, "_blank", "noopener,noreferrer");
   }
@@ -486,12 +575,13 @@ export function install(app) {
 
       <div class="ports-viewer" id="ports-viewer" hidden>
         <div class="ports-vbar">
-          <button type="button" class="ports-btn" data-act="back-atlas" title="Back to the world map (Esc)">← <span class="ports-vlbl">World map</span></button>
-          <div class="ports-vtitle" id="ports-vtitle"></div>
-          <label class="ports-vswitch-wrap">
-            <span class="sr-only">Switch map</span>
-            <select id="ports-vswitch" aria-label="Switch to another map"></select>
-          </label>
+          <div class="country-switcher" role="group" aria-label="Map switcher">
+            <div class="brand">
+              <select id="ports-vswitch" class="map-picker" aria-label="Switch map" title="Switch map"></select>
+            </div>
+            <button type="button" class="ports-launch" data-act="back-atlas">${LAUNCH_HTML}</button>
+          </div>
+          <span class="pc-badge ports-vkind" id="ports-vkind"></span>
           <div class="ports-vactions" id="ports-vactions"></div>
         </div>
         <div class="ports-vstage">
@@ -516,6 +606,7 @@ export function install(app) {
     searchInput = overlay.querySelector("#wv-search");
     resultsEl = overlay.querySelector("#wv-results");
     sideEl = overlay.querySelector("#wv-side");
+    syncLaunchCount();
     bindOverlayEvents();
     return overlay;
   }
@@ -557,7 +648,14 @@ export function install(app) {
     });
 
     const vSwitch = overlay.querySelector("#ports-vswitch");
-    vSwitch.addEventListener("change", () => activatePort(portById(vSwitch.value)));
+    vSwitch.addEventListener("change", () => onMenuPick(vSwitch, ui.activePortId));
+    // The bar is fitted again when its width changes, and when the stars arrive in its other half.
+    if (typeof ResizeObserver === "function") {
+      const refit = new ResizeObserver(() => fitViewerBar());
+      refit.observe(overlay.querySelector(".ports-vbar"));
+      refit.observe(overlay.querySelector("#ports-vactions"));
+    }
+    document.fonts?.ready?.then(() => fitViewerBar());
 
     const iframe = overlay.querySelector("#ports-iframe");
     iframe.addEventListener("load", () => {
@@ -800,7 +898,7 @@ export function install(app) {
           ? ["a", `${editionLink(p.editionId)} tabindex="-1"`]
           : ["div", `data-open-port="${esc(p.id)}"`];
         return `<${tag} class="wv-opt" role="option" id="wv-opt-${i}" aria-selected="false" ${opens}>
-          <span class="wv-flag" aria-hidden="true">${esc(p.emblem || "🗺️")}</span><span class="wv-opt-name">${esc(p.name)}</span>
+          <span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span><span class="wv-opt-name">${esc(p.name)}</span>
           <span class="wv-opt-meta">${esc(KIND[portKind(p)].label)}${where ? ` · ${esc(where)}` : ""}</span></${tag}>`;
       }).join("");
     }
@@ -948,6 +1046,7 @@ export function install(app) {
   // --- rendering -----------------------------------------------------------------------------------------------------
   function renderAll() {
     syncLaunchCount();
+    syncMenus(); // a link added or removed is in both menus too
     if (!map) return;
     map.setPorts(allPorts(), filteredPorts());
     overlay.querySelector("#wv-legend").innerHTML = kindsHtml();
@@ -1139,7 +1238,7 @@ export function install(app) {
     return `
       <article class="port-card ${KIND[k].cls}${picked ? " is-picked" : ""}" data-port-id="${esc(p.id)}" title="${esc(a.title)}">
         <div class="pc-top">
-          <span class="pc-emblem" aria-hidden="true">${esc(p.emblem || "🌍")}</span>
+          <span class="pc-emblem" aria-hidden="true">${esc(iconOf(p) || "🌍")}</span>
           <div class="pc-head">
             <div class="pc-title-row">
               <h3>${esc(p.name)}</h3>
@@ -1171,7 +1270,7 @@ export function install(app) {
     const lines = [];
     if (info.port) {
       const k = portKind(info.port);
-      lines.push(`<div class="pt-head"><span>${esc(info.port.emblem || "🌍")}</span><b>${esc(info.port.name)}</b></div>`);
+      lines.push(`<div class="pt-head"><span>${esc(iconOf(info.port) || "🌍")}</span><b>${esc(info.port.name)}</b></div>`);
       lines.push(`<div class="pt-sub">${esc(KIND[k].label)}${info.port.author ? ` · by ${esc(info.port.author)}` : ""}</div>`);
     } else {
       lines.push(`<div class="pt-head"><span>${flagEmoji(iso)}</span><b>${esc(info.country.name)}</b></div>`);
@@ -1194,18 +1293,24 @@ export function install(app) {
   }
 
   // --- the viewer: a community map open inside EarthCiv ------------------------------------------------------------
-  // It brings its own top bar, so the viewer's bar is the only EarthCiv bar above it.
-  function populateViewerSwitcher(activeId) {
-    const sel = overlay.querySelector("#ports-vswitch");
-    const all = allPorts();
-    const groupHtml = (label, items) => (items.length
-      ? `<optgroup label="${esc(label)}">${items.map((p) => `<option value="${esc(p.id)}"${p.id === activeId ? " selected" : ""}>${esc(p.emblem || "")} ${esc(p.name)}</option>`).join("")}</optgroup>`
-      : "");
-    sel.innerHTML =
-      groupHtml("EarthCiv editions", all.filter((p) => p.status === "merged")) +
-      groupHtml("Community maps", all.filter((p) => p.status === "live" && p.embed && p.url)) +
-      groupHtml("Your links", all.filter((p) => p.status === "custom" && p.url));
-    sel.value = activeId;
+  // It brings its own top bar, so the viewer's bar is the only EarthCiv bar above it. That bar starts as an edition's
+  // top bar does: the map menu, which names the open map, then World.
+
+  // The menu is as wide as the open map's name. Where the bar is too narrow for that (a long name on a phone), it
+  // makes room a step at a time before the name is cut short (css/ports.css, data-tight): World drops its word, then
+  // its count, then the menu gives up some padding and its letter spacing. Every call starts again from the full
+  // bar, so the result depends on the bar's width and the name alone.
+  function fitViewerBar() {
+    const bar = overlay?.querySelector(".ports-vbar");
+    const menu = overlay?.querySelector("#ports-vswitch");
+    if (!bar || !ui.activePortId || overlay.hidden) return;
+    delete bar.dataset.tight;
+    for (let step = 1; step <= 3; step++) {
+      const wanted = fitMenu(menu);
+      if (menu.getBoundingClientRect().width >= wanted - 0.5) return;
+      bar.dataset.tight = String(step);
+    }
+    fitMenu(menu); // the last step changed what the name needs
   }
 
   function loadIframeForPort(port) {
@@ -1247,10 +1352,9 @@ export function install(app) {
     showMapTip(null);
     closeResults(true);
     const k = portKind(port);
-    overlay.querySelector("#ports-vtitle").innerHTML = `
-      <span class="pv-emblem" aria-hidden="true">${esc(port.emblem || "🌍")}</span>
-      <span class="pv-name">${esc(port.name)}</span>
-      <span class="pc-badge ${KIND[k].cls}">${esc(KIND[k].label)}</span>`;
+    const kind = overlay.querySelector("#ports-vkind");
+    kind.className = `pc-badge ports-vkind ${KIND[k].cls}`;
+    kind.textContent = KIND[k].label;
     const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
     overlay.querySelector("#ports-vactions").innerHTML = `
       <div class="rt rt-bar" data-rating-of="${esc(port.id)}" hidden></div>
@@ -1259,10 +1363,11 @@ export function install(app) {
       <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
       ${home ? "" : `<button type="button" class="icon-btn" data-act="close" aria-label="Back to ${esc(editionName)}" title="Back to ${esc(editionName)}">${icon("close", "✕", { size: 12 })}</button>`}`;
     ratings.sync(overlay.querySelector("#ports-viewer"), portById);
-    populateViewerSwitcher(port.id);
+    fillMenu(overlay.querySelector("#ports-vswitch"), port.id);
     overlay.querySelector(".ports-atlas").hidden = true;
     overlay.querySelector(".wv-bar").hidden = true;
     overlay.querySelector("#ports-viewer").hidden = false;
+    fitViewerBar(); // once the bar is on screen: a hidden menu cannot be measured
     loadIframeForPort(port);
     syncTitle();
     app.hash.soon();
@@ -1276,10 +1381,23 @@ export function install(app) {
     overlay.querySelector("#ports-viewer").hidden = true;
     overlay.querySelector(".wv-bar").hidden = false;
     overlay.querySelector(".ports-atlas").hidden = false;
-    map?.resize();
+    if (map) {
+      syncInsets(); // the panel was hidden with the world map: on a phone its height is known again
+      map.resize();
+      frameUnseenWorld();
+    }
     syncTitle();
     app.hash.soon();
     return true;
+  }
+
+  // A world map built behind an open community map had no size to frame its opening view in. It frames it the first
+  // time it is on screen: the picked country, or the whole world.
+  function frameUnseenWorld() {
+    if (!worldUnseen || !map) return;
+    worldUnseen = false;
+    if (ui.selected) map.focusCountry(ui.selected, { animate: false });
+    else map.resetView({ animate: false });
   }
 
   function setAddFormOpen(open, iso = null) {
@@ -1338,7 +1456,8 @@ export function install(app) {
   app.registerMode(MODE, {
     async enter(params = {}) {
       const tok = ++mountToken;
-      if (params?.id && params.id !== "all" && !map) pending.port = params.id;
+      const wanted = params?.id && params.id !== "all" ? params.id : null;
+      if (wanted && !map) pending.port = wanted;
       ensureOverlay();
       overlay.hidden = false;
       document.body.classList.add("ports-open");
@@ -1348,6 +1467,14 @@ export function install(app) {
       overlay.querySelector("#ports-viewer").hidden = true;
       setSheet(ui.sheet);
       syncTitle();
+      // A map picked in an edition's menu opens at once, with no world map on the way to it: the list of maps is
+      // already here, and the world loads behind the open map.
+      const direct = wanted ? portById(wanted) : null;
+      const openedDirect = !!direct && opensInside(direct);
+      if (openedDirect) {
+        pending.port = null;
+        openPort(direct);
+      }
       try {
         const data = await loadCatalog();
         if (tok !== mountToken || app.mode !== MODE) return;
@@ -1371,14 +1498,16 @@ export function install(app) {
           syncInsets();
           // The opening view frames the part of the map that the filled-in panel leaves uncovered (phones).
           map.resetView({ animate: false });
+          worldUnseen = !!ui.activePortId; // built behind an open map: it frames its view when it first shows
         } else {
           renderAll();
           syncInsets();
         }
         map.resize();
+        if (!ui.activePortId) frameUnseenWorld();
         syncTitle();
         while (ready.length) ready.shift()();
-        if (params?.id && params.id !== "all") openPortById(params.id);
+        if (wanted && !openedDirect) openPortById(wanted);
       } catch (err) {
         console.error("world map failed to load", err);
         overlay.querySelector("#wv-side-content").innerHTML = `<div class="wv-pad"><p><b>Could not load the world map.</b></p>

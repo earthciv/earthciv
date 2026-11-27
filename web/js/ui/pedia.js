@@ -26,7 +26,7 @@ const CREDIT = `<h4>Credits</h4>
       <p>Original project: <b>usaciv</b> by Andrej Karpathy
       (<a href="${ORIGINAL_URL}" target="_blank" rel="noopener">karpathy.ai/usaciv</a> ·
       <a href="${ANNOUNCEMENT_URL}" target="_blank" rel="noopener">announcement</a>). This copy extends it with a Canada
-      edition: switch between the two with the country menu at the top left.</p>`;
+      edition: switch between the two with the menu at the top left.</p>`;
 
 export function initPedia(data) {
   const modal = document.getElementById("pedia");

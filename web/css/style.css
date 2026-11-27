@@ -50,31 +50,28 @@ svg.icon { display: inline-block; flex: none; }
 }
 .country-switcher { display: flex; align-items: center; gap: 6px; flex: none; }
 .brand { position: relative; font-family: var(--serif); font-weight: bold; font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--gold-bright); white-space: nowrap; display: inline-flex; align-items: center; flex: none; }
-.brand-emblem {
-  position: absolute; left: 4px; top: 50%; transform: translateY(-50%); z-index: 1; pointer-events: none;
-  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
-  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 11px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.45);
-}
-/* The country switcher stays visibly framed and labelled at every viewport size: a gold-bordered selector pill
-   ("UNITED STATES", "CANADA") with a crisp dropdown chevron, paired with the "Countries" World Atlas pill. */
-#country-picker {
-  -webkit-appearance: none; appearance: none; margin: 0; height: 28px; padding: 0 26px 0 31px;
+/* The map menu (ui/mapPicker.js) stays visibly framed and labelled at every viewport size: a gold-bordered selector
+   pill that names the map on screen, its icon first (a flag, then "UNITED STATES"), with a crisp dropdown chevron,
+   paired with the "World" pill. An edition's top bar and the bar above a community map (css/ports.css) show the same
+   one, and it lists the same maps in both. A name too long for its bar is cut short with an ellipsis. */
+.map-picker {
+  -webkit-appearance: none; appearance: none; margin: 0; height: 28px; padding: 0 26px 0 10px; min-width: 0; max-width: 100%;
   border: 1px solid var(--gold); border-radius: 5px;
   font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; line-height: 26px; cursor: pointer;
+  text-overflow: ellipsis;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ecd08e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px,
     linear-gradient(180deg, #354c66, #1d2d3f);
   box-shadow: inset 0 1px 0 rgba(255,235,190,.16), 0 1px 3px rgba(0,0,0,.45);
 }
-#country-picker:hover {
+.map-picker:hover {
   border-color: var(--gold-bright);
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff2cc' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px,
     linear-gradient(180deg, #435f7d, #253a50);
 }
-#country-picker option, #country-picker optgroup { color: #ead7a8; background: #172437; text-transform: none; letter-spacing: normal; font-weight: normal; }
-#country-picker optgroup { color: var(--gold); font-weight: 600; }
+.map-picker option, .map-picker optgroup { color: #ead7a8; background: #172437; text-transform: none; letter-spacing: normal; font-weight: normal; }
+.map-picker optgroup { color: var(--gold); font-weight: 600; }
 .brand-sizer { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; font: inherit; letter-spacing: inherit; text-transform: inherit; }
 .yields { display: flex; gap: 14px; flex: none; }
 .yield {
@@ -540,19 +537,19 @@ body.panel-open #lens-area { right: calc(394px + var(--dock-right, 0px)); }
 
 /* ---------- phones ---------- */
 @media (max-width: 700px) {
-  /* Two rows that always fit, instead of one strip to scroll sideways: the country picker, Countries, Search and a
-     menu (Advisors, Share, Help, Almanac) on top, the national yields below (ui/mobile.js wires the menu). */
+  /* Two rows that always fit, instead of one strip to scroll sideways: the map menu, World, Search and a menu
+     (Advisors, Share, Help, Almanac) on top, the national yields below (ui/mobile.js wires the menu). */
   :root { --topbar-h: 78px; }
   #topbar {
     height: var(--topbar-h); padding: 0 6px; gap: 0 5px; flex-wrap: wrap; align-content: flex-start; overflow: visible;
   }
   .brand-text { display: none; }
-  .country-switcher { order: 0; height: 44px; gap: 5px; min-width: 0; }
+  /* The map menu and World get the row less Search and the menu button (two 34px buttons and three 5px gaps). On a
+     screen too narrow for both, World drops its word (ui/mobile.js), and then the map's name is cut short. */
+  .country-switcher { order: 0; height: 44px; gap: 5px; flex: 0 1 auto; min-width: 0; max-width: calc(100% - 83px); }
   .spacer { order: 1; height: 44px; }
-  .brand { font-size: 12px; letter-spacing: .04em; }
-  .brand-emblem { left: 4px; width: 20px; height: 20px; font-size: 11px; }
-  #country-picker { height: 34px; padding: 0 20px 0 28px; line-height: 32px; background-position: right 7px center; }
-  #topbar #btn-ports.ports-launch { height: 34px; padding: 0 8px; }
+  .brand { font-size: 12px; letter-spacing: .04em; flex: 0 1 auto; min-width: 0; }
+  .map-picker { height: 34px; padding: 0 20px 0 9px; line-height: 32px; background-position: right 7px center; }
   #topbar.tb-tight #btn-ports .ports-launch-lbl { display: none !important; }
   .turn { display: none; }
 
@@ -661,12 +658,13 @@ body.panel-open #lens-area { right: calc(394px + var(--dock-right, 0px)); }
   /* The world view (ext/ports) hides this top bar and shows its own, one row high: it keeps the one-row height. */
   .ports-overlay { --topbar-h: 40px; }
 }
-/* The narrowest phones (a folded Galaxy Fold is 280px): the picker drops its emblem, then Countries its count. */
+/* The narrowest phones (a folded Galaxy Fold is 280px): the map menu gives up some of its padding, then its letter
+   spacing, and World its count, so that the flag and "UNITED STATES" are still whole. */
 @media (max-width: 340px) {
-  .brand-emblem { display: none; }
-  #country-picker { padding-left: 10px; }
+  .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
 }
 @media (max-width: 300px) {
+  .brand { letter-spacing: 0; }
   #topbar.tb-tight #btn-ports .ports-launch-count { display: none; }
 
   .yield-report {

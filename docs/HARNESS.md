@@ -99,7 +99,7 @@ must be identical apart from the known flakes below; record on the same machine 
 
 A few views still differ in their pixels between two recordings of the same site. These are bugs in the app, not
 the harness, and `harness/allow/editions.json` lists them as known flakes, each confined to its box where it stays in
-one place: the country menu's arrow (an SVG background, a few pixels), the City View dock's Map button (sometimes
+one place: the map menu's arrow (an SVG background, a few pixels), the City View dock's Map button (sometimes
 12 px wider), one map badge in `ca/city-median`, and faint differences across the map in `ca/city-no-unemployment`
 (at most 32 levels; text and outline are still compared).
 
