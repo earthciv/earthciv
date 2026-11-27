@@ -1,0 +1,72 @@
+{
+  "contract": 3,
+  "id": "my",
+  "name": "Malaysia",
+  "emblem": "🌺",
+  "title": "EarthCiv — Malaysia",
+  "description": "Explore the states, districts, terrain and cities of Malaysia on EarthCiv's interactive strategy map.",
+  "map_label": "Hex map of Malaysia",
+  "nation": {
+    "vs": "Malaysia",
+    "code": "MY",
+    "short": "Malaysia",
+    "the": "Malaysia",
+    "in": "in Malaysia",
+    "poss": "Malaysia's",
+    "the_poss": "Malaysia's",
+    "adj": "Malaysian"
+  },
+  "currency": {
+    "code": "MYR",
+    "symbol": "RM",
+    "words": "ringgit"
+  },
+  "label_years": true,
+  "terms": {
+    "region": {
+      "one": "State or federal territory",
+      "many": "States & federal territories",
+      "short": "State",
+      "column": "State/FT",
+      "short_many": "States"
+    },
+    "division": {
+      "one": "district",
+      "many": "districts",
+      "One": "District",
+      "Many": "Districts",
+      "short_many": "Districts"
+    },
+    "area": {
+      "one": "city",
+      "many": "cities",
+      "areas": "cities and towns",
+      "metro": "city",
+      "micro": "town",
+      "ranked": "cities and towns",
+      "metro_long": "City (district of 500,000+)",
+      "micro_long": "Town (district of 150,000+)",
+      "both": "Cities & towns"
+    }
+  },
+  "files": [
+    "world",
+    "cities",
+    "nation",
+    "states",
+    "sources"
+  ],
+  "text": "text.json",
+  "view": {
+    "banner_floor_scale": 0.1,
+    "emblem_color": "#cc0001"
+  },
+  "sources": {
+    "roles": {
+      "population": "dosm_population",
+      "growth": "dosm_population",
+      "areas": "dosm_districts",
+      "cover": "esri_cover"
+    }
+  }
+}

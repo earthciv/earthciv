@@ -1,0 +1,15 @@
+{
+  "advisor.commerce.caveats": [
+    "Freight routes and ports are not yet built for the Malaysia edition."
+  ],
+  "advisor.culture.caveats": [
+    "Faith, wonders and disasters are not yet built for the Malaysia edition."
+  ],
+  "advisor.culture.disaster_sources": ["dosm_population"],
+  "advisor.culture.sources": ["dosm_population"],
+  "advisor.explorer.caveats": [
+    "Population is DOSM's {year} mid-year estimate by administrative district. Six districts created in 2025 (Membakut in Sabah; Gedong, Lingga, Pantu, Sebuyau and Siburan in Sarawak) are counted in the districts they were carved from, so every figure sits on the 160 districts the map draws.",
+    "Cities are, for now, districts of 150,000 or more residents, named after their largest town; conurbations that span several districts (Greater Kuala Lumpur, Penang, Johor Bahru) are not yet joined."
+  ],
+  "advisor.people.sources": ["dosm_population", "dosm_districts"]
+}

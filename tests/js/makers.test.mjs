@@ -281,7 +281,7 @@ test("one map is the original, and its maker leads the list", () => {
   // The U.S. edition is his map too, so it is credited to him and not to this site.
   assert.deepEqual(ranked[0].ports.map((p) => p.id), ["us", "usaciv-original"]);
   assert.equal(ranked.at(-1).house, true);
-  assert.deepEqual(ranked.at(-1).ports.map((p) => p.id), ["ca"]);
+  assert.deepEqual(ranked.at(-1).ports.map((p) => p.id), ["ca", "my"]);
   assert.equal(ranked.filter((m) => m.house).length, 1);
 });
 

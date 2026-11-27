@@ -143,7 +143,7 @@ class MakersWiringTest(unittest.TestCase):
         self.assertIn('const HOUSE = new URL(REPO_URL).pathname.split("/")[1].toLowerCase();', self.index)
         ports = json.loads(PORTS_PATH.read_text(encoding="utf-8"))["ports"]
         house = [p["id"] for p in ports if (p.get("repo") or "").lower() == "earthciv/earthciv" and "author_github" not in p]
-        self.assertEqual(house, ["ca"])
+        self.assertEqual(house, ["ca", "my"])
 
     def test_pictures_are_asked_for_without_naming_the_page(self):
         # The only pictures from another site are the makers', from GitHub's picture host. The request carries no

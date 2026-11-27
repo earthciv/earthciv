@@ -47,6 +47,24 @@
       "github_stars_checked": "2026-11-27"
     },
     {
+      "id": "my",
+      "name": "Malaysia",
+      "emblem": "🌺",
+      "status": "merged",
+      "editionId": "my",
+      "scope": "country",
+      "region": "Asia",
+      "countries": ["MY"],
+      "center": [109.5, 4.0],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "earthciv/earthciv",
+      "author": "EarthCiv",
+      "url": null,
+      "embed": true,
+      "description": "EarthCiv edition (in progress): 13 states and 3 federal territories, 160 districts and their towns, from DOSM open data."
+    },
+    {
       "id": "europeciv",
       "name": "Europe Civilization",
       "emblem": "🇪🇺",
