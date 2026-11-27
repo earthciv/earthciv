@@ -4,8 +4,9 @@
 // countries that fit, marks the tiny ones with a dot and plots a pin per map.
 //
 // Every country is clickable: a click inside a country picks it, a click just beside a small one picks the nearest
-// country within a few pixels (more on touch screens), and a pin picks its map's country. Pan by dragging, zoom with
-// the wheel, a pinch, a double click / double tap or the host's buttons; focusCountry() flies to a country.
+// country within a few pixels (more on touch screens), and a pin picks its map's country. Double-clicking or
+// double-tapping a mapped country or pin opens its map directly (and zooms in on empty ocean or unmapped land). Pan
+// by dragging, zoom with the wheel, a pinch or the host's buttons; focusCountry() flies to a country.
 
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
@@ -133,7 +134,7 @@ export function portKind(p) {
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, homeLon = 0, insets: initialInsets = null }) {
+export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onOpenCountry, homeLon = 0, insets: initialInsets = null }) {
   const ctx = canvas.getContext("2d");
   const coarse = () => matchMedia("(pointer: coarse)").matches;
 
@@ -589,20 +590,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, hom
   }
 
   function hitTest(sx, sy, touch = coarse()) {
-    // 1. Pins (highest priority first: pinCoords is sorted low→high, so walk it backwards).
-    const hitR = touch ? 17 : 11;
-    let bestPin = null;
-    let bestD2 = hitR * hitR;
-    for (let i = pinCoords.length - 1; i >= 0; i--) {
-      const item = pinCoords[i];
-      const [px, py] = worldToScreen(item.x, item.y);
-      const d2 = (sx - px) ** 2 + (sy - py) ** 2;
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        bestPin = item.port;
-      }
-    }
-    // 2. The country under the point.
+    // 1. The country under the point.
     const [wx, wy] = screenToWorld(sx, sy);
     let hitCountry = null;
     for (const c of countries) {
@@ -611,6 +599,25 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, hom
       if (c.rings.some((ring) => pointInRing(wx, wy, ring))) {
         hitCountry = c;
         break;
+      }
+    }
+    // 2. Pins (highest priority first: pinCoords is sorted low→high, so walk it backwards).
+    // Over water or tiny islands pins get a generous hit radius; inside a country polygon pins only claim pointers
+    // directly near their medallion so clicking or double-clicking a country picks the country itself rather than an
+    // incidental nearby pin.
+    const sameR2 = (hitCountry ? (touch ? 12 : 6.5) : (touch ? 17 : 11)) ** 2;
+    const foreignR2 = (touch ? 8 : 5.5) ** 2;
+    let bestPin = null;
+    let bestD2 = sameR2;
+    for (let i = pinCoords.length - 1; i >= 0; i--) {
+      const item = pinCoords[i];
+      const [px, py] = worldToScreen(item.x, item.y);
+      const d2 = (sx - px) ** 2 + (sy - py) ** 2;
+      const sameCountry = !hitCountry || (item.port.countries || []).includes(hitCountry.id);
+      const maxD2 = sameCountry ? bestD2 : Math.min(bestD2, foreignR2);
+      if (d2 < maxD2) {
+        bestD2 = d2;
+        bestPin = item.port;
       }
     }
     // 3. Else the nearest country within a few pixels: small islands and microstates are easy to miss.
@@ -743,11 +750,11 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, hom
     if (!wasTap) return;
     const [sx, sy] = localXY(e);
     const touch = e.pointerType !== "mouse";
-    // A second tap on the same spot zooms in (a mouse uses dblclick).
+    // A second tap on a mapped country opens its top map; elsewhere it zooms in (a mouse uses dblclick).
     const now = performance.now();
     if (touch && lastTap && now - lastTap.t < 320 && Math.hypot(sx - lastTap.x, sy - lastTap.y) < 30) {
       lastTap = null;
-      zoomAtAnimated(sx, sy, 2.2);
+      if (!tryOpenAt(sx, sy, true)) zoomAtAnimated(sx, sy, 2.2);
       return;
     }
     lastTap = touch ? { t: now, x: sx, y: sy } : null;
@@ -759,6 +766,19 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, hom
       x: e.clientX,
       y: e.clientY,
     });
+  }
+  function tryOpenAt(sx, sy, touch) {
+    if (!onOpenCountry) return false;
+    const hit = hitTest(sx, sy, touch);
+    const country = pickFromHit(hit);
+    const ports = country ? countryPorts.get(country.id) || [] : [];
+    if (!country || (!hit.port && !ports.length)) return false;
+    const opened = onOpenCountry({ id: country.id, name: country.name }, { ports, port: hit.port || null }) === true;
+    if (opened) {
+      anim = null;
+      onHover?.(null);
+    }
+    return opened;
   }
   function onPointerLeave(e) {
     if (e.pointerType !== "mouse" || drag) return;
@@ -780,6 +800,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, hom
   function onDblClick(e) {
     e.preventDefault();
     const [sx, sy] = localXY(e);
+    if (!e.shiftKey && tryOpenAt(sx, sy, false)) return;
     zoomAtAnimated(sx, sy, e.shiftKey ? 1 / 2 : 2);
   }
   function zoomAt(sx, sy, factor) {

@@ -30,7 +30,7 @@ import { editionUrl } from "../../app/home.js";
 // from before this rewrite fetches new ones; see ./home.js.
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
-import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankMakers } from "./makers.js";
+import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "./makers.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
@@ -578,18 +578,24 @@ export function install(app) {
     });
   }
 
-  // A country's maps, best first: EarthCiv editions, your links, maps that open inside, maps on their own site, code;
-  // a map of the country alone before a map of a whole region.
+  function globalRatingMean() {
+    let n = 0;
+    let sum = 0;
+    for (const p of basePorts) {
+      const r = ratings.of(p.id);
+      n += r.n || 0;
+      sum += r.sum || 0;
+    }
+    return n ? sum / n : 0;
+  }
+
+  // A country's maps, best and most popular first: EarthCiv editions, your links, maps that open inside, maps on their
+  // own site, code; dedicated country maps before multi-country or regional maps, then ratings, GitHub stars and order.
   function portsFor(iso, list = allPorts()) {
-    return list
-      .filter((p) => (p.countries || []).includes(iso))
-      .sort((a, b) => {
-        const ka = KIND_ORDER[portKind(a)] ?? 9, kb = KIND_ORDER[portKind(b)] ?? 9;
-        if (ka !== kb) return ka - kb;
-        const sa = (a.countries || []).length === 1, sb = (b.countries || []).length === 1;
-        if (sa !== sb) return sa ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
+    return rankCountryPorts(
+      list.filter((p) => (p.countries || []).includes(iso)),
+      { ratingOf: (id) => ratings.of(id), globalMean: globalRatingMean(), catalogOrder: allPorts() },
+    );
   }
 
   function bestKind(list) {
@@ -717,7 +723,7 @@ export function install(app) {
       <div class="ports-atlas">
         <div class="ports-map-pane">
           <div class="ports-canvas-wrap">
-            <canvas id="ports-world-canvas" role="img" aria-label="World map. Click any country to see its maps and figures; the list beside the map has every country too."></canvas>
+            <canvas id="ports-world-canvas" role="img" aria-label="World map. Click any country to see its maps and figures, or double-click to open its top map; the list beside the map has every country too."></canvas>
             <div class="wv-loading" id="wv-loading">Loading the world…</div>
             <div class="wv-hint" id="wv-hint" hidden></div>
             <div class="ports-map-controls" role="group" aria-label="Zoom">
@@ -879,8 +885,8 @@ export function install(app) {
     const canvas = overlay.querySelector("#ports-world-canvas");
     const touch = matchMedia("(pointer: coarse)").matches;
     hint.innerHTML = touch
-      ? "<b>Tap</b> any country · <b>pinch</b> to zoom"
-      : "<b>Click</b> any country · <b>scroll</b> to zoom · <b>drag</b> to move";
+      ? "<b>Tap</b> a country · <b>double-tap</b> to open"
+      : "<b>Click</b> a country · <b>double-click</b> to open its map · <b>scroll</b> to zoom";
     const dropHint = () => {
       hint.classList.add("gone");
       setTimeout(() => hint.remove(), 450);
@@ -1615,7 +1621,14 @@ export function install(app) {
       const sub = k === "merged" ? "EarthCiv edition: play it here" : list.length ? plural(list.length, "map") : "No map yet · World Bank figures";
       lines.push(`<div class="pt-sub">${esc(sub)}</div>`);
     }
-    lines.push(`<div class="pt-more">${iso === ui.selected ? "Its card is open" : "Click to open its card"}</div>`);
+    const target = info.port || list[0] || null;
+    if (target) {
+      const clickHint = iso === ui.selected ? "Card open" : "Click for card";
+      const openHint = info.port ? "Double-click to open" : `Double-click to open ${esc(target.name)}`;
+      lines.push(`<div class="pt-more">${clickHint} · ${openHint}</div>`);
+    } else {
+      lines.push(`<div class="pt-more">${iso === ui.selected ? "Its card is open" : "Click to open its card"}</div>`);
+    }
     tipEl.innerHTML = lines.join("");
     tipEl.hidden = false;
     const wrap = tipEl.parentElement.getBoundingClientRect();
@@ -1834,6 +1847,14 @@ export function install(app) {
             onSelectCountry(country, { port } = {}) {
               if (!country) return deselect();
               selectCountry(country.id, { port });
+            },
+            onOpenCountry(country, { port } = {}) {
+              if (!country) return false;
+              const target = port || portsFor(country.id, filteredPorts())[0] || null;
+              if (!target) return false;
+              showMapTip(null);
+              activatePort(target);
+              return true;
             },
           });
           buildCountryIndex();

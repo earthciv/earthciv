@@ -178,3 +178,84 @@ export function rankMakers(makers, { ratingOf = () => ({ n: 0, sum: 0 }), day = 
   rows.sort((a, b) => group(a) - group(b) || b.score - a.score || byRatings(a, b) || b.githubStars - a.githubStars || a.turn - b.turn);
   return rows.map(({ index, turn, ...row }) => row);
 }
+
+const PORT_KIND_ORDER = { merged: 0, custom: 1, live: 2, external: 3, repo: 4 };
+const PORT_SCOPE_ORDER = { country: 0, multi: 1, region: 2 };
+
+function portKindOf(port) {
+  if (port.status === "merged") return "merged";
+  if (port.status === "custom") return "custom";
+  if (port.status === "live") return port.embed ? "live" : "external";
+  return "repo";
+}
+
+function portScopeRank(port) {
+  if (port.scope in PORT_SCOPE_ORDER) return PORT_SCOPE_ORDER[port.scope];
+  return (port.countries || []).length === 1 ? 0 : 1;
+}
+
+/**
+ * Order a country's maps, best and most popular first:
+ *   1. Kind: EarthCiv edition, visitor's own link, community map (opens inside), community map (own site), source code.
+ *   2. Scope: dedicated single-country map before multi-country regional maps before sub-national/region maps.
+ *   3. Popularity: weighted visitor rating (once a map has MIN_RATINGS ratings), vote count on ties, GitHub stars,
+ *      featured creator flag, then the catalog's own order (falling back to name).
+ *
+ * @param {object[]} ports
+ * @param {object} [options]
+ * @param {(id: string) => {n: number, sum: number}} [options.ratingOf]
+ * @param {number|null} [options.globalMean]
+ * @param {Map<string, number>|object[]|null} [options.catalogOrder]
+ */
+export function rankCountryPorts(ports, { ratingOf = () => ({ n: 0, sum: 0 }), globalMean = null, catalogOrder = null } = {}) {
+  const orderById = catalogOrder instanceof Map
+    ? catalogOrder
+    : Array.isArray(catalogOrder)
+      ? new Map(catalogOrder.map((p, idx) => [p.id, idx]))
+      : null;
+
+  const list = (ports || []).map((port, idx) => {
+    const r = ratingOf(port.id) || {};
+    const n = r.n || 0;
+    const sum = r.sum || 0;
+    const stars = ownRepoStars(port) || 0;
+    return { port, n, sum, average: n ? sum / n : null, ranked: n >= MIN_RATINGS, stars, idx };
+  });
+
+  let mean = globalMean;
+  if (mean == null) {
+    const tot = list.reduce((t, x) => ({ n: t.n + x.n, sum: t.sum + x.sum }), { n: 0, sum: 0 });
+    mean = tot.n ? tot.sum / tot.n : 0;
+  }
+  for (const x of list) {
+    x.score = x.ranked ? (PRIOR_RATINGS * mean + x.sum) / (PRIOR_RATINGS + x.n) : mean;
+  }
+
+  // When scores tie (for instance when only one map is rated so its average equals the mean), a well-rated map still
+  // leads an unrated one, and more votes break ties between rated maps.
+  const rankedVotes = (x) => (x.ranked && x.average >= 3 ? x.n : 0);
+
+  list.sort((a, b) => {
+    const ka = PORT_KIND_ORDER[portKindOf(a.port)] ?? 9;
+    const kb = PORT_KIND_ORDER[portKindOf(b.port)] ?? 9;
+    if (ka !== kb) return ka - kb;
+    const sa = portScopeRank(a.port);
+    const sb = portScopeRank(b.port);
+    if (sa !== sb) return sa - sb;
+    if (b.score !== a.score) return b.score - a.score;
+    const byVotes = rankedVotes(b) - rankedVotes(a);
+    if (byVotes) return byVotes;
+    if (b.stars !== a.stars) return b.stars - a.stars;
+    const fa = a.port.featured_creator === true ? 1 : 0;
+    const fb = b.port.featured_creator === true ? 1 : 0;
+    if (fb !== fa) return fb - fa;
+    if (orderById) {
+      const oa = orderById.get(a.port.id) ?? 9999;
+      const ob = orderById.get(b.port.id) ?? 9999;
+      if (oa !== ob) return oa - ob;
+    }
+    return a.port.name.localeCompare(b.port.name) || a.idx - b.idx;
+  });
+
+  return list.map((x) => x.port);
+}
