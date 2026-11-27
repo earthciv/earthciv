@@ -10,8 +10,13 @@ Rules (all repeated in docs/MALAYSIA.md):
   2025) belongs to no state or district and is only in the national total.
 * Food, Production, Science, Culture = workers by industry (2021 LFS, the latest state table; benchmarked to Census
   2020) by state. DOSM publishes no district split, so a district's figure is its state's workers in each industry
-  shared out by the district's 2020 GDP in the matching sector (an estimate; the state totals are exact).
-* Unemployment = Labour Force Survey 2024 (district counts; the four single-district areas use their state's).
+  shared out by the district's 2020 GDP in the matching sector (an estimate; the state totals are exact). nation.json
+  `employed_year` gives the year, and each area's `employed_population` its residents in that year, so a share of
+  residents divides figures of one year.
+* Unemployment = Labour Force Survey: states and the nation from the state table's latest year (2025), districts and
+  cities from the district table's (2024; the four single-district areas use their state's row of that year). Each
+  area's `unemployment_year` says which, and the national row's `unemployment_by_year` gives Malaysia's rate in both
+  years, so every area is compared with the nation in its own year.
 * Income, poverty, Gini = HIES 2024. A district made of several survey districts (the parents of the 2025 districts)
   and every conurbation take the population-weighted mean of the means; the median is the same weighted mean of the
   member medians (an approximation); a Gini can not be combined, so it is left empty.
@@ -30,7 +35,8 @@ from .core.paths import RAW
 
 SOURCE_DIR = RAW / "malaysia"
 HIES_YEAR = 2024
-LFS_YEAR = 2024
+LFS_DISTRICT_YEAR = 2024  # the last year of lfs_district.csv: districts and the cities made of them
+LFS_STATE_YEAR = 2025  # the last year of lfs_state_sex.csv: states and Malaysia
 RAW_POPULATION_YEAR = 2025  # weights for survey districts that were split: the first year the new districts exist
 GDP_UNIT = "RM, constant 2015 prices"
 DOSM = "Department of Statistics Malaysia (DOSM)"
@@ -142,10 +148,13 @@ def register_sources(source):
                                          "resource/24d35008-e7b0-4b73-869f-24a9d3cf543a/download/"
                                          "m-20210302115456_202303011017460_1982-2021-employed-persons-by-industry-and-state-dataset.csv"})
     source("dosm_lfs", "Labour Force Survey: district and state", DOSM,
-           "https://data.gov.my/data-catalogue/lfs_district", "CC BY 4.0", f"{LFS_YEAR} annual",
+           "https://data.gov.my/data-catalogue/lfs_district", "CC BY 4.0",
+           f"States and Malaysia {LFS_STATE_YEAR} annual; districts and cities {LFS_DISTRICT_YEAR} annual",
            ["Unemployment"],
-           "Annual labour force and unemployed persons (thousands) by district, and by state (used for the four areas "
-           "that are one district: Perlis, Kuala Lumpur, Labuan and Putrajaya).", {
+           f"Annual labour force and unemployed persons (thousands) by district, to {LFS_DISTRICT_YEAR}, and by state, "
+           f"to {LFS_STATE_YEAR}. States and Malaysia use the state table's {LFS_STATE_YEAR}; districts and cities use "
+           f"{LFS_DISTRICT_YEAR}, where the four areas that are one district (Perlis, Kuala Lumpur, Labuan and "
+           "Putrajaya) take their state's row.", {
                "lfs_district.csv": f"{storage}/labour/lfs_district.csv",
                "lfs_state_sex.csv": f"{storage}/labour/lfs_state_sex.csv"})
     source("dosm_hies", "Household Income and Expenditure Survey: district, state and Malaysia", DOSM,
@@ -312,17 +321,25 @@ class Economy:
     # --- labour force: counts, so folding and summing are exact
     def _labour(self):
         rows = {}
-        for r in read_csv("lfs_district.csv"):
-            if int(r["date"][:4]) == LFS_YEAR and number(r["lf"]) is not None:  # the 2025 districts have empty 2024 rows
+        for r in read_csv("lfs_district.csv"):  # the 2025 districts have empty 2024 rows
+            if int(r["date"][:4]) == LFS_DISTRICT_YEAR and number(r["lf"]) is not None:
                 rows[(r["state"], r["district"])] = {"lf": number(r["lf"]) * 1000, "unemployed": number(r["lf_unemployed"]) * 1000}
         self.labour = fold_counts(rows, self.new_districts)
-        self.state_labour = {}
+        # The state table runs a year past the district one: states and Malaysia take its last year, and its row for
+        # the district year stands in for the areas that are one district.
+        by_year = defaultdict(dict)
         for r in read_csv("lfs_state_sex.csv"):
-            if r["sex"] == "both" and int(r["date"][:4]) == LFS_YEAR:
-                self.state_labour[r["state"]] = {"lf": number(r["lf"]) * 1000, "unemployed": number(r["lf_unemployed"]) * 1000}
+            year = int(r["date"][:4])
+            if r["sex"] == "both" and year in (LFS_DISTRICT_YEAR, LFS_STATE_YEAR):
+                by_year[year][r["state"]] = {"lf": number(r["lf"]) * 1000,
+                                             "unemployed": number(r["lf_unemployed"]) * 1000}
+        self.state_labour, self.state_labour_district_year = by_year[LFS_STATE_YEAR], by_year[LFS_DISTRICT_YEAR]
+        for year, table in by_year.items():
+            if set(self.by_state) - set(table):
+                raise ValueError(f"no {year} Labour Force Survey row for {sorted(set(self.by_state) - set(table))}")
         for state, members in self.by_state.items():
             if len(members) == 1:  # one-district areas have no district row: the state's survey is the district's
-                self.labour[members[0]] = self.state_labour[state]
+                self.labour[members[0]] = self.state_labour_district_year[state]
         missing = [k for k in self.keys if k not in self.labour]
         if missing:
             raise ValueError(f"no Labour Force Survey row for {missing}")
@@ -371,6 +388,11 @@ class Economy:
         """Residents of the GDP year the district's GDP covers (Kuala Lumpur's includes Putrajaya's)."""
         return sum(self.pop[k].get(self.gdp_year, 0) for k in [key, *GDP_FOLDS.get(key, [])])
 
+    def employed_population(self, keys):
+        """Residents of the districts `keys` in the year the workers were counted (the share of residents in work
+        divides figures of one year)."""
+        return sum(self.pop[k][self.jobs_year] for k in keys)
+
     def district(self, key):
         gdp = self.district_gdp_raw.get(key)
         jobs = self.district_jobs[key]
@@ -384,7 +406,7 @@ class Economy:
             "jobs": {k: round(v) for k, v in jobs.items()}, "employed": round(sum(jobs.values())),
             "lf": labour["lf"], "unemployed": labour["unemployed"],
             "unemployment": round(labour["unemployed"] / labour["lf"], 4) if labour["lf"] else None,
-            "unemployment_year": LFS_YEAR,
+            "unemployment_year": LFS_DISTRICT_YEAR,
             "median_income": whole(house.get("income_median")), "income_mean": whole(house.get("income_mean")),
             "expenditure": whole(house.get("expenditure_mean")),
             "gini": None if house.get("gini") is None else round(house["gini"], 3),
@@ -424,7 +446,8 @@ class Economy:
             "gdp_basic": round(sum(by.values())) if gdp_keys else None,
             "gdp_industry_year": self.gdp_year if gdp_keys else None,
             "jobs": {k: round(v) for k, v in jobs.items()}, "employed": round(sum(jobs.values())),
-            "unemployment": round(unemployed / lf, 4) if lf else None, "unemployment_year": LFS_YEAR,
+            "employed_population": self.employed_population(keys),
+            "unemployment": round(unemployed / lf, 4) if lf else None, "unemployment_year": LFS_DISTRICT_YEAR,
             "median_income": round(sum(v * w for v, w in incomes) / sum(w for _, w in incomes)) if incomes else None,
         }
         fields["yields"] = yields_of(fields["jobs"], fields["gdp"])
@@ -439,7 +462,8 @@ class Economy:
             **gdp_fields(sectors), "gdp_year": self.state_gdp_year, "gdp_population": population_in_gdp_year,
             "gdp_industry_year": self.state_gdp_year,
             "jobs": jobs, "employed": sum(jobs.values()),
-            "unemployment": round(labour["unemployed"] / labour["lf"], 4), "unemployment_year": LFS_YEAR,
+            "employed_population": self.employed_population(self.by_state[name]),
+            "unemployment": round(labour["unemployed"] / labour["lf"], 4), "unemployment_year": LFS_STATE_YEAR,
             "median_income": house.get("income_median"),
         }
         fields["yields"] = yields_of(jobs, fields["gdp"])
@@ -457,13 +481,18 @@ class Economy:
         for s in states:
             for k, v in s["jobs"].items():
                 jobs[k] += v
-        lf = sum(v["lf"] for v in self.state_labour.values())
-        unemployed = sum(v["unemployed"] for v in self.state_labour.values())
+        def rate(labour):
+            return round(sum(v["unemployed"] for v in labour.values()) / sum(v["lf"] for v in labour.values()), 4)
+
         fields = {
             "gdp": gdp, "gdp_year": self.state_gdp_year, "gdp_population": population_in_gdp_year,
             "gdp_offshore": rm(self.supra.get("p0")), "gdp_by_industry": dict(by), "gdp_basic": sum(by.values()),
             "gdp_industry_year": self.state_gdp_year, "jobs": dict(jobs), "employed": sum(jobs.values()),
-            "unemployment": round(unemployed / lf, 4), "unemployment_year": LFS_YEAR,
+            "employed_population": self.employed_population(self.keys),
+            "unemployment": rate(self.state_labour), "unemployment_year": LFS_STATE_YEAR,
+            # Malaysia's rate in each year an area's rate is from (cities and districts: the district year)
+            "unemployment_by_year": {str(LFS_DISTRICT_YEAR): rate(self.state_labour_district_year),
+                                     str(LFS_STATE_YEAR): rate(self.state_labour)},
             "median_income": self.nation_income[0],
         }
         fields["yields"] = yields_of(fields["jobs"], gdp)
@@ -472,9 +501,11 @@ class Economy:
     def nation_meta(self):
         return {"gdp_vintage": f"DOSM real GDP at constant 2015 prices (states and Malaysia {self.state_gdp_year}, "
                                f"districts and cities {self.gdp_year})",
-                "unemployment_vintage": f"Labour Force Survey, {LFS_YEAR} annual",
-                "jobs_vintage": f"Labour Force Survey, {self.jobs_year} (by state)",
-                "income_year": HIES_YEAR, "gdp_industries": GDP_INDUSTRIES,
+                "unemployment_vintage": (f"Labour Force Survey, {LFS_STATE_YEAR} annual; "
+                                         f"districts and cities {LFS_DISTRICT_YEAR}"),
+                "employed_year": self.jobs_year,
+                "employed_vintage": f"Labour Force Survey, {self.jobs_year} (by state)",
+                "income_year": HIES_YEAR, "income_vintage": f"HIES {HIES_YEAR}", "gdp_industries": GDP_INDUSTRIES,
                 "industries": {k: label for k, (label, _) in INDUSTRIES.items()}}
 
 
@@ -561,8 +592,9 @@ def lenses(econ, spread, pct, owners, year, domain):
              "that covers most of the hex. A Gini can not be combined, so districts made of several survey districts "
              "have no value.", [d["gini"] for d in ds]),
         lens("unemployment", "Unemployment", "l-poverty", "📉", "unemployed ÷ labour force", "pct", "bad", POVERTY_RAMP,
-             f"Unemployed persons ÷ labour force in {LFS_YEAR} (Labour Force Survey) in the district that covers most "
-             "of the hex. Perlis, Kuala Lumpur, Labuan and Putrajaya show their state's rate.",
+             f"Unemployed persons ÷ labour force in {LFS_DISTRICT_YEAR} (Labour Force Survey; the latest year DOSM "
+             "publishes by district) in the district that covers most of the hex. Perlis, Kuala Lumpur, Labuan and "
+             "Putrajaya show their state's rate.",
              [d["unemployment"] for d in ds], source="dosm_lfs"),
         lens("gdp_pc", "GDP per resident", "l-income", "🏭", f"{GDP_UNIT}, per resident", "usd", "good", INCOME_RAMP,
              f"District GDP in {econ.gdp_year} at constant 2015 prices ÷ its residents that year, for the district that "
@@ -606,7 +638,8 @@ def counties_table(econ, props, pop, year, area_km2, county, cell_of, city_of, v
         ("expenditure", "Spending", "usd", "mean monthly household expenditure, RM", "neutral", "dosm_hies", f"HIES {HIES_YEAR}."),
         ("poverty", "Poverty", "pct", "share of households in absolute poverty", "bad", "dosm_hies", f"HIES {HIES_YEAR}."),
         ("gini", "Gini", "float", "Gini coefficient", "bad", "dosm_hies", f"HIES {HIES_YEAR}; empty where districts were combined."),
-        ("unemployment", "Unemployment", "pct", "unemployed ÷ labour force", "bad", "dosm_lfs", f"Labour Force Survey {LFS_YEAR}."),
+        ("unemployment", "Unemployment", "pct", "unemployed ÷ labour force", "bad", "dosm_lfs",
+         f"Labour Force Survey {LFS_DISTRICT_YEAR}."),
         ("food", "Food workers", "int", "workers (estimate)", "neutral", "dosm_employment", WORKERS_NOTE.strip()),
         ("production", "Production workers", "int", "workers (estimate)", "neutral", "dosm_employment", WORKERS_NOTE.strip()),
         ("science", "Science workers", "int", "workers (estimate)", "neutral", "dosm_employment", WORKERS_NOTE.strip()),

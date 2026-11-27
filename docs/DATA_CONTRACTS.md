@@ -17,6 +17,14 @@ folder. What v3 adds is a way for the data to say what it means, so the browser 
   `unemployment_year`, `census_population` (the census-year population a census count divides by) and
   `gdp_population` (the population in the GDP year). An edition whose figures come from several years sets
   `label_years` in its manifest, and every figure is shown with its year.
+  * Where the employed counts (`employed`, `jobs`, the worker yields) come from a survey year rather than the census,
+    `nation.json` `employed_year` gives that year and `employed_vintage` its source, and the national row, states and
+    cities carry `employed_population`, their population in that year, which a share of residents divides by. Without
+    them the census year and `census_population` stand (Canada). `income_vintage` names the income survey where it
+    is not the census.
+  * Where areas' unemployment rates come from different years (Malaysia: states 2025, districts and cities 2024), each
+    row's `unemployment_year` says which, and the national row's `unemployment_by_year` (`{"2024": 0.032, ...}`)
+    gives the nation's rate in each of those years, so every area is compared with the nation in its own year.
 * **Declared rules.** `districts.json` `rule.counts` is `"workers"` when its figures count residents who work rather
   than jobs, and `rule.military_encampments: false` turns off the Encampment district drawn from military jobs.
   `wonders.json` `rules[].measure` names what a ranking measures (`"attendance"`, `"doctoral"`) and `among` the set

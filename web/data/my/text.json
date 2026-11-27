@@ -66,7 +66,7 @@
     "dosm_population"
   ],
   "advisor.prosperity.caveats": [
-    "Incomes are gross monthly household income in ringgit (HIES {census_vintage}), not annual. Poverty is the absolute poverty rate: the share of households below the national poverty line income.",
+    "Incomes are gross monthly household income in ringgit ({income_vintage}), not annual. Poverty is the absolute poverty rate: the share of households below the national poverty line income.",
     "Districts made of several survey districts (the parents of the districts created in 2025) and cities made of several districts use population-weighted means; their medians are the weighted mean of the medians (an approximation) and they have no Gini.",
     "Unemployment: {unemployment_vintage}. Perlis, Kuala Lumpur, Labuan and Putrajaya, each one district, show their state's survey."
   ],
@@ -89,8 +89,10 @@
   ],
   "fields.gdp": "GDP in constant 2015 ringgit, counted where the work is done: {year} for states, {metro_year} for districts and cities.",
   "fields.gdp_pc": "GDP ÷ residents of the same year ({year} for states, {metro_year} for districts and cities), constant 2015 ringgit.",
-  "fields.unemployment": "Unemployed ÷ labour force, {unemployment_vintage}.",
-  "report.unemployment.description": "Unemployed ÷ labour force, the Labour Force Survey's annual average for 2024. Malaysia is the sum of the 16 states.",
+  "fields.unemployment": "Unemployed ÷ labour force ({unemployment_vintage}).",
+  "report.unemployment.description": "Unemployed ÷ labour force, the Labour Force Survey's annual average: 2025 for Malaysia and the states, 2024 for districts and cities (the latest year DOSM publishes by district). Malaysia is the sum of the 16 states.",
+  "report.unemployment_years_hint": "{regions}: {year}. Metros: {metro_year}, the latest year DOSM publishes by district.",
+  "report.employed_period": "{year} Labour Force Survey",
   "report.gdp_years_hint": "{regions}: {year} GDP. Cities: {metro_year}, the latest year DOSM publishes by district. All in constant 2015 ringgit.",
   "report.gdp_per_person_hint": "{regions}: {year} GDP ÷ {year} residents.",
   "report.gdp_per_person_hint.metros": " Cities: {metro_year} GDP ÷ {metro_year} residents; cities of {min}+ people.",
@@ -98,7 +100,7 @@
   "report.gdp_breakdown_note": "{year} GDP by sector at constant 2015 prices, the 16 states plus offshore oil and gas (in mining); shares are of GDP before import duties.",
   "panel.city_foot.gdp": "Constant 2015 ringgit, {gdp_year} (the latest year DOSM publishes by district), summed over the city's districts; per person divides by the residents of {gdp_year}.",
   "panel.city_foot.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
-  "panel.city_foot.unemployment_survey": "{unemployment_vintage}; counts summed over the city's districts.",
+  "panel.city_foot.unemployment_survey": "Labour Force Survey, {unemployment_year} annual (the latest year DOSM publishes by district); counts summed over the city's districts.",
   "cv.economy_note": "DOSM real GDP, {gdp_year}, constant 2015 ringgit, counted where the work is done. Per person divides by the residents of {gdp_year}.",
   "cv.economy_note.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
   "cv.workforce_note": "Labour Force Survey 2021 workers by industry for each state, shared over districts by their 2020 GDP in the matching sector: an estimate, counted where people live.",

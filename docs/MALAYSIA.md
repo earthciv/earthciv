@@ -16,7 +16,7 @@ Run `uv run python -m pipeline serve` from the project root and open
 | [Department of Statistics Malaysia (DOSM): MyCensus 2020 area profiles (Kawasanku): religion by district](https://data.gov.my/dashboard/kawasanku) | 2020 Census | CC BY 4.0 | Religion lenses (shares of residents) |
 | [Department of Statistics Malaysia (DOSM): Real GDP by district and by state; real GDP of Malaysia](https://data.gov.my/data-catalogue/gdp_district_real_supply) | District 2020; state and nation 2025 | CC BY 4.0 | Gold (GDP) of districts, cities, states and Malaysia; GDP by sector |
 | [Department of Statistics Malaysia (DOSM): Employed persons by industry and state, 1982-2021](https://archive.data.gov.my/data/dataset/employed-persons-by-industry-and-state) | 2021 | Creative Commons Attribution (archive.data.gov.my; version not stated) | Food, Production, Science and Culture yields (workers by industry); Jobs by industry |
-| [Department of Statistics Malaysia (DOSM): Labour Force Survey: district and state](https://data.gov.my/data-catalogue/lfs_district) | 2024 annual | CC BY 4.0 | Unemployment |
+| [Department of Statistics Malaysia (DOSM): Labour Force Survey: district and state](https://data.gov.my/data-catalogue/lfs_district) | States and Malaysia 2025 annual; districts and cities 2024 annual | CC BY 4.0 | Unemployment |
 | [Department of Statistics Malaysia (DOSM): Household Income and Expenditure Survey: district, state and Malaysia](https://data.gov.my/data-catalogue/hies_district) | HIES 2024 | CC BY 4.0 | Income, poverty, Gini and household spending |
 | [Department of Statistics Malaysia (DOSM): Labour force by educational attainment and state, 1982-2021](https://archive.data.gov.my/data/dataset/labour-force-by-state-and-educational-attainment) | 2021 | Creative Commons Attribution (archive.data.gov.my; version not stated) | Education row of the City View (a state mix) |
 | [NOAA National Centers for Environmental Information (via ERDDAP): ETOPO1 Global Relief Model](https://www.ncei.noaa.gov/products/etopo-global-relief-model) | ETOPO1, 1 arc-minute | Public domain | Elevation, relief and water depth |
@@ -117,7 +117,7 @@ Built by `pipeline/malaysia_economy.py` (called from three small hooks in `malay
 |---|---|---|---|
 | **Gold** = GDP | DOSM real GDP by sector (`gdp_state_real_supply`, `gdp_annual_real_supply`, `gdp_district_real_supply`) | 2025 (states, Malaysia); 2020 (districts, cities) | state, district |
 | **Food, Production, Science, Culture** = workers | DOSM employed persons by industry and state (Labour Force Survey, MSIC 2008), archive.data.gov.my | 2021 | state; districts are estimates |
-| Unemployment | DOSM `lfs_district`, `lfs_state_sex` | 2024 annual | district, state |
+| Unemployment | DOSM `lfs_state_sex` (states, Malaysia), `lfs_district` (districts, cities) | 2025 annual (states, Malaysia); 2024 annual (districts, cities) | state, district |
 | Income, poverty, Gini, spending | DOSM `hies_district`, `hies_state`, `hh_income` (HIES) | 2024 | district, state, nation |
 | Tree cover, cropland, built-up | Esri Sentinel-2 10 m land cover (the same samples as the terrain), with oil palm moved from trees to cropland (Descals 2019) | latest annual | hex |
 
@@ -146,12 +146,18 @@ shared over its districts in proportion to the district's 2020 GDP in the matchi
 manufacturing and construction have their own; every service industry follows services GDP). Where a state's sector GDP
 is blank everywhere the split falls back to total GDP, then to population. The four single-district areas (Perlis, Kuala
 Lumpur, Labuan, Putrajaya) take the state's figures. District workers add back to the state totals exactly (checked at
-build time). The yield descriptions say "an estimate".
+build time). The yield descriptions say "an estimate". `nation.json` `employed_year` (2021) labels every worker figure with
+its year, and each area's `employed_population` (its residents in 2021) is what a share of residents divides by, so
+2021 workers are never divided by 2026 residents.
 
-**Unemployment** is unemployed persons ÷ labour force from the Labour Force Survey 2024. Counts, not rates, are summed
-for conurbations. The 2025 districts have empty 2024 rows in the source, so their parents' figures stand. The four
-single-district areas use the state's survey. 2024 is used for states too (the state table runs to 2025) so every area
-shares a year.
+**Unemployment** is unemployed persons ÷ labour force from the Labour Force Survey's annual figures, each area from the
+newest year published for it. States and Malaysia use 2025, the last year of the state table (`lfs_state_sex`);
+districts and cities use 2024, the last year of the district table (`lfs_district`). Each area's `unemployment_year`
+says which, and the panels, reports and explorer columns show it. An area is compared only with Malaysia's rate of its
+own year (the national row's `unemployment_by_year`): a city's 2024 rate sits beside Malaysia's 2024 rate, never the
+2025 one, and states and cities are ranked apart. Counts, not rates, are summed for conurbations and for Malaysia (the
+16 states). The 2025 districts have empty 2024 rows in the source, so their parents' figures stand. The four
+single-district areas use their state's 2024 row as their district figure.
 
 **Household income, poverty, Gini (HIES 2024).** Income is gross monthly household income in RM (not annual); poverty
 is the absolute poverty rate (share of households below the national poverty line income). Survey names differ from the
@@ -316,4 +322,6 @@ uv run --group build python -m pipeline.malaysia
 Set `PYTHONUTF8=1` on Windows. The `build` dependency group pins the libraries that produced the committed data
 (duckdb reads the Kawasanku parquet). The rebuild downloads public files without API keys and caches them under
 `data/raw/malaysia/`; pass `--force` to refresh them. Publisher URLs, SHA-256 fingerprints and retrieval dates are
-logged in `data/raw/malaysia/manifest.json` and listed in the Almanac.
+logged in `data/raw/malaysia/manifest.json` and listed in the Almanac. If archive.data.gov.my does not answer (it timed
+out on 27 November 2026), the Internet Archive's Wayback Machine holds copies of its two files;
+check them against the SHA-256 in `web/data/my/sources.json` before using them.
