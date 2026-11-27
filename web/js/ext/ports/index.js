@@ -1408,9 +1408,17 @@ export function install(app) {
     if (!map || !ui.rankings || ui.selected) return;
     const scroller = overlay.querySelector("#wv-side-scroll");
     const at = scroller.scrollTop;
+    const active = document.activeElement;
+    if (!focusSel && sideEl.contains(active)) {
+      if (active.id === "wv-rankings-title") focusSel = "#wv-rankings-title";
+      else if (active.classList.contains("rk-close")) focusSel = ".rk-close";
+      else if (active.dataset.act === "rankings-retry") focusSel = '[data-act="rankings-retry"]';
+    }
     renderSide();
     scroller.scrollTop = at;
-    if (focusSel) overlay.querySelector(focusSel)?.focus({ preventScroll: true });
+    if (focusSel) {
+      (overlay.querySelector(focusSel) || overlay.querySelector("#wv-rankings-title"))?.focus({ preventScroll: true });
+    }
   }
 
   function rankingsViewHtml() {
