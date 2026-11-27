@@ -16,7 +16,6 @@ from pipeline import build_world_rankings as wr
 ROOT = Path(__file__).resolve().parents[1]
 NODE_NEEDED = 20  # node:test with ES modules
 RANKINGS_PATH = ROOT / "web" / "data" / "world-rankings.json"
-FIGURES_PATH = ROOT / "web" / "data" / "world-figures.json"
 OUTLINES_PATH = ROOT / "web" / "data" / "world-outlines.json"
 JS = ROOT / "web" / "js"
 JS_TESTS = ROOT / "tests" / "js" / "rankings.test.mjs"
@@ -115,20 +114,6 @@ class WorldRankingsFileTest(unittest.TestCase):
                 self.assertIsNotNone(cell, f"{iso} has no {key}")
                 self.assertEqual(cell[0], m["year"], f"{iso}'s {key} is not from the ranked year")
 
-    def test_the_world_maps_figures_agree(self):
-        # The country card's three figures come from the same World Bank series.
-        figures = json.loads(FIGURES_PATH.read_text(encoding="utf-8"))["countries"]
-        tolerance = {"population": 0, "gdp_pc": 0.5, "life": 0.05}
-        compared = 0
-        for iso, row in figures.items():
-            for key, tol in tolerance.items():
-                fig, rank = row.get(key), self.doc["countries"].get(iso, {}).get(key)
-                if not fig or not rank or fig[0] != rank[0]:
-                    continue
-                self.assertLessEqual(abs(fig[1] - rank[1]), tol, f"{iso}.{key}: {fig} and {rank}")
-                compared += 1
-        self.assertGreater(compared, 500)
-
 
 class BuilderRulesTest(unittest.TestCase):
     """The builder's rules, on made-up answers."""
@@ -219,7 +204,7 @@ class RankingsWiringTest(unittest.TestCase):
     def test_a_countrys_card_shows_its_demographics(self):
         self.assertIn("demographicsHtml(rankDoc, iso,", self.index)
         self.assertIn("${figuresHtml(iso)}", self.index)
-        self.assertNotIn("world-figures.json", self.index)  # the card's three figures are among the ten now
+        self.assertNotIn("world-figures", self.index)  # the card's three old figures are among the ten
 
     def test_rankings_have_their_own_address(self):
         self.assertIn('app.hash.register("rankings"', self.index)
