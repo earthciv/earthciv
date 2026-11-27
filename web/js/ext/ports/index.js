@@ -1409,10 +1409,18 @@ export function install(app) {
     const scroller = overlay.querySelector("#wv-side-scroll");
     const at = scroller.scrollTop;
     const a = document.activeElement;
-    const keep = !sideEl.contains(a) ? null : a.classList.contains("wv-primary") ? ".wv-primary" : a.id ? `#${CSS.escape(a.id)}` : null;
+    let keep = null;
+    if (sideEl.contains(a)) {
+      if (a.id) keep = `#${CSS.escape(a.id)}`;
+      else if (a.classList.contains("wv-primary")) keep = ".wv-primary";
+      else if (a.classList.contains("wv-backlink")) keep = ".wv-backlink";
+      else if (a.dataset.act === "rankings-retry") keep = '[data-act="rankings-retry"]';
+    }
     renderSide();
     scroller.scrollTop = at;
-    if (keep) overlay.querySelector(keep)?.focus({ preventScroll: true });
+    if (keep) {
+      (overlay.querySelector(keep) || overlay.querySelector(".wv-backlink"))?.focus({ preventScroll: true });
+    }
   }
 
   function rankingsViewHtml() {
