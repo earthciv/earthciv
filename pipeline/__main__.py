@@ -159,8 +159,14 @@ def cmd_list():
         print(f"  {name:20} needs {', '.join(mod.REQUIRES) or '-'}")
 
 
+class _Handler(http.server.SimpleHTTPRequestHandler):
+    # Windows' registry often maps .js to text/plain, which browsers refuse for module scripts.
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,  # noqa: RUF012
+                      ".js": "text/javascript", ".mjs": "text/javascript"}
+
+
 def cmd_serve(port=8765):
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(WEB))
+    handler = functools.partial(_Handler, directory=str(WEB))
     with http.server.ThreadingHTTPServer(("127.0.0.1", port), handler) as srv:
         print(f"serving web/ at http://127.0.0.1:{port}")
         srv.serve_forever()

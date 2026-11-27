@@ -6,6 +6,7 @@ import { createTable } from "../core/table.js";
 import { createScatter } from "../core/scatter.js";
 import { section, tiles, segmented, lensButton, editionSources, topBy, frameBtn } from "../core/view.js";
 import { NATION, TERMS, defaults, hasText, rich, txt } from "../../../app/text.js";
+import { nationalUnemployment } from "../../../app/years.js";
 
 defaults({
   "advisor.prosperity.poverty_title": "Poverty",
@@ -157,7 +158,11 @@ export function mount(ctx) {
     const high = topBy(lvU.rows, (r) => r.v.unemployment, { n: 8, min });
     const low = topBy(lvU.rows, (r) => r.v.unemployment, { n: 8, min, asc: true });
     const max = Math.max(...high.map((x) => x.v));
-    const mk = (list) => list.map((x) => ({ key: x.r.key, label: x.r.name, sub: uLevel === "metros" ? x.r.sub : "", value: x.v, text: pct(x.v), tone: x.v > n.unemployment * 1.03 ? "bad" : x.v < n.unemployment * 0.97 ? "good" : null, row: x.r }));
+    // Each rate against the nation's of the same year (cities' rates can be older than the states': Malaysia).
+    const mk = (list) => list.map((x) => {
+      const nv = nationalUnemployment(n, x.r.v);
+      return { key: x.r.key, label: x.r.name, sub: uLevel === "metros" ? x.r.sub : "", value: x.v, text: pct(x.v), tone: x.v > nv * 1.03 ? "bad" : x.v < nv * 0.97 ? "good" : null, row: x.r };
+    });
     const o = { max, onHover: (r) => link.hover(r ? rowsHighlight(lvU, [r.row]) : null), onClick: (r) => lvU.focus(r.row) };
     uHost.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">Highest</h4>`);
     barList(uHost, { ...o, rows: mk(high) });
@@ -168,7 +173,7 @@ export function mount(ctx) {
 
   el.insertAdjacentHTML("beforeend", editionSources(data, "advisor.prosperity", {
     vintage: data.vintage, county_vintage: data.countyVintage, census_vintage: data.nation.census_vintage || data.vintage,
-    unemployment_vintage: data.nation.unemployment_vintage || "",
+    unemployment_vintage: data.nation.unemployment_vintage || "", income_vintage: data.nation.income_vintage || data.nation.census_vintage || data.vintage,
   }, data.countiesOffMap ? [`${int(data.countiesOffMap)} of the smallest ${esc(TERMS.division.many)} are smaller than one hex, so selecting them outlines nothing on the map.`] : []));
 
   return {

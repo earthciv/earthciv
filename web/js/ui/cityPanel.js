@@ -19,7 +19,7 @@ function cityFoot(city, nation) {
   const vars = {
     vintage: nation.vintage ?? "", gdp_vintage: nation.gdp_vintage ?? "", population_vintage: nation.population_vintage ?? "",
     census_vintage: nation.census_vintage || nation.vintage || "", gdp_year: city.gdp_year ?? "",
-    unemployment_vintage: nation.unemployment_vintage || "Labour Force Survey",
+    unemployment_vintage: nation.unemployment_vintage || "Labour Force Survey", unemployment_year: city.unemployment_year ?? "",
   };
   return rich("panel.city_foot", {
     ...vars,
