@@ -938,7 +938,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .rk-close { width: 34px; height: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rk-row.is-found { animation: none; }
+  .rk-row.is-found { animation: none; background: rgba(236, 208, 142, .22); } /* lit without the fade */
   .rk-tab .adv-emblem, .rk-fold svg { transition: none; }
 }
 
