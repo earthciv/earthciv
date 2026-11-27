@@ -92,7 +92,14 @@ export const tips = {
     const lines = [`<b>${esc(x.name)}</b> ${muted(esc([x.state].filter(Boolean).join("")))}`];
     // A rule says what it ranks by (wonders.json rules[].measure; Canada's: fiscal-year attendance and doctoral
     // students); without it, the U.S. rules (recreation visits, research spending, curated landmarks).
-    if (rule?.measure === "doctoral") {
+    if (rule?.measure_name && mt[rule.measure] != null) {
+      // Any other measure a rule names (wonders.json rules[].measure, measure_name; Malaysia's: lecturers).
+      lines.push(`${esc(k)} · #${esc(x.rank)} by ${esc(rule.measure_name)}`);
+      lines.push(`<b>${int(mt[rule.measure])}</b> ${esc(rule.measure_name)}${mt.year ? ` (${esc(mt.year)})` : ""}`);
+    } else if (rule?.listed) {
+      // A published list rather than a ranking (wonders.json rules[].listed, metrics.inscribed).
+      lines.push(`${esc(k)} · ${esc(rule.listed)}${mt.inscribed ? `, inscribed ${esc(mt.inscribed)}` : ""}`);
+    } else if (rule?.measure === "doctoral") {
       lines.push(`${esc(k)} · #${esc(x.rank)} by doctoral students`);
       lines.push(`<b>${int(mt.doctoral)}</b> doctoral students of ${int(mt.enrollment)} enrolled (${esc(mt.year)})`);
     } else if (rule?.measure === "attendance") {

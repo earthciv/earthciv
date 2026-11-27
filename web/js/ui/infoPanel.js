@@ -1,5 +1,6 @@
 // Shared building blocks for the city and state panels (both render into #city-panel).
 import { LABEL_YEARS, NATION, TERMS, defaults, txt } from "../app/text.js";
+import { employedPeriod, employedYear, nationalUnemployment } from "../app/years.js";
 import { compact, dollars, esc, int, money, pct, yieldValue } from "../format.js";
 import { icon, glyph } from "./icon.js";
 
@@ -60,7 +61,7 @@ export function amenities(o, n, nation = {}) {
   // Where the main survey publishes no unemployment rate for an area (Canada's Labour Force Survey and its census
   // agglomerations), the census rate stands in, compared with the nation's rate in the same census.
   const jobless = Number.isFinite(o.unemployment) || !Number.isFinite(o.unemployment_census)
-    ? statRow("unemployment", "😐", "Unemployment", o.unemployment, n.unemployment, (x) => pct(x), false, yr(o.unemployment_year))
+    ? statRow("unemployment", "😐", "Unemployment", o.unemployment, nationalUnemployment(n, o), (x) => pct(x), false, yr(o.unemployment_year))
     : statRow("unemployment", "😐", "Unemployment", o.unemployment_census, n.unemployment_census, (x) => pct(x), false, `(${census} Census)`);
   return `
     ${jobless}
@@ -70,9 +71,9 @@ export function amenities(o, n, nation = {}) {
     ${statRow(null, "⚖️", "Rent ÷ income", o.rent_burden, n.rent_burden, (x) => pct(x), false, yr(census))}`;
 }
 
-// Section titles for an edition that labels years, with the years of their figures.
-export const yieldsTitle = (o, nation) => `Yields · ${nation.census_year} Census${o.gdp != null && o.gdp_year ? `, GDP ${o.gdp_year}` : ""}`;
-export const censusTitle = (title, nation) => `${title}, ${nation.census_year}`;
+// Section titles for an edition that labels years, with the years of their figures (workers: years.js employedYear).
+export const yieldsTitle = (o, nation) => `Yields · ${employedPeriod(nation)}${o.gdp != null && o.gdp_year ? `, GDP ${o.gdp_year}` : ""}`;
+export const censusTitle = (title, nation) => `${title}, ${employedYear(nation)}`;
 
 /** True when a row has its own density or land area (the panels then show them). */
 export const hasGeography = (o) => Number.isFinite(o?.density) || Number.isFinite(o?.land_km2);
@@ -128,12 +129,13 @@ export function growthSpan(o, n = null) {
     yrs ? ` <span class="since">since ${yrs[0]}</span>` : ""}</span>`;
 }
 
-// With labelled years: population is a July 1 estimate, whose year ends growth_years; the employed are census counts.
+// With labelled years: population is a July 1 estimate, whose year ends growth_years; the employed are counts of
+// their own year (years.js employedYear: the census year, or the survey year an edition gives).
 function popYear(o) {
   return o?.growth_years?.[1] ?? null;
 }
 export const popLine = (o, extra = "", nation = {}) =>
-  `<div class="cp-pop">${icon("pop", "👥", { size: 16 })} <b>${int(o.population)}</b> people${LABEL_YEARS && popYear(o) ? ` in ${popYear(o)}` : ""} · ${int(o.employed)} employed${LABEL_YEARS && nation.census_year ? ` in ${nation.census_year}` : ""}${extra}</div>`;
+  `<div class="cp-pop">${icon("pop", "👥", { size: 16 })} <b>${int(o.population)}</b> people${LABEL_YEARS && popYear(o) ? ` in ${popYear(o)}` : ""} · ${int(o.employed)} employed${LABEL_YEARS && employedYear(nation) ? ` in ${employedYear(nation)}` : ""}${extra}</div>`;
 
 /**
  * Fill and show the panel.

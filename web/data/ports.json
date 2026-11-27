@@ -47,6 +47,25 @@
       "github_stars_checked": "2026-11-27"
     },
     {
+      "id": "my",
+      "name": "Malaysia",
+      "emblem": "🌺",
+      "status": "merged",
+      "editionId": "my",
+      "scope": "country",
+      "region": "Asia",
+      "countries": ["MY"],
+      "center": [109.5, 4.0],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "earthciv/earthciv",
+      "author": "MyCiv",
+      "author_github": "pengkodam",
+      "url": null,
+      "embed": true,
+      "description": "Malaysia from DOSM open data: 13 states and 3 federal territories, 160 districts, 47 cities and conurbations, City View and advisors."
+    },
+    {
       "id": "europeciv",
       "name": "Europe Civilization",
       "emblem": "🇪🇺",
