@@ -151,7 +151,7 @@ source("esri_cover", "Sentinel-2 10m Land Use/Land Cover", "Impact Observatory, 
        "https://livingatlas.arcgis.com/landcover/", "CC BY 4.0", "Latest annual map",
        ["Terrain colours and symbols", "Forest, farmland and built-up shares"],
        "The annual 10 m land-cover map, exported as one ~550 m image and grouped into the renderer's terrain classes. "
-       "Oil palm and rubber estates are classed as trees by this map.", {
+       "Oil palm and rubber estates are classed as trees by this map; oil palm is moved to cropland (see the oil palm map).", {
            "landcover.png": "https://ic.imagery1.arcgis.com/arcgis/rest/services/Sentinel2_10m_LandCover/ImageServer/"
                             f"exportImage?bbox={','.join(map(str, BBOX))}&bboxSR=4326&imageSR=4326&size=4000,1671"
                             "&format=png&f=image"})
@@ -311,6 +311,7 @@ def build(radius):
     foreign = classify_points(neighbours, xs, ys) >= 0
     lake = classify_points(lakes, xs, ys) >= 0 if lakes else np.zeros(len(xs), bool)
     cover_samples = sample_cover(np.asarray(lon), np.asarray(lat))
+    cover_samples = malaysia_resources.plantation_cover(cover_samples, lon, lat, SOURCE_DIR)  # oil palm is not trees
     kinds = np.where(sampled_states >= 0, sampled_states, np.where(foreign, -2, -1))
     kinds[lake | ((cover_samples == 12) & (sampled_states >= 0))] = -3
     elevation = sample_elevation(grid, xy)
@@ -411,7 +412,9 @@ def build(radius):
         "Sea beside land, or averaging up to 200 m deep.",
         "Inland water from Natural Earth and the land-cover map; a lake hex's depth is shown as 0 m or below.",
     ))]
-    resources = malaysia_resources.resources_doc(SOURCE_DIR, grid, xy, owners, states, county, props, places)
+    palm_ha = malaysia_resources.district_palm_ha(
+        SOURCE_DIR, lambda lo, la: classify_points(shapes, *TO_MAP.transform(lo, la)), len(props))
+    resources = malaysia_resources.resources_doc(SOURCE_DIR, grid, xy, owners, states, county, props, places, palm_ha)
     malaysia_resources.state_fields(state_data, states, owners, pct, metrics["cover"], resources, SOURCE_DIR)
     write("resources", resources)
     write("world", dict(version=2, grid=grid.to_dict(), width=round(width, 1), height=round(height, 1), margin=MARGIN,
