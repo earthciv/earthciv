@@ -67,7 +67,7 @@ class MapMenuTest(unittest.TestCase):
         self.assertIn("#topbar > .yields { flex: 1 1 0; }", block)  # the second row never wraps to a third
         self.assertNotRegex(css, r"top: (52|54)px")  # what sat under the one-row bar now follows --topbar-h
         self.assertIn("editionKind.textContent = KIND.merged.label;", self.ports)
-        self.assertIn("switcher.append(editionMaker, editionKind);", self.ports)
+        self.assertIn("switcher.append(editionMaker, editionKind, editionRating);", self.ports)
 
     def test_both_menus_are_filled_from_one_list(self):
         # One function writes the entries of both, so a map in one is in the other, in the same order.

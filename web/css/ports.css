@@ -531,12 +531,17 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .rt-star svg { width: 22px; height: 22px; }
   .rt-bar .rt-star { height: 30px; } /* the bar above an open map keeps its height */
 }
-/* in the bar above an open map */
+/* in the bar above an open map, and at the far end of an edition's first row */
 .rt-bar { flex-wrap: nowrap; gap: 10px; margin: 0 4px 0 0; padding: 0; border: 0; }
 .rt-bar:not(.is-rated) .rt-avg { display: none; }
-/* Until the window is wide enough for the map's whole name beside them, the bar shows the five stars only. */
+#topbar .rt-bar { flex: none; margin: 0 0 0 auto; }
+/* Until the window is wide enough for the map's whole name beside them, the bar shows the five stars only. An
+   edition's row has no buttons beside its stars, so there the words stay until the row drops the map's kind too. */
 @media (max-width: 1240px) {
-  .rt-bar .rt-avg, .rt-bar .rt-lbl { display: none; }
+  .ports-vbar .rt-bar .rt-avg, .ports-vbar .rt-bar .rt-lbl { display: none; }
+}
+@media (max-width: 900px) {
+  #topbar .rt-bar .rt-avg, #topbar .rt-bar .rt-lbl { display: none; }
 }
 
 /* shared buttons */
