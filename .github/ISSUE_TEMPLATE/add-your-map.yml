@@ -1,0 +1,79 @@
+name: Add your map to EarthCiv
+description: List a map you built on the world map at earthciv.org, or correct or remove its listing.
+title: "Map: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
+
+        Look for your map there first, because it may already be listed. The search box at the top finds a map by its name, its author or its repository. To correct or remove a listing, fill in the first two fields and whatever should change.
+
+        If you would rather send a pull request, the list is [`web/data/ports.json`](https://github.com/earthciv/earthciv/blob/main/web/data/ports.json), and the [README](https://github.com/earthciv/earthciv#add-your-map) describes its fields.
+  - type: dropdown
+    id: request
+    attributes:
+      label: What should happen?
+      options:
+        - Add my map
+        - Correct my map's listing
+        - Remove my map
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Map name
+      description: The name EarthCiv should show. For a correction or a removal, the name the map is listed under now.
+      placeholder: Portugal (ptciv)
+    validations:
+      required: true
+  - type: input
+    id: repository
+    attributes:
+      label: Repository
+      description: Where the map's source code is.
+      placeholder: https://github.com/your-name/ptciv
+  - type: input
+    id: url
+    attributes:
+      label: Live address
+      description: The public https address where the map runs. Leave this empty if the map runs only from its source code. It is then listed with a link to the repository.
+      placeholder: https://your-name.github.io/ptciv/
+  - type: input
+    id: places
+    attributes:
+      label: Places it covers
+      description: The countries or territories on the map, by name or ISO code. For a map of one region or city, give its name and its country.
+      placeholder: Portugal
+  - type: input
+    id: languages
+    attributes:
+      label: Languages
+      description: The languages the map's own text is in.
+      placeholder: Portuguese, English
+  - type: textarea
+    id: description
+    attributes:
+      label: One-sentence description
+      description: What the map shows and where its data comes from, in plain text. English is easiest for the list, and any language is fine.
+      placeholder: Portugal as a hex strategy map, built from INE and Eurostat open data.
+  - type: input
+    id: license
+    attributes:
+      label: Licence
+      description: The licence your repository states, such as MIT. Leave this empty if it states none.
+      placeholder: MIT
+  - type: dropdown
+    id: embed
+    attributes:
+      label: May EarthCiv show your map on its own page?
+      description: A map with a live address opens in a frame on earthciv.org, under a bar with the map's name and links to its repository and its own site. Choose the second answer to have your site open in a new tab, or if your host does not allow framing.
+      options:
+        - Yes, show it in a frame
+        - No, open my site in a new tab
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: For a correction, say what is wrong. This is also the place to give the name to credit if it is not your GitHub name.

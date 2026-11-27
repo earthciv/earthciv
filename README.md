@@ -1,17 +1,85 @@
-# usaciv: the United States as a strategy game, built from real data
+# EarthCiv: real countries as strategy maps, built from public data
 
-**Live: [karpathy.ai/usaciv](https://karpathy.ai/usaciv)** · Source code:
-[usaciv-source.zip](https://karpathy.ai/usaciv/usaciv-source.zip) (also linked from the in-app help, `?`)
-
-> **This copy adds a Canada edition and a world map**, live at [earthciv.org](https://earthciv.org/), which opens on
-> the world map: click any country to see its figures and open its map. The United States is at
-> [?country=us](https://earthciv.org/?country=us) and Canada at [?country=ca](https://earthciv.org/?country=ca). The original project is by
-> Andrej Karpathy: [karpathy.ai/usaciv](https://karpathy.ai/usaciv), announced
-> [here](https://x.com/karpathy/status/2125779541952246039). See [Canada edition](#canada-edition) below.
+**Live: [earthciv.org](https://earthciv.org/)** · [United States](https://earthciv.org/?country=us) ·
+[Canada](https://earthciv.org/?country=ca) · [Add your map](#add-your-map)
 
 ![The lower 48 drawn as a 4X strategy map: painted hex terrain, rivers, state names and bronze city banners](docs/images/hero.jpg)
 
-A visualizer (not a game) that draws the **real** United States like a turn-based strategy map. Hex terrain comes
+EarthCiv draws real countries like a turn-based strategy map, from public data: terrain, cities, resources, roads
+and more, with every number traced to its source. It is a visualizer, not a game.
+
+- **It opens on a world map that lists the maps made in this style:** more than 40 maps of more than 50 countries
+  and territories. About 40 people built most of them in the day after usaciv was announced. Each of their maps
+  carries its author's name and a link to their repository, and most of those with a live site open inside EarthCiv.
+- **Two countries are EarthCiv editions,** drawn by the map engine in this repository: the
+  [United States](#the-united-states-edition) and [Canada](#canada-edition).
+
+EarthCiv grew out of [usaciv](https://karpathy.ai/usaciv) by Andrej Karpathy
+([announcement](https://x.com/karpathy/status/2125779541952246039)). His map of the United States is the first
+edition here, and the Canada edition and the world map are built on his code.
+
+## Add your map
+
+If you built a map of a country, a region or a city in this style, it belongs on the
+[world map](https://earthciv.org/). The first list came from a GitHub search for usaciv on November 26, 2026, so
+your map may already be there. The search box at the top finds a map by its name, its author or its repository.
+
+- **Not listed, or listed with a mistake?**
+  [Fill in the map form](https://github.com/earthciv/earthciv/issues/new?template=add-your-map.yml). It asks for
+  the map's name, its repository, its live address if it has one, and the places it covers. Use the same form to
+  have a map taken off the list.
+- **Prefer a pull request?** Add or edit your entry in [`web/data/ports.json`](web/data/ports.json). Its fields are
+  described below.
+- **Nobody has mapped your country yet?** Build the map, publish it anywhere, and add it the same way. Most authors
+  started from usaciv's code, which this repository contains: [How it works](#how-it-works) describes the pipeline
+  that turns public data into the files the map draws. [docs/EDITIONS.md](docs/EDITIONS.md) is the format a country
+  follows to run on EarthCiv's own engine, as the United States and Canada do.
+
+EarthCiv only points to your map. Your code and data stay in your repository, under your name and your licence.
+
+<details>
+<summary>The fields of an entry in the list</summary>
+
+```json
+{
+  "id": "ptciv",
+  "name": "Portugal (ptciv)",
+  "emblem": "🇵🇹",
+  "status": "live",
+  "scope": "country",
+  "region": "Europe",
+  "countries": ["PT"],
+  "center": [-8.0, 39.6],
+  "languages": ["pt", "en"],
+  "license": "MIT",
+  "repo": "your-name/ptciv",
+  "author": "your-name",
+  "url": "https://your-name.github.io/ptciv/",
+  "embed": true,
+  "description": "Portugal as a hex strategy map, built from INE and Eurostat open data."
+}
+```
+
+- `id` is unique: lowercase letters, digits and hyphens.
+- `status` is `"live"` for a map with a public `https` address in `url`, and `"repo"` (with `"url": null`) for a map
+  that has only source code.
+- `embed` says whether EarthCiv may show your site in a frame on its own page. Use `false` to have your site open
+  in a new tab instead, or if your host does not allow framing.
+- `scope` is `"country"`, `"multi"` (several countries) or `"region"` (part of a country, such as a region or a
+  city).
+- `countries` holds ISO 3166-1 alpha-2 codes, and `center` is `[longitude, latitude]`.
+- `region` is the part of the world the map belongs to, such as `Europe` or `Middle East`.
+- `languages` holds the codes of the languages the map's text is in, such as `pt` or `zh-TW`.
+- `repo` is `owner/name` on GitHub. `license` is the licence that repository states, or `null`.
+- `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
+- For a new entry, also raise `CATALOG_PORT_COUNT` in `web/js/ext/ports/index.js` by one. Then run
+  `uv run python -m unittest tests.test_ports`, which checks every entry.
+
+</details>
+
+## The United States edition
+
+This is the map usaciv began with: the **real** United States drawn like a turn-based strategy map. Hex terrain comes
 from elevation and land-cover data. Cities have yield banners built from GDP and job counts. Resources are real
 power plants, mines and shale plays. Roads, railroads, ports, forts and wonders sit on the tiles. There are lenses,
 a City View with citizens and districts, and a council of Advisors for slicing the data. Every number traces back
@@ -31,7 +99,7 @@ by a small Python pipeline that uses only the standard library, from public down
   </tr>
 </table>
 
-## What's in it
+### What's in it
 
 - **The map.** Painted hex terrain: forests, crop patchwork, wooded hills, snowy ranges, Great Basin ranges and
   playas, Colorado Plateau mesas, marsh and suburbs. Coasts and lakes are smoothed. There are rivers and state
@@ -305,6 +373,10 @@ are figures derived from the 2020 U.S. Religion Census (© 2022 ASARB). They are
 which ask for credit to the Association of Statisticians of American Religious Bodies and the Association of
 Religion Data Archives. Please keep that credit if you reuse them.
 
+The community maps on the world map belong to their authors. Each keeps its own licence, which
+`web/data/ports.json` records where the map's repository states one. EarthCiv links to those maps and copies none of
+their code or data.
+
 The look is inspired by turn-based 4X strategy games, but every glyph, icon and texture here is original and drawn
 in code. This project is not affiliated with or endorsed by any game publisher.
 
@@ -316,4 +388,4 @@ in code. This project is not affiliated with or endorsed by any game publisher.
 - A county "Specialisation" lens from `districts.json`.
 - A time slider: yearly population (2020 onwards) is already in `cities.json`, and BEA has GDP history.
 
-Forks and experiments are welcome.
+Forks and experiments are welcome. If yours becomes a map, [add it to the world map](#add-your-map).
