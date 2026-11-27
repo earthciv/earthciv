@@ -26,6 +26,7 @@ from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
+from . import malaysia_cityview as cityview
 from . import malaysia_economy as economy
 from . import malaysia_layers, malaysia_resources
 from .build.lenses import DOMAIN_NOTE, percentile_domain
@@ -142,6 +143,7 @@ source("dosm_census_religion", "MyCensus 2020 area profiles (Kawasanku): religio
            "kawasanku_admin_barmeter.parquet":
                "https://storage.dosm.gov.my/dashboards/kawasanku_admin_barmeter.parquet"})
 economy.register_sources(source)
+cityview.register_sources(source)  # M5: education by state for the City View
 source("etopo", "ETOPO1 Global Relief Model", "NOAA National Centers for Environmental Information (via ERDDAP)",
        "https://www.ncei.noaa.gov/products/etopo-global-relief-model", "Public domain", "ETOPO1, 1 arc-minute",
        ["Elevation, relief and water depth"], "Elevations and depths from ETOPO1 at every arc-minute.", {
@@ -430,6 +432,9 @@ def build(radius):
         "population_vintage": f"DOSM mid-year population estimates, {year}",
         "nation": {**figures(national, year), **econ.nation_fields(state_data, national[econ.state_gdp_year])},
         "yields": economy.YIELDS, **econ.nation_meta()})
+    nation_fields = econ.nation_fields(state_data, national[econ.state_gdp_year])
+    write("districts", cityview.districts_doc(places, nation_fields["jobs"], {k: v[0] for k, v in economy.INDUSTRIES.items()}))
+    write("citizens", cityview.citizens_doc(places, props, econ, city_of_district(props, places), NEW_DISTRICTS, SOURCE_DIR))
     area_km2 = [s.area / 1e6 for s in shapes]
     build_lenses(props, shapes, pop, year, county, econ, pct, owners)
     write("counties", economy.counties_table(

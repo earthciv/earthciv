@@ -6,6 +6,7 @@ reading them.
 """
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -498,3 +499,146 @@ class LayerReaderTest(unittest.TestCase):
         from pipeline import malaysia_layers as layers
 
         self.assertEqual([layers.column(c) for c in ("A", "Z", "AA", "AB")], [1, 26, 27, 28])
+
+
+class CityViewDataTest(unittest.TestCase):
+    """districts.json and citizens.json (M5): shapes the City View reads, honest about what is estimated."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cities = load("cities")
+        cls.districts, cls.citizens, cls.nation = load("districts"), load("citizens"), load("nation")
+
+    def test_manifest_lists_both_files(self):
+        edition = load("edition")
+        self.assertLessEqual({"districts", "citizens"}, set(edition["files"]))
+        self.assertIn(edition["sources"]["roles"]["citizens"], {s["id"] for s in load("sources")})
+
+    def test_every_city_has_a_key_in_both_files(self):
+        ids = {c["id"] for c in self.cities}
+        self.assertEqual(set(self.districts["cities"]), ids)
+        self.assertEqual(set(self.citizens["cities"]), ids)
+
+    def test_district_catalog_uses_engine_ids_and_the_workers_flag(self):
+        from pipeline.build.districts import BY_ID
+
+        catalog = {d["id"] for d in self.districts["catalog"]}
+        self.assertTrue(catalog <= set(BY_ID))
+        self.assertFalse(catalog & {"harbor", "aerodrome", "encampment"})  # no data to stand for them
+        rule = self.districts["rule"]
+        self.assertEqual(rule["counts"], "workers")
+        self.assertFalse(rule["military_encampments"])
+        self.assertIn("estimates, not counts", rule["text"])  # the state-to-district apportionment is disclosed
+
+    def test_districts_follow_the_rule(self):
+        by_id = {c["id"]: c for c in self.cities}
+        for cid, row in self.districts["cities"].items():
+            if row is None:
+                continue
+            self.assertEqual(row["emp"], by_id[cid]["employed"], cid)
+            self.assertLessEqual(len(row["districts"]), self.districts["rule"]["max_per_city"], cid)
+            for d in row["districts"]:
+                self.assertGreaterEqual(d["lq"], self.districts["rule"]["min_lq"], cid)
+                self.assertIsNone(d["sub"])
+            if row["badge"]:
+                self.assertIn(row["badge"]["district"], {d["id"] for d in row["districts"]}, cid)
+        kl = self.districts["cities"]["my-kl"]
+        self.assertEqual(kl["badge"]["district"], "commercial_hub")
+        # "Capital city" only for Kuala Lumpur, and only when government is its strongest district
+        labels = {c: r["badge"]["label"] for c, r in self.districts["cities"].items() if r and r["badge"]}
+        self.assertEqual([c for c, label in labels.items() if label == "Capital city"], [])
+
+    def test_age_rows_add_up_and_match_the_population(self):
+        figures = self.citizens["figures"]["age"]
+        for c in self.cities:
+            row = self.citizens["cities"][c["id"]]["age"]
+            self.assertEqual(sum(row["figures"].values()), figures, c["id"])
+            self.assertAlmostEqual(sum(row["shares"].values()), 1, delta=0.005)
+            self.assertAlmostEqual(row["total"], c["population"], delta=0.0005 * c["population"] + 1000, msg=c["id"])
+            self.assertTrue(10 < row["median"] < 60, c["id"])
+        self.assertAlmostEqual(self.citizens["national"]["age"]["total"], self.nation["nation"]["population"],
+                               delta=0.0005 * self.nation["nation"]["population"])
+
+    def test_education_is_a_state_mix_of_the_labour_force(self):
+        rows = [r["education"] for r in self.citizens["cities"].values()]
+        for row in rows:
+            self.assertAlmostEqual(sum(row["shares"].values()), 1, delta=0.005)
+            self.assertNotIn("bachelors_plus", row)  # tertiary is not "a degree"; the chip stays hidden
+        self.assertIn("state mix", self.citizens["row_labels"]["education"]["sub"])
+        # two cities of one state share a mix
+        by_state = {}
+        for c in self.cities:
+            if len(c["states"]) == 1:
+                by_state.setdefault(c["states"][0], []).append(self.citizens["cities"][c["id"]]["education"]["shares"])
+        same = next(v for v in by_state.values() if len(v) > 1)
+        self.assertEqual(same[0], same[1])
+
+    def test_missing_rows_are_absent_and_the_text_pack_says_so(self):
+        self.assertEqual(set(self.citizens["groups"]), {"age", "education"})
+        for row in self.citizens["cities"].values():
+            self.assertFalse({"workforce", "commute", "nativity"} & set(row))
+        self.assertIn("occupation", load("text")["citizens.row_missing"])
+
+    def test_age_groups_are_relabelled_for_five_year_bands(self):
+        text = load("text")
+        self.assertEqual(self.citizens["groups"]["age"][0]["label"], "Children (0-14)")
+        self.assertEqual(text["citizens.short"]["age"]["child"], "Under 15")
+        self.assertIn("under 15", text["citizens.phrases"]["age"]["child"][0])
+
+
+class CityViewFunctionsTest(unittest.TestCase):
+    def test_median_age_interpolates_inside_the_band(self):
+        from pipeline.malaysia_cityview import median_age
+
+        bands = {"0-4": 10, "5-9": 10, "10-14": 10, "15-19": 20}  # the 25th of 50 sits in 10-14: age 10 + 5 * 5/10
+        self.assertEqual(median_age(bands), 12.5)
+
+    def test_age_row_groups_the_bands(self):
+        from pipeline.malaysia_cityview import age_row
+
+        bands = {"0-4": 100, "15-19": 100, "35-39": 100, "65-69": 50, "85+": 50}
+        row = age_row(bands, 150)
+        self.assertEqual(row["counts"], {"child": 100, "young": 100, "midlife": 100, "elder": 100})
+        self.assertEqual(sum(row["figures"].values()), 10)
+        self.assertEqual(row["female"], 0.375)
+
+
+class NoEthnicityOrReligionInCitizensTest(unittest.TestCase):
+    """Rule 5 of PLAN.md "Race and religion": ethnicity and religion never feed personas, names, scores or text."""
+
+    WORDS = re.compile(r"\b(ethnic\w*|race|racial|bumi\w*|malay|malays|chinese|indian|orang|religio\w*|faith|muslim|islam\w*"
+                       r"|christian\w*|buddhis\w*|hindu\w*|atheis\w*|sikh|tribe|tribal)\b", re.I)
+
+    def walk(self, node, path=""):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                yield f"{path}/{k}", k
+                yield from self.walk(v, f"{path}/{k}")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                yield from self.walk(v, f"{path}[{i}]")
+        elif isinstance(node, str):
+            yield path, node
+
+    def test_citizens_and_districts_name_no_group(self):
+        for name in ("citizens", "districts"):
+            for path, text in self.walk(load(name)):
+                self.assertIsNone(self.WORDS.search(text), f"{name}.json {path}: {text[:80]}")
+
+    def test_citizens_carry_only_the_expected_fields(self):
+        citizens = load("citizens")
+        allowed = {"age", "education", "specialists", "reliable"}
+        for cid, row in citizens["cities"].items():
+            self.assertLessEqual(set(row), allowed, cid)
+            self.assertLessEqual(set(row["age"]), {"total", "counts", "shares", "figures", "median", "female"}, cid)
+        self.assertEqual(set(citizens["groups"]["age"][0]), {"key", "label", "icon", "lines"})
+
+    def test_cityview_module_never_reads_the_sensitive_tables(self):
+        source = (Path(__file__).resolve().parents[1] / "pipeline" / "malaysia_cityview.py").read_text(encoding="utf-8")
+        code = "\n".join(line for line in source.split("\n") if not line.lstrip().startswith("#"))
+        code = re.sub(r'""".*?"""', "", code, flags=re.S)
+        for name in ("ETHNIC_GROUPS", "RELIGIONS", "census_religion", "barmeter", "bumi_", "other_noncitizen", "chinese",
+                     "indian", "religion"):
+            self.assertNotIn(name, code)
+        # the population table is read for the "overall" rows only
+        self.assertIn('r["ethnicity"] == "overall"', code)

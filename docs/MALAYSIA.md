@@ -181,3 +181,57 @@ Bakun Dam is a hand-picked landmark here; that does not conflict with the resour
 
 Race and religion (PLAN.md): no wonder is chosen by a community or a faith; no place of worship is a wonder; the
 tests check wonder names and rule texts.
+
+## City View (`districts.json`, `citizens.json`)
+
+Built by `pipeline/malaysia_cityview.py` (hooks in `pipeline/malaysia.py`), listed in `edition.json` `files`;
+`sources.roles.citizens` is `dosm_city_view`. Both files follow the contracts Canada's do; the engine needed one
+generic change (`citizens.json` `row_labels` may reword a row's subtitle and nouns).
+
+### Industry districts
+
+The U.S. rule (location quotient ≥ 1.25 and ≥ 1,000 workers or 1% of the city's workers; ≤ 5 per city; badge from the
+strongest district; "Capital city" only for Kuala Lumpur) applied to each city's workers by industry (`cities.json`
+`jobs`, M2). **These are estimates, not counts**: DOSM publishes workers by industry for states only (LFS 2021), and
+M2 shares each state's workers over its districts by 2020 district GDP in the matching sector (agriculture, mining,
+manufacturing, construction, services). Inside a state every city therefore has the state's mix of service
+industries, scaled by how large its services sector is; read a district as "this state's industry, concentrated in
+this city". The file's `rule.text` and the text pack (`cv.districts_counting`, `cv.districts_note`) say so.
+
+| District | Industries (M2 keys) |
+|---|---|
+| Campus | professional, information, education |
+| Commercial hub | finance |
+| Industrial zone | manufacturing, mining |
+| Theater square | arts |
+| Entertainment complex | accommodation & food service |
+| Government plaza | public administration |
+| Aqueduct & dam | utilities |
+
+Not drawn: Harbor (transport & storage mixes ports, trucking and post), Aerodrome and Encampment (no aviation or
+defence workers published), and no farm district (the engine's catalog has none; agriculture is a Food yield). No
+specialities (`sub` is empty): DOSM publishes no detailed industries.
+
+### Citizens
+
+| Row | Source | Notes |
+|---|---|---|
+| Age | `population_district.csv`, latest year (2026 mid-year estimate), both sexes, **ethnicity "overall" rows only** | counted per district and summed; the six 2025 districts folded back as in the population series. Five-year bands, so children are 0-14, young adults 15-34, middle-aged 35-64, elders 65+ (the text pack relabels the engine's "under 18"). Median age interpolated inside its band. |
+| Education | `labour_force_education_state.csv` (DOSM, archive.data.gov.my, 1982-2021 table; 2021 used) | **a state mix**: no education table exists by district. Each district's LFS 2024 labour force takes its state's 2021 mix (none / primary / secondary / tertiary). It counts the labour force aged 15+, not adults 25+, and tertiary includes diplomas and certificates, so `bachelors_plus` is left out and the "have a degree" chip is hidden. Within a state every city has the same mix. |
+
+Missing, and said so in the text pack (`citizens.row_missing`, `citizens.note`): **occupation** (the archive lists
+"Employed persons by occupation and state" but attaches no file), **how people get to work** and **where people were
+born** (citizenship is not place of birth, so it is not used for that row). Household size is published by district
+(Census 2020, Kawasanku `household_size`) but the City View has no row or chip for it, so it is not added. Only the age
+row is compared with Malaysia for the "standout citizens" call-out and the ▲▼ marks: the education row is the state's
+mix, and showing it as a local trait would mislead. Income is already in
+the City View through M2 (`median_income`).
+
+### Race and religion are not here
+
+Rule 5 of "Race and religion" (PLAN.md): ethnicity and religion never feed personas, names, scores or advisor text.
+The City View's citizens are unnamed figures of one skin tone, so the edition needs no naming scheme: nothing in the
+file or the interface gives anyone a name, and none of the rows is split by ethnicity or religion. The module never
+reads the ethnicity columns (other than the "overall" rows), the religion parquet or the non-citizen column.
+`tests/test_malaysia_edition.py` enforces this: `citizens.json` and `districts.json` carry no field or text that names
+a group, `citizens.json` holds only the age and education rows, and the module's source is checked.
