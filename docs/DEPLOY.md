@@ -4,8 +4,12 @@ The site is static. Packaging writes `dist/usaciv/` with the site, generated soc
 and `usaciv-source.zip`, a copy of the project linked from the in-app help. Preview pages expose their city or
 lens in the URL path so social crawlers can read the card from the original HTML.
 
+One thing runs on the server: the Pages Function in `functions/`, which keeps the star ratings people give the maps
+in the world view. It needs a database and a secret, set up once ([RATINGS.md](RATINGS.md)). Without them the site
+deploys and works the same, and shows no stars.
+
 Production is the Cloudflare Pages project `usaciv-canada`, created by direct upload. It answers at
-https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org.
+https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org. Its settings are in `wrangler.toml`.
 
 ## Before a deploy
 
@@ -33,6 +37,9 @@ npx --yes wrangler@4.168.0 pages deploy dist/usaciv --project-name=usaciv-canada
 Wrangler 4.168 needs Node 22.12 or newer, and uses the login saved by `wrangler login`. Deploy committed work, so the
 deployment records the commit.
 
+Run them in the project's root folder. Wrangler reads `wrangler.toml` and compiles `functions/` from the
+folder it is run in; from anywhere else the site would upload without its Function, and the ratings would turn off.
+
 ## Checks after a deploy
 
 - https://earthciv.org/ opens on the world map. Clicking a country opens its card; the Play buttons open the United
@@ -41,4 +48,7 @@ deployment records the commit.
 - **Share → Copy link** on a city or a lens creates a `/share/` URL. Its HTML has the matching title and preview
   image, and opening it in a browser restores the map view.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
+- https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up, and a map's card on the
+  world map shows its stars. With `"open": false` its `"reason"` says what is missing: `"static"` (no database is
+  bound, or the Function was not uploaded), `"no_secret"` or `"closed"` ([RATINGS.md](RATINGS.md)).
 - The browser console shows no errors on either edition.

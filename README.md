@@ -214,6 +214,8 @@ pipeline/
   package.py  the deploy package
 harness/      records every view of every edition in a headless browser, to compare before and after a change
               (docs/HARNESS.md)
+functions/    the one piece that runs on a server: a Cloudflare Pages Function that keeps the star ratings people
+              give the maps on the world map (docs/RATINGS.md); the site works without it
 tests/        unittest suite (standard library only)
 web/
   js/         boot.js (entry: the world map or an edition), main.js (an edition's app shell), camera, hex grid
@@ -223,10 +225,11 @@ web/
               world map)
   data/       the JSON the browser loads: editions.json, a folder per edition (us/, ca/) with its data files,
               manifest and text pack, and the world map's files (ports.json, the list of maps; world-outlines.json;
-              world-figures.json)
+              world-figures.json; ratings.json, which stands in where no ratings are kept)
   dev/        dev pages, not part of the deployed site: the art gallery, the trailer maker, the harness's views
 docs/         DATA_CONTRACTS.md (the shape of every data file, shared by pipeline and browser), EDITIONS.md (what an
-              edition is and how to add one), CANADA.md (Canada's sources and methods), HARNESS.md, DEPLOY.md
+              edition is and how to add one), CANADA.md (Canada's sources and methods), HARNESS.md, DEPLOY.md,
+              RATINGS.md
 ```
 
 The United States edition's flow is always **source → interim → builder → web/data/us**:
@@ -345,6 +348,10 @@ Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/d
 is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
 rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures). The country outlines are Natural
 Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
+
+Visitors can rate each map that opens, from one to five stars, and its card shows the average. Ratings are anonymous
+and need a small database on the host; a copy of the site without one simply shows no stars
+([docs/RATINGS.md](docs/RATINGS.md)).
 
 ### Reading the map honestly
 
