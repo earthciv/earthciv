@@ -89,13 +89,15 @@ that.
 
 ## Setting it up
 
-Once per deployment. Wrangler needs Node 22.12 or newer and the login saved by `wrangler login`.
+Once per deployment. earthciv.org's database exists: it is the one `wrangler.toml` names. A copy of this project
+deployed elsewhere makes its own, or drops the `[[d1_databases]]` block and shows no stars. Wrangler needs Node 22.12
+or newer and the login saved by `wrangler login`.
 
 ```sh
 npx --yes wrangler@4.168.0 d1 create earthciv-ratings
 ```
 
-It prints a `database_id`. Put it in `wrangler.toml`, in the block that is commented out there, and commit that:
+It prints a `database_id`. Put it in `wrangler.toml` and commit that:
 
 ```toml
 [[d1_databases]]
@@ -105,6 +107,9 @@ database_id = "<the id>"
 ```
 
 Then set the secret and deploy as usual ([DEPLOY.md](DEPLOY.md)); a secret takes effect with the next deployment.
+The secret is set per environment: production by default, and `--env preview` for the deployments of any other
+branch. Both environments use the database that `wrangler.toml` names, so ratings given on a preview deployment are
+real ones.
 
 ```sh
 openssl rand -hex 32 | npx --yes wrangler@4.168.0 pages secret put RATINGS_SALT --project-name=usaciv-canada

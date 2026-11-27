@@ -4,9 +4,10 @@ name = "usaciv-canada"
 pages_build_output_dir = "dist/usaciv"
 compatibility_date = "2026-11-26"
 
-# The ratings database. Until this block names one, the Function hands requests to the static file
+# The ratings database of earthciv.org. A copy of this project deployed elsewhere names its own database here
+# (docs/RATINGS.md), or drops this block: without it the Function hands requests to the static file
 # web/data/ratings.json and the site shows no stars.
-# [[d1_databases]]
-# binding = "RATINGS_DB"
-# database_name = "earthciv-ratings"
-# database_id = "<the id that `wrangler d1 create earthciv-ratings` prints>"
+[[d1_databases]]
+binding = "RATINGS_DB"
+database_name = "earthciv-ratings"
+database_id = "01bb6d59-874c-4364-88cf-4ab6f3a4598e"
