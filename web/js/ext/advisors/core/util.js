@@ -1,5 +1,7 @@
 // Small shared helpers for the advisor kit: numbers, scales, colour ramps, DOM.
-export { esc } from "../../../format.js";
+// esc from the module without imports (format.js re-exports the same one), so that the world map can use these
+// helpers and the medallions (./emblems.js) without loading an edition.
+export { esc } from "../../../app/escape.js";
 
 export const fin = Number.isFinite;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

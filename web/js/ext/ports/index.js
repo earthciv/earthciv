@@ -15,14 +15,18 @@
 //   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
 //     and in the bar and the note of a community map that is open here. "Map makers" lists everyone who made one
 //     (./makers.js).
-//   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>, and
-//     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view).
-//   * Loads web/data/world-outlines.json and world-figures.json only when first opened. An edition reads ports.json
-//     as it starts, for its map menu, and ratings.json where its top bar has room for the stars.
+//   * World Rankings compares every country on the World Bank's figures, a tab per group of measures, with the
+//     visitor's own country marked (./rankingsView.js, ./rankings.js). It takes the country list's place, as Map
+//     makers does; a row opens that country's card, whose back link returns to the same tab.
+//   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>,
+//     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view) and
+//     #rankings=overall (World Rankings; a measure's key, such as #rankings=gdp, opens its tab).
+//   * Loads web/data/world-outlines.json, world-figures.json and world-rankings.json only when first opened. An
+//     edition reads ports.json as it starts, for its map menu, and ratings.json where its top bar has room for the stars.
 
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
-import { editionIcon, fitMenu, flagEmoji, mapIcon, menuLabel } from "../../ui/mapPicker.js";
+import { drawsFlags, editionIcon, fitMenu, flagEmoji, mapIcon, menuLabel } from "../../ui/mapPicker.js";
 import { preventIosInputZoom } from "../../ui/mobile.js";
 import { DEFAULT_EDITION, EDITIONS } from "../../app/edition-index.js";
 import { editionUrl } from "../../app/home.js";
@@ -31,11 +35,16 @@ import { editionUrl } from "../../app/home.js";
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
 import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "./makers.js";
+import { OVERALL, measureOf, tabOf } from "./rankings.js";
+import { RANKINGS_ADVISOR, rankingsHtml } from "./rankingsView.js";
+// The advisors' medallions, which the World Rankings' tabs share (no edition is loaded with them).
+import { emblem } from "../advisors/core/emblems.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127d", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127e", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
+const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 const RATING_BAR = "(min-width: 701px)"; // where a map's bar has room for its stars (css/ports.css hides .rt-bar below)
@@ -148,6 +157,26 @@ function saveCustomPorts(list) {
   }
 }
 
+// The visitor's own country in World Rankings: a code, "" when they chose none, null when they never chose. Kept in
+// this browser only, never in the address.
+function loadMine() {
+  try {
+    const v = localStorage.getItem(MINE_KEY);
+    if (v === "none") return "";
+    return /^[A-Z]{2,3}$/.test(v || "") ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveMine(iso) {
+  try {
+    localStorage.setItem(MINE_KEY, iso || "none");
+  } catch {
+    /* ignore storage quota or sandbox errors */
+  }
+}
+
 /** A map's icon beside its name: its emblem, or its country's flag where the emblem is not an emoji (the U.S. star). */
 const iconOf = (p) => mapIcon(p.emblem, (p.countries || [])[0]);
 
@@ -190,6 +219,10 @@ export function install(app) {
   let portsP = null;
   let basePorts = [];
   let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
+  let rankDoc = null; // world-rankings.json (pipeline/build_world_rankings.py): every country on ten measures
+  let rankP = null;
+  let rankFailed = false;
+  let mine = loadMine();
   let customPorts = loadCustomPorts();
   let overlay = null;
   // The maps' star ratings. Every element with data-rating-of="<map id>" (a card, the viewer's bar, an edition's top
@@ -211,13 +244,17 @@ export function install(app) {
   let countryIndex = []; // [{id, name, continent, folded, words, aliases}], A–Z
   const ready = []; // callbacks waiting for the catalog and the map
   // A map or a country the URL named before the world loaded: kept in the URL meanwhile.
-  const pending = { port: null, country: null, makers: null };
+  const pending = { port: null, country: null, makers: null, rankings: null };
   const savedTitle = document.title;
 
   const ui = {
     activePortId: null, // a map open in the viewer
     selected: null, // the picked country (ISO code)
     makers: null, // the list of makers is showing: "all", or the key of the one maker to bring into view
+    rankings: null, // World Rankings is showing (under a picked country's card, if one is open): "overall" or a measure
+    rankScroll: 0, // where World Rankings was scrolled to when a country's card covered it
+    rankDetails: false, // each row also shows the tab's other measure
+    rankAbout: true, // the advisor's note at the top of a tab is open
     pickedPortId: null, // the map whose pin was clicked: first in the country's card
     kind: null, // map key filter: merged | live | external | repo | none (null = everything)
     sheet: "peek", // phones: mini | peek | full
@@ -425,6 +462,37 @@ export function install(app) {
     return catalogP;
   }
 
+  // World Rankings' figures (58 kB). Asked for when the world view opens, so a tab or a card has them when needed; a
+  // failed load is retried the next time World Rankings opens.
+  function loadRankings() {
+    if (!rankP) {
+      rankFailed = false;
+      rankP = fetchJson(new URL("world-rankings.json", DATA_URL)).then((doc) => {
+        rankDoc = doc;
+        return doc;
+      });
+      rankP.catch((err) => {
+        console.error("could not load world-rankings.json", err);
+        rankP = null;
+        rankFailed = true;
+      });
+    }
+    return rankP;
+  }
+
+  // Load the figures, then show them wherever World Rankings is waiting for them. A tab the address named before they
+  // arrived is checked now (a group's key is its first measure; anything else is Overall). The address itself is left
+  // as typed: rewriting it would add a step to the browser's Back.
+  function whenRankings() {
+    const done = () => {
+      if (!map || !ui.rankings) return;
+      ui.rankings = tabOf(rankDoc, ui.rankings);
+      if (!ui.selected) rerenderRankings();
+      syncTitle();
+    };
+    loadRankings().then(done, done);
+  }
+
   // Every edition in the index is represented as status "merged".
   function syncWithEditions(list, editions = []) {
     const copy = list.map((p) => ({ ...p }));
@@ -456,6 +524,9 @@ export function install(app) {
     return allPorts().find((p) => p.id === id) || null;
   }
   const countryName = (iso) => map?.getCountryName(iso) || iso;
+  // A country's flag in a list. Where this system draws no flags (Windows) its code stands in, rather than the two
+  // letters drawn as plain text by the flag itself.
+  const flagHtml = (iso) => (drawsFlags() || !/^[A-Z]{2}$/.test(iso || "") ? flagEmoji(iso) : `<span class="rk-code">${esc(iso)}</span>`);
 
   // --- the makers ------------------------------------------------------------------------------------------------
   // Who made each map (./makers.js). A map names its maker wherever it is shown. This site's own editions are
@@ -715,6 +786,9 @@ export function install(app) {
           <div id="wv-results" class="wv-results" role="listbox" aria-label="Countries and maps" hidden></div>
         </div>
         <div class="wv-bar-end">
+          <button type="button" class="wv-rank-btn" data-act="rankings-toggle" aria-pressed="false" title="World Rankings: every country compared">
+            ${emblem(RANKINGS_ADVISOR, 24)}<span class="wv-rank-lbl">World Rankings</span>
+          </button>
           <span class="wv-coverage" id="wv-coverage"></span>
           ${end}
         </div>
@@ -854,6 +928,16 @@ export function install(app) {
 
     overlay.addEventListener("click", onOverlayClick);
     overlay.addEventListener("error", removeBrokenMakerPicture, true);
+    // World Rankings: "Show details" and the visitor's own country.
+    sideEl.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t.classList?.contains("rk-details")) {
+        ui.rankDetails = t.checked;
+        rerenderRankings(".rk-details");
+      } else if (t.classList?.contains("rk-mine-select")) {
+        setMine(t.value);
+      }
+    });
 
     // Hovering a row or a card highlights its country, or its map's countries, on the world map.
     sideEl.addEventListener("pointerover", (e) => {
@@ -949,8 +1033,16 @@ export function install(app) {
       closeResults(true);
       deselect();
       closeMakers();
+      closeRankings();
       return map?.resetView();
     }
+    if (act === "rankings") return whenReady(() => openRankings(OVERALL, { focus: "title" }));
+    if (act === "rankings-toggle") return whenReady(toggleRankings);
+    if (act === "rankings-close") return closeRankings({ focus: true });
+    if (act === "rankings-retry") return whenRankings();
+    if (act === "rankings-about") return toggleRankAbout(el);
+    if (act === "rankings-find") return findMine();
+    if (d.rankTab) return openRankings(d.rankTab, { focus: el.classList.contains("rk-tab") ? "tab" : el.classList.contains("rk-card") ? "title" : "seg" });
     if (act === "makers") return openMakers("all", { focus: true });
     if (act === "makers-close") return closeMakers({ focus: true });
     if (act === "retry") return app.setMode(MODE, { id: null });
@@ -1160,7 +1252,11 @@ export function install(app) {
   function selectCountry(iso, { fly = false, focus = false, port = null, write = true } = {}) {
     if (!map || !map.getCountry(iso)) return;
     const scroller = overlay.querySelector("#wv-side-scroll");
-    if (!ui.selected && !ui.makers) ui.listScroll = scroller.scrollTop;
+    if (!ui.selected) {
+      // World Rankings stays under the card, and its back link returns to the same place in it.
+      if (ui.rankings) ui.rankScroll = scroller.scrollTop;
+      else if (!ui.makers) ui.listScroll = scroller.scrollTop;
+    }
     const same = ui.selected === iso && ui.pickedPortId === (port?.id || null);
     ui.makers = null;
     ui.selected = iso;
@@ -1189,8 +1285,12 @@ export function install(app) {
     map?.setSelectedCountry(null);
     map?.setHighlightPort(null);
     renderSide();
-    overlay.querySelector("#wv-side-scroll").scrollTop = ui.listScroll || 0;
-    if (focusRow) overlay.querySelector(`.wv-row[data-select="${CSS.escape(prev)}"]`)?.focus({ preventScroll: true });
+    overlay.querySelector("#wv-side-scroll").scrollTop = (ui.rankings ? ui.rankScroll : ui.listScroll) || 0;
+    if (focusRow) {
+      const row = CSS.escape(prev);
+      (overlay.querySelector(`.wv-row[data-select="${row}"], .rk-row[data-select="${row}"]`)
+        || (ui.rankings ? overlay.querySelector("#wv-rankings-title") : null))?.focus({ preventScroll: true });
+    }
     syncTitle();
     if (write) app.hash.soon();
   }
@@ -1208,8 +1308,10 @@ export function install(app) {
     const wanted = String(key || "all").toLowerCase();
     if (ui.makers === wanted && !ui.selected) return; // already showing (Back from a map opened here): stay in place
     const scroller = overlay.querySelector("#wv-side-scroll");
-    if (!ui.selected && !ui.makers) ui.listScroll = scroller.scrollTop;
+    if (!ui.selected && !ui.makers && !ui.rankings) ui.listScroll = scroller.scrollTop;
     ui.makers = wanted;
+    ui.rankings = null;
+    syncRankingsButton();
     ui.selected = null;
     ui.pickedPortId = null;
     map.setSelectedCountry(null);
@@ -1233,6 +1335,123 @@ export function install(app) {
     syncTitle();
     if (write) app.hash.soon();
     if (focus) overlay.querySelector(".wv-makers")?.focus({ preventScroll: true });
+  }
+
+  // --- World Rankings -----------------------------------------------------------------------------------------------
+  // It takes the country list's place in the panel, as the list of makers does. `tab` is "overall" or a measure's key
+  // (a group's key opens its first measure). A country picked while it is open shows its card over it; the card's
+  // back link, Esc and the browser's Back return to it. `keepCountry` (an address naming both) leaves that card open.
+  function openRankings(tab = OVERALL, { write = true, focus = null, keepCountry = false } = {}) {
+    if (!map) return;
+    const wanted = tabOf(rankDoc, tab);
+    const scroller = overlay.querySelector("#wv-side-scroll");
+    if (ui.rankings === wanted && (keepCountry || !ui.selected)) {
+      focusRankings(focus); // already showing (Back from a card or a map opened here): stay in place
+      return;
+    }
+    if (!ui.selected && !ui.makers && !ui.rankings) ui.listScroll = scroller.scrollTop;
+    if (ui.addFormOpen) setAddFormOpen(false);
+    ui.makers = null;
+    if (!keepCountry && ui.selected) {
+      ui.selected = null;
+      ui.pickedPortId = null;
+      map.setSelectedCountry(null);
+      map.setHighlightPort(null);
+    }
+    ui.rankings = wanted;
+    ui.rankScroll = 0;
+    renderSide();
+    if (!ui.selected) scroller.scrollTop = 0;
+    if (isSheetLayout()) setSheet("full"); // a phone's half-open sheet would show the tabs and little else
+    const m = measureOf(rankDoc, wanted);
+    announce(`World Rankings: ${m ? `${m.label}, ${m.year}` : "Overall"}`);
+    syncTitle();
+    syncRankingsButton();
+    if (write) app.hash.soon();
+    focusRankings(focus);
+    if (!rankDoc) whenRankings();
+  }
+
+  function closeRankings({ write = true, focus = false } = {}) {
+    if (!ui.rankings) return;
+    ui.rankings = null;
+    renderSide();
+    if (!ui.selected) {
+      overlay.querySelector("#wv-side-scroll").scrollTop = ui.listScroll || 0;
+      if (isSheetLayout() && ui.sheet === "full") setSheet("peek");
+    }
+    syncTitle();
+    syncRankingsButton();
+    if (write) app.hash.soon();
+    if (focus) overlay.querySelector(".wv-rank-btn")?.focus({ preventScroll: true });
+  }
+
+  // The top bar's button: opens World Rankings, comes back to it from a card, or closes it.
+  function toggleRankings() {
+    if (!ui.rankings) return openRankings(OVERALL, { focus: "title" });
+    if (ui.selected) return deselect({ focusRow: true });
+    closeRankings({ focus: true });
+  }
+
+  function syncRankingsButton() {
+    overlay?.querySelector(".wv-rank-btn")?.setAttribute("aria-pressed", String(!!ui.rankings));
+  }
+
+  // Focus after a change: the heading on opening, the pressed tab or measure after picking one.
+  function focusRankings(which) {
+    const target = which === "tab" ? ".rk-tab[aria-pressed=\"true\"]" : which === "seg" ? ".rk-seg [aria-pressed=\"true\"]" : which ? "#wv-rankings-title" : null;
+    if (target) overlay.querySelector(target)?.focus({ preventScroll: true });
+  }
+
+  // Drawn again in place (the same scroll position), with the focus back on the control that changed it.
+  function rerenderRankings(focusSel = null) {
+    if (!map || !ui.rankings || ui.selected) return;
+    const scroller = overlay.querySelector("#wv-side-scroll");
+    const at = scroller.scrollTop;
+    renderSide();
+    scroller.scrollTop = at;
+    if (focusSel) overlay.querySelector(focusSel)?.focus({ preventScroll: true });
+  }
+
+  function rankingsViewHtml() {
+    return rankingsHtml(rankDoc, {
+      tab: ui.rankings, mine: myCountry(), details: ui.rankDetails, about: ui.rankAbout, failed: rankFailed && !rankDoc,
+      nameOf: countryName, flag: flagHtml, countries: countryIndex,
+    });
+  }
+
+  // The visitor's own country: the one they picked, or over an edition, the edition's country until they pick.
+  function myCountry() {
+    if (mine !== null) return mine || null;
+    const edition = basePorts.find((p) => p.editionId && p.editionId === EDITION_ID);
+    return edition?.countries?.length === 1 ? edition.countries[0] : null;
+  }
+
+  function setMine(iso) {
+    mine = /^[A-Z]{2,3}$/.test(iso || "") ? iso : "";
+    saveMine(mine);
+    rerenderRankings(".rk-mine-select");
+    announce(mine ? `Your civilization: ${countryName(mine)}` : "No country picked as yours");
+  }
+
+  // "Show": the visitor's own row, brought into view and focused.
+  function findMine() {
+    const row = overlay.querySelector(".rk-row.is-me");
+    if (!row) return;
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    row.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
+    row.focus({ preventScroll: true });
+    row.classList.remove("is-found");
+    void row.offsetWidth; // restart the highlight
+    row.classList.add("is-found");
+  }
+
+  function toggleRankAbout(btn) {
+    ui.rankAbout = !ui.rankAbout;
+    const note = overlay.querySelector("#rk-about");
+    if (note) note.hidden = !ui.rankAbout;
+    btn.setAttribute("aria-expanded", String(ui.rankAbout));
+    btn.title = btn.title.replace(/^(Hide|Show)/, ui.rankAbout ? "Hide" : "Show");
   }
 
   // The makers' order and numbers follow the ratings. When those arrive or change, the faces on the country list and
@@ -1319,10 +1538,11 @@ export function install(app) {
 
   function renderSide() {
     if (!map) return;
-    const view = ui.selected ? "detail" : ui.makers ? "makers" : "list";
+    const view = ui.selected ? "detail" : ui.rankings ? "rankings" : ui.makers ? "makers" : "list";
     sideEl.dataset.view = view;
-    sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : ui.makers ? "Map makers" : "Countries");
-    overlay.querySelector("#wv-side-content").innerHTML = view === "detail" ? detailHtml(ui.selected) : view === "makers" ? makersHtml() : listHtml();
+    sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : ui.rankings ? "World Rankings" : ui.makers ? "Map makers" : "Countries");
+    overlay.querySelector("#wv-side-content").innerHTML = view === "detail" ? detailHtml(ui.selected)
+      : view === "rankings" ? rankingsViewHtml() : view === "makers" ? makersHtml() : listHtml();
     ratings.sync(sideEl, portById);
   }
 
@@ -1379,6 +1599,11 @@ export function install(app) {
       </div>
       ${editions.length ? `<div class="wv-tiles${editions.some((p) => PICTURED.has(p.editionId)) ? " wv-tiles-pictured" : ""}">${editions.map(tile).join("")}</div>` : ""}
       ${makersStripHtml(rankedMakers())}
+      <button type="button" class="wv-rankings" data-act="rankings">
+        <span class="wv-rankings-medal" aria-hidden="true">${emblem(RANKINGS_ADVISOR, 40)}</span>
+        <span class="wv-rankings-text"><b>World Rankings</b><small>Every country compared: wealth, people, science, land and trade</small></span>
+        <span class="wv-chev" aria-hidden="true">›</span>
+      </button>
       <div class="wv-kinds" role="group" aria-label="Show only">${kindsHtml()}</div>
       ${mapped.length ? `<h3 class="wv-group">With a map <span>${mapped.length}</span></h3><ul class="wv-rows">${mapped.map(row).join("")}</ul>` : ""}
       ${unmapped.length ? `<h3 class="wv-group">No map yet <span>${unmapped.length}</span></h3><ul class="wv-rows wv-rows-none">${unmapped.map(row).join("")}</ul>` : ""}
@@ -1475,7 +1700,7 @@ export function install(app) {
     const sub = [regionLabel(c.continent), n ? plural(n, "map") : "no map yet"].filter(Boolean).join(" · ");
     return `
       <div class="wv-detail">
-        <button type="button" class="wv-backlink" data-act="deselect">‹ All countries</button>
+        <button type="button" class="wv-backlink" data-act="deselect">‹ ${ui.rankings ? "World Rankings" : "All countries"}</button>
         <div class="wv-head">
           <span class="wv-flag wv-flag-lg" aria-hidden="true">${flagEmoji(iso)}</span>
           <div class="wv-head-text">
@@ -1782,7 +2007,7 @@ export function install(app) {
     const port = ui.activePortId ? portById(ui.activePortId) : null;
     const maker = port ? creditOf(port) : null;
     const name = (port ? `${port.name}${maker ? ` by ${maker.name}` : ""}` : null)
-      || (ui.selected ? countryName(ui.selected) : ui.makers ? "Map makers" : null);
+      || (ui.selected ? countryName(ui.selected) : ui.rankings ? "World Rankings" : ui.makers ? "Map makers" : null);
     // The home page keeps the site's own title until something is picked.
     document.title = name ? `${name} · EarthCiv world map` : home ? savedTitle : "EarthCiv — world map";
   }
@@ -1863,6 +2088,7 @@ export function install(app) {
           if (hint) hint.hidden = false;
           renderAll();
           syncInsets();
+          whenRankings(); // not waited for: World Rankings shows its figures when they arrive
           // The opening view frames the part of the map that the filled-in panel leaves uncovered (phones).
           map.resetView({ animate: false });
           worldUnseen = !!ui.activePortId; // built behind an open map: it frames its view when it first shows
@@ -1912,6 +2138,10 @@ export function install(app) {
       }
       if (ui.selected) {
         deselect({ focusRow: true });
+        return true;
+      }
+      if (ui.rankings) {
+        closeRankings({ focus: true });
         return true;
       }
       if (ui.makers) {
@@ -1992,17 +2222,40 @@ export function install(app) {
     },
   });
 
+  // World Rankings: #rankings=overall, or a measure's key for its tab (#rankings=gdp). An address that also names a
+  // country (#country=FR) opens that country's card over it, with the back link to the tab.
+  app.hash.register("rankings", {
+    get() {
+      if (app.mode !== MODE) return null;
+      return ui.rankings || (!map && pending.rankings) || null;
+    },
+    set(v) {
+      if (!home && app.mode !== MODE) return;
+      const tab = v ? tabOf(rankDoc, v) : null;
+      if (!map) pending.rankings = tab;
+      whenReady(() => {
+        pending.rankings = null;
+        if (tab) openRankings(tab, { write: false, keepCountry: true });
+        else closeRankings({ write: false });
+      });
+    },
+  });
+
   app.portsAtlas = {
     open: (id = null) => app.setMode(MODE, { id }),
     close: () => !home && app.mode === MODE && app.setMode(null),
     selectCountry: (iso) => whenReady(() => selectCountry(String(iso).toUpperCase(), { fly: true })),
     showMakers: (key = "all") => whenReady(() => openMakers(key)),
+    showRankings: (tab = OVERALL) => whenReady(() => openRankings(tab)),
     loadCatalog,
     get map() {
       return map;
     },
     get selected() {
       return ui.selected;
+    },
+    get rankings() {
+      return ui.rankings;
     },
   };
 }
