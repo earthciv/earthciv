@@ -25,13 +25,16 @@ import json
 import math
 from datetime import date
 
-from .build_world_figures import API, FIRST_YEAR, OUTLINES, SOURCE_ID
 from .core import fetch
 from .core.fetch import download, read_manifest
 from .core.paths import WEB
 from .core.store import atomic_write_text
 
+SOURCE_ID = "world"  # downloads land in data/raw/world/wdi/
+OUTLINES = WEB / "data" / "world-outlines.json"  # the world map's countries: only they are ranked
 OUT = WEB / "data" / "world-rankings.json"
+API = "https://api.worldbank.org/v2/country/all/indicator/{code}?format=json&per_page=20000&date={start}:{end}"
+FIRST_YEAR = 2015  # an older figure is left out rather than shown
 RANK_SHARE = 0.8  # a year is ranked when this share of the countries with any figure have one for it
 # The G20's country members: a ranking year that leaves one of them out is too thin to show.
 G20 = ("AR", "AU", "BR", "CA", "CN", "DE", "FR", "GB", "ID", "IN", "IT", "JP", "KR", "MX", "RU", "SA", "TR", "US", "ZA")
@@ -95,7 +98,7 @@ MEASURES = {
 
 
 def fetch_inputs(refresh: bool = False) -> dict:
-    """{measure key: path} of each measure's API answer, cached beside the world map's figures (same addresses)."""
+    """{measure key: path} of each measure's API answer, cached in data/raw/world/wdi/."""
     end = date.today().year
     return {
         key: download(

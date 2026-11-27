@@ -7,6 +7,8 @@
 //     flags in order.
 //   * A tab: the advisor's note on the measure, every country ranked on the measure's year, then the countries whose
 //     figure is from another year (with that year, never ranked), then the places with no figure at all.
+//   * Demographics, on a country's card: where it stands on every measure, beside the highest, the average and the
+//     lowest, after a strategy game's demographics screen (demographicsHtml).
 //
 // This module only writes HTML: the data rules are ./rankings.js, and ./index.js wires the clicks. A row is a button
 // with data-select (its country's card opens) and data-hover (the map outlines the country).
@@ -14,7 +16,7 @@
 import { esc } from "../../app/escape.js";
 import { emblem } from "../advisors/core/emblems.js";
 import { ROSTER } from "../advisors/core/roster.js";
-import { OVERALL, cellOf, formatValue, groupOf, listWords, measureOf, ordinal, rankOf, ranking, tabOf } from "./rankings.js";
+import { OVERALL, cellOf, formatValue, groupOf, listWords, measureOf, ordinal, rankOf, ranking, standing, summary, tabOf } from "./rankings.js";
 
 /** The medallion of the Overall tab and of the screen itself. */
 export const RANKINGS_ADVISOR = { id: "rankings", name: "World Rankings", role: "Every tab at once", color: "#c9a45c", dark: "#3a2f15" };
@@ -194,4 +196,63 @@ function sourceHtml(doc, m) {
     ? `<a href="https://data.worldbank.org/indicator/${esc(m.indicator)}" target="_blank" rel="noopener noreferrer">${esc(m.label)}</a>, from ${esc(m.origin)}. `
     : "";
   return `<p class="wv-src rk-src">${what}${esc(src.publisher || "World Bank")}, ${wdi}${src.license ? ` (${esc(src.license)})` : ""}${src.updated ? `, <span class="wv-nowrap">updated ${esc(src.updated)}</span>` : ""}.</p>`;
+}
+
+// --- Demographics, on a country's card ---------------------------------------------------------------------------------
+// The unit under a measure's name in the table (its figures are written short there).
+const UNIT = { usd: "US$", years: "years", pct: "% of people", km2: "km²", tonnes: "tonnes" };
+
+/**
+ * Where a country stands on every measure: its rank and figure, and the highest, the average and the lowest of the
+ * countries ranked on the same year. A figure from another year shows that year and no rank. A measure's name opens
+ * its tab in World Rankings; a figure opens the World Bank's own chart of it for this country.
+ */
+export function demographicsHtml(doc, iso, { nameOf, flag }) {
+  const name = nameOf(iso);
+  const rows = standing(doc, iso);
+  if (!rows.some((r) => r.cell)) return `<p class="wv-nofacts">The World Bank publishes no figures for ${esc(name)}.</p>`;
+  return `<section class="dm" aria-labelledby="wv-dm-title">
+      <h3 class="wv-group dm-head" id="wv-dm-title">Demographics <span>where ${esc(name)} stands</span></h3>
+      <table class="dm-table">
+        <thead><tr>
+          <th scope="col">Demographic</th><th scope="col" class="dm-rank-h">Rank</th><th scope="col">Value</th>
+          <th scope="col" title="The highest of the countries ranked on that year">Highest</th>
+          <th scope="col" class="dm-avg" title="The average of the countries ranked on that year, each counted once">Average</th>
+          <th scope="col" title="The lowest of the countries ranked on that year">Lowest</th>
+        </tr></thead>
+        <tbody>${rows.map((r) => demographicRowHtml(doc, iso, r, { name, nameOf, flag })).join("")}</tbody>
+      </table>
+      ${sourceHtml(doc, null)}
+    </section>`;
+}
+
+function demographicRowHtml(doc, iso, r, { name, nameOf, flag }) {
+  const m = r.measure;
+  const s = summary(doc, m.key);
+  const short = (v) => esc(formatValue(m, v, { short: true }));
+  const unit = UNIT[m.format];
+  let value = "–";
+  if (r.cell) {
+    const long = formatValue(m, r.cell.value);
+    const chart = /^[A-Z0-9.]+$/i.test(m.indicator || "") && /^[A-Z]{2}$/.test(iso)
+      ? `https://data.worldbank.org/indicator/${m.indicator}?locations=${iso}` : null;
+    const text = chart
+      ? `<a href="${esc(chart)}" target="_blank" rel="noopener noreferrer" title="${esc(`${name}: ${long} in ${r.cell.year}. The World Bank's chart`)}">${short(r.cell.value)}</a>`
+      : `<span title="${esc(`${long} in ${r.cell.year}`)}">${short(r.cell.value)}</span>`;
+    value = r.cell.ranked ? text : `${text}<small>${r.cell.year}</small>`;
+  }
+  const rank = r.rank != null
+    ? `<td class="dm-rank"${r.tied ? ` title="Tied for ${ordinal(r.rank)}"` : ""}>${r.rank}</td>`
+    : `<td class="dm-rank is-none" title="${esc(r.cell ? `Not ranked: no ${m.year} figure` : "No figure")}">–</td>`;
+  const extreme = (e) => {
+    const isos = [...e.isos].sort((a, b) => String(nameOf(a)).localeCompare(String(nameOf(b)))); // a tie, A–Z
+    return `<span class="dm-flag" title="${esc(listWords(isos.map(nameOf)))}">${flag(isos[0])}${isos.length > 1 ? `<i>+${isos.length - 1}</i>` : ""}</span>${short(e.value)}`;
+  };
+  return `<tr>
+      <th scope="row"><button type="button" class="dm-k" data-rank-tab="${esc(m.key)}" title="${esc(`${m.label}: every country, in World Rankings`)}">${esc(m.label)}</button><small>${m.year}${unit ? ` · ${esc(unit)}` : ""}</small></th>
+      ${rank}<td class="dm-v">${value}</td>
+      <td class="dm-x">${s ? extreme(s.highest) : "–"}</td>
+      <td class="dm-avg">${s ? short(s.average) : "–"}</td>
+      <td class="dm-x">${s ? extreme(s.lowest) : "–"}</td>
+    </tr>`;
 }
