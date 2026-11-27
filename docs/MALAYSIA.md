@@ -34,5 +34,76 @@ people are still counted.
 **Other cities.** Every other district with at least 150,000 residents is a city of its own, named after its largest
 place in Natural Earth. A city of 500,000 or more is a metro.
 
-**Summing.** Populations add up across a group. Medians and Gini coefficients (HIES) do not, so economic panels for
-the conurbations will need their own rule.
+**Summing.** Populations, GDP, workers and labour-force counts add up across a group. Medians and Gini coefficients
+(HIES) do not: see "Economy" below for the rule.
+
+## Economy
+
+Built by `pipeline/malaysia_economy.py` (called from three small hooks in `malaysia.py`). Every input is a DOSM table;
+`sources.json` lists the files and hashes. Ethnicity and religion are not used anywhere in this section.
+
+| Yield or figure | Source | Year | Geography |
+|---|---|---|---|
+| **Gold** = GDP | DOSM real GDP by sector (`gdp_state_real_supply`, `gdp_annual_real_supply`, `gdp_district_real_supply`) | 2025 (states, Malaysia); 2020 (districts, cities) | state, district |
+| **Food, Production, Science, Culture** = workers | DOSM employed persons by industry and state (Labour Force Survey, MSIC 2008), archive.data.gov.my | 2021 | state; districts are estimates |
+| Unemployment | DOSM `lfs_district`, `lfs_state_sex` | 2024 annual | district, state |
+| Income, poverty, Gini, spending | DOSM `hies_district`, `hies_state`, `hh_income` (HIES) | 2024 | district, state, nation |
+| Tree cover, cropland, built-up | Esri Sentinel-2 10 m land cover (the same samples as the terrain) | latest annual | hex |
+
+**Gold is GDP in constant 2015 ringgit.** DOSM publishes the district series only at constant 2015 prices (2015 to 2020)
+and nominal GDP only for the nation, so "state share × national nominal GDP" would have meant inventing the split. Real
+RM keeps one unit for districts, cities, states and the nation. Consequences, all shown in the app through `gdp_year`
+and the `unit`: states and Malaysia are 2025, districts and cities are 2020, so a city's GDP and its state's are not
+the same year; GDP per resident divides by the residents of the GDP year. Offshore oil and gas (DOSM's "Supra", RM 43 bn
+in 2025) belongs to no state or district: it is in Malaysia's GDP (`nation.gdp_offshore`) and the sum of the 16 states
+falls short of the nation by exactly that. DOSM folds **Putrajaya into Kuala Lumpur** in the 2020 district table (the
+state tables list it apart), so Putrajaya's district has no GDP and Kuala Lumpur's GDP per resident divides by both
+territories' residents. Sectors with under RM 5 m are blank in the source and counted as 0. GDP by sector uses DOSM's five
+sectors (agriculture; mining & quarrying, with offshore oil and gas; manufacturing; construction; services). The total
+also holds import duties, so the sectors add to `gdp_basic`, not `gdp`.
+
+**Workers by industry.** A Census 2020 table of workers by industry for states or districts was searched for and not
+found: none appears in the data.gov.my catalogue, and the Kawasanku dashboard
+(district profiles from the census) has none either. The best available is the Labour Force Survey estimate by state,
+2021 (its estimates are benchmarked to the 2020 Census), from the data.gov.my archive; the archive's licence is not
+stated on the portal (see the M6 licence item). Yields follow Canada's mapping: Food = agriculture, forestry & fishing;
+Production = manufacturing + construction + mining & quarrying; Science = professional, scientific & technical +
+information & communication; Culture = arts, entertainment & recreation. Electricity and water are merged as
+`utilities`, wholesale and retail as `retail`, and households as employers fall in `other`, so the industry icons
+resolve. State figures are exact. **District and city figures are estimates:** each state's workers in an industry are
+shared over its districts in proportion to the district's 2020 GDP in the matching sector (agriculture, mining,
+manufacturing and construction have their own; every service industry follows services GDP). Where a state's sector GDP
+is blank everywhere the split falls back to total GDP, then to population. The four single-district areas (Perlis, Kuala
+Lumpur, Labuan, Putrajaya) take the state's figures. District workers add back to the state totals exactly (checked at
+build time). The yield descriptions say "an estimate".
+
+**Unemployment** is unemployed persons ÷ labour force from the Labour Force Survey 2024. Counts, not rates, are summed
+for conurbations. The 2025 districts have empty 2024 rows in the source, so their parents' figures stand. The four
+single-district areas use the state's survey. 2024 is used for states too (the state table runs to 2025) so every area
+shares a year.
+
+**Household income, poverty, Gini (HIES 2024).** Income is gross monthly household income in RM (not annual); poverty
+is the absolute poverty rate (share of households below the national poverty line income). Survey names differ from the
+boundary file: `ALIASES[(state, name as published)]` in `malaysia_economy.py` maps them (e.g. `Larut & Matang`,
+`S.P.Tengah`, `Hulu` in Terengganu, `Tanjong Manis`, and the older `Cameron Highland`, `Manjung (Dinding)`, `Hulu
+Langat`), and a test checks that every name in every year of the LFS, HIES and GDP tables reaches a boundary district.
+Medians and Gini can not be added. The rule: (1) a district made of several survey districts (Beaufort, Papar,
+Simunjan, Sri Aman and Serian, which the 2025 districts were cut from) takes the **population-weighted mean** of its
+parts' means and poverty rates (weights = the 2025 DOSM populations, the first year the new districts exist; Membakut
+counts towards Beaufort and Papar by the crosswalk shares); its **median is the same weighted mean of the medians**, an
+approximation, said so in the lens text; its **Gini is empty**. (2) A conurbation's income is the population-weighted
+mean of its members' medians (an approximation); Gini, poverty and mean income are district-only lenses and columns, and a
+city carries no Gini.
+
+**Lenses added** (group Prosperity): Income (median monthly household income), Poverty, Inequality (Gini), Unemployment,
+GDP per resident; (group Land): Tree cover, Cropland, Built-up. The land-cover map counts oil-palm and rubber estates as
+trees, so "Tree cover" is not natural forest (renamed from Canada's "Forest" for that reason) and cropland leaves
+estates out.
+
+**counties.json** has one row per district (world.json `counties` order): area, density, GDP, GDP per resident, income,
+spending, poverty, Gini, unemployment, the four worker estimates, the city the district belongs to (`cbsa`) and a
+representative hex. Worker columns are estimates, as above.
+
+**Gaps.** No district-level workers by industry (estimated), no nominal GDP by state or district, no GDP after 2020 by
+district, no median age or education lenses yet, and no rent or home-value figures (left empty). Poverty and Gini are
+empty for a handful of districts as described above.

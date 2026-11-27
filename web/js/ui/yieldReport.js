@@ -63,6 +63,7 @@ defaults({
   "report.gdp_per_person_hint": "{regions}: {year} GDP ÷ {year} residents.",
   "report.gdp_per_person_hint.metros": " Metros: {metro_year} GDP ÷ {metro_year} residents; metros of {min}+ people.",
   "report.gdp_industry_credit": "{gdp_vintage}",
+  "report.gold_basis": "current {currency}",
 });
 
 // Every top-bar stat in display order: population, the yields from nation.json, unemployment.
@@ -258,10 +259,10 @@ function reportGold(rep, nation, n, st, metros) {
   // gdp_population (Canada) is the population in the GDP year, so per-person GDP divides numbers from one year.
   const pp = ratio(rep.total, n.gdp_population ?? n.population);
   // GDP and population can come from different years (BEA GDP lags the ACS by a year): say which.
-  const popYear = fin(nation.year) ? nation.year : null;
+  const popYear = n.gdp_population != null ? n.gdp_year : fin(nation.year) ? nation.year : null; // the year the per-person figure divides by
   const years = n.gdp_year && popYear && n.gdp_year !== popYear ? `${n.gdp_year} GDP ÷ ${popYear} residents` : "GDP ÷ residents";
   if (pp != null) rep.context.push(`${currency(pp)} per person (${years})`);
-  if (n.gdp_year) rep.context.push(`Year ${n.gdp_year}, current ${edition.currency?.words || "dollars"}`);
+  if (n.gdp_year) rep.context.push(`Year ${n.gdp_year}, ${txt("report.gold_basis", { currency: edition.currency?.words || "dollars" })}`);
 
   const rows = Object.entries(n.gdp_by_industry || {})
     .filter(([, v]) => fin(v))

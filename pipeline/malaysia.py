@@ -26,6 +26,7 @@ from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
+from . import malaysia_economy as economy
 from .build.lenses import DOMAIN_NOTE, percentile_domain
 from .build.world import (
     COAST,
@@ -139,6 +140,7 @@ source("dosm_census_religion", "MyCensus 2020 area profiles (Kawasanku): religio
        "'Tiada agama / Tidak diketahui' (no religion or unknown).", {
            "kawasanku_admin_barmeter.parquet":
                "https://storage.dosm.gov.my/dashboards/kawasanku_admin_barmeter.parquet"})
+economy.register_sources(source)
 source("etopo", "ETOPO1 Global Relief Model", "NOAA National Centers for Environmental Information (via ERDDAP)",
        "https://www.ncei.noaa.gov/products/etopo-global-relief-model", "Public domain", "ETOPO1, 1 arc-minute",
        ["Elevation, relief and water depth"], "Elevations and depths from ETOPO1 at every arc-minute.", {
@@ -389,9 +391,12 @@ def build(radius):
     for cell, o in enumerate(owners):
         if o >= 0:
             cells_of[o].append(cell)
-    state_data = [{**s, **figures(state_series[i], year), "ranks": {}} for i, s in enumerate(states)]
+    econ = economy.Economy(props, pop, NEW_DISTRICTS)
+    state_data = [{**s, **figures(state_series[i], year), **econ.state_fields(s["name"], state_series[i][econ.state_gdp_year]),
+                   "ranks": {}} for i, s in enumerate(states)]
 
-    places = city_sites(props, shapes, pop, year, grid, xy, owners, county)
+    places = city_sites(props, shapes, pop, year, grid, xy, owners, county, econ)
+    economy.add_ranks(state_data, places)
     cover_table = [{"id": 0, "key": "none", "name": "No cover sample"}] + [
         {"id": i, "key": key, "name": name if i != 2 else "Tropical forest", "color": color,
              "rule": "Dominant among Sentinel-2 land-cover samples."}
@@ -412,8 +417,13 @@ def build(radius):
     write("nation", {
         "country": "Malaysia", "year": year, "vintage": f"DOSM {year} estimates",
         "population_vintage": f"DOSM mid-year population estimates, {year}",
-        "nation": figures(national, year), "yields": YIELDS, "industries": {}})
-    build_lenses(props, shapes, pop, year, county)
+        "nation": {**figures(national, year), **econ.nation_fields(state_data, national[econ.state_gdp_year])},
+        "yields": economy.YIELDS, **econ.nation_meta()})
+    area_km2 = [s.area / 1e6 for s in shapes]
+    build_lenses(props, shapes, pop, year, county, econ, pct, owners)
+    write("counties", economy.counties_table(
+        econ, props, pop, year, area_km2, county, district_cells(grid, xy, shapes, county),
+        city_of_district(props, places), f"DOSM; population {year}, GDP {econ.gdp_year}, HIES {economy.HIES_YEAR}"))
     land = sum(len(v) for v in cells_of.values())
     empty = [states[o]["abbr"] for o in range(len(states)) if not cells_of[o]]
     print(f"Malaysia: {len(states)} states and FTs, {len(counties)} districts, {len(places)} cities, "
@@ -443,7 +453,7 @@ LENS_GROUPS = [{"id": "people", "name": "People"}, {"id": "ethnicity", "name": "
                {"id": "religion", "name": "Religion"}]
 
 
-def build_lenses(props, shapes, pop, year, county):
+def build_lenses(props, shapes, pop, year, county, econ, pct, owners):
     keys = [(p["state"], p["district"]) for p in props]
     area_km2 = [s.area / 1e6 for s in shapes]  # equal-area projection
 
@@ -507,24 +517,39 @@ def build_lenses(props, shapes, pop, year, county):
             "Housing Census). Every religion lens uses the same colour scale, 0 to 100%.",
             "Share of all residents (2020 Census), not a head count; one figure per district.",
             [religion[n][dosm] for n in names], "dosm_census_religion"))
-    write("lenses", {"vintage": f"DOSM {year} estimates; 2020 Census", "groups": LENS_GROUPS, "lenses": lenses})
+    lenses += economy.lenses(econ, spread, pct, owners, year, percentile_domain)
+    write("lenses", {"vintage": f"DOSM {year} estimates; 2020 Census; HIES {economy.HIES_YEAR}",
+                     "groups": economy.merge_groups(LENS_GROUPS), "lenses": lenses})
 
 
-YIELDS = [
-    {"key": "food", "icon": "y-food", "emoji": "🌾", "label": "Food", "color": "#7fbf3f", "unit": "workers", "industries": [],
-         "description": "Not yet built for Malaysia."},
-    {"key": "production", "icon": "y-production", "emoji": "⚙️", "label": "Production", "color": "#d9823b", "unit": "workers",
-         "industries": [], "description": "Not yet built for Malaysia."},
-    {"key": "gold", "icon": "y-gold", "emoji": "💰", "label": "Gold", "color": "#f2c94c", "unit": "myr", "industries": [],
-         "description": "Not yet built for Malaysia."},
-    {"key": "science", "icon": "y-science", "emoji": "🔬", "label": "Science", "color": "#4fa3e0", "unit": "workers",
-         "industries": [], "description": "Not yet built for Malaysia."},
-    {"key": "culture", "icon": "y-culture", "emoji": "🎭", "label": "Culture", "color": "#b07ce0", "unit": "workers",
-         "industries": [], "description": "Not yet built for Malaysia."},
-]
+def district_cells(grid, xy, shapes, county):
+    """A land hex for each district: the one nearest the district's representative point (counties.json `cell`)."""
+    mine = defaultdict(list)
+    for cell, i in enumerate(county):
+        if i >= 0:
+            mine[i].append(cell)
+    cells = {}
+    for i, s in enumerate(shapes):
+        if mine[i]:
+            pt = s.representative_point()
+            x, y = (float(v) for v in xy(*FROM_MAP.transform(pt.x, pt.y)))
+            cells[i] = min(mine[i], key=lambda c: math.dist(grid.center(*grid.col_row(c)), (x, y)))
+    return cells
 
 
-def city_sites(props, shapes, pop, year, grid, xy, owners, county):
+def city_of_district(props, places):
+    """{district index: id of the city it belongs to}, from the conurbation table and the one-district cities."""
+    index = {(p["state"], p["district"]): i for i, p in enumerate(props)}
+    ids = {c["id"] for c in places}
+    out = {index[d]: g["id"] for g in CONURBATIONS for d in g["districts"]}
+    for i, p in enumerate(props):
+        own = f"my-{p['code_state']:02d}{p['code_district']:02d}"
+        if own in ids:
+            out[i] = own
+    return out
+
+
+def city_sites(props, shapes, pop, year, grid, xy, owners, county, econ):
     """Cities: the CONURBATIONS (groups of whole districts), then every other district of CITY_FLOOR+ residents,
     named after its largest Natural Earth place. Each banner sits at a place inside the group's principal district."""
     places_ne = [(f["properties"], f["geometry"]["coordinates"]) for f in features("populated_places")
@@ -562,7 +587,7 @@ def city_sites(props, shapes, pop, year, grid, xy, owners, county):
                     capital=any(props[i]["state"] == "W.P. Kuala Lumpur" for i in members),
                     x=round(x, 1), y=round(y, 1), cell=int(cell),
                     footprint=sorted(c for c in range(grid.size) if county[c] in members) or [int(cell)],
-                    **figures(dict(series), year))
+                    **{**figures(dict(series), year), **econ.city_fields([econ.keys[i] for i in members])})
 
     out = []
     for g in CONURBATIONS:
