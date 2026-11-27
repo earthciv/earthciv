@@ -81,6 +81,36 @@ NEW_DISTRICTS = {
     ("Sarawak", "Pantu"): {("Sarawak", "Sri Aman"): 1},
     ("Sarawak", "Siburan"): {("Sarawak", "Serian"): 1},
 }
+# Conurbations: cities made of whole districts, as a CBSA groups counties. DOSM defines no conurbations (its census
+# metadata says another agency defines urban agglomerations; PLANMalaysia's National Physical Plan names them but
+# covers only the peninsula and Labuan), so each row follows the definition named in `basis`. Rule: a district joins when most of its residents live
+# in the conurbation's member local authorities (e.g. Kerian joins George Town: its four NPP-4 towns hold ~90k of ~166k; Selama's ~13k of ~34k does not).
+# The first district is the principal one; the banner sits at `place` inside it. docs/MALAYSIA.md mirrors this table.
+CONURBATIONS = [
+    {"id": "my-kl", "name": "Kuala Lumpur", "full": "Greater Kuala Lumpur / Klang Valley", "place": "Kuala Lumpur",
+     "districts": [("W.P. Kuala Lumpur", "W.P. Kuala Lumpur"), ("W.P. Putrajaya", "W.P. Putrajaya"),
+                   ("Selangor", "Petaling"), ("Selangor", "Klang"), ("Selangor", "Gombak"),
+                   ("Selangor", "Ulu Langat"), ("Selangor", "Sepang")],
+     "basis": "Klang Valley core councils (no official boundary; NPP-4's 11-council national conurbation "
+                  "list could not be read): KL, Putrajaya and the Selangor councils around them"},
+    {"id": "my-gtn", "name": "George Town", "full": "George Town Conurbation (Northern Conurbation)",
+     "place": "George Town",
+     "districts": [("Pulau Pinang", "Timur Laut"), ("Pulau Pinang", "Barat Daya"),
+                   ("Pulau Pinang", "Seberang Perai Utara"), ("Pulau Pinang", "Seberang Perai Tengah"),
+                   ("Pulau Pinang", "Seberang Perai Selatan"), ("Kedah", "Kuala Muda"), ("Kedah", "Kulim"),
+                   ("Kedah", "Bandar Baharu"), ("Kedah", "Yan"), ("Perak", "Kerian")],
+     "basis": "Fourth National Physical Plan (2021) Northern Conurbation; Selama stays out (its council ~13k of ~34k)"},
+    {"id": "my-jb", "name": "Johor Bahru", "full": "Johor Bahru Conurbation (Southern Conurbation)",
+     "place": "Johor Bahru",
+     "districts": [("Johor", "Johor Bahru"), ("Johor", "Kulai"), ("Johor", "Pontian"), ("Johor", "Kota Tinggi")],
+     "basis": "Fourth National Physical Plan (2021) Southern Conurbation; its six local authorities fill these districts"},
+    {"id": "my-kch", "name": "Kuching", "full": "Greater Kuching", "place": "Kuching",
+     "districts": [("Sarawak", "Kuching"), ("Sarawak", "Samarahan")],
+     "basis": "Kuching North, Kuching South, Padawan and Kota Samarahan councils (Sarawak, outside the NPP)"},
+    {"id": "my-kk", "name": "Kota Kinabalu", "full": "Greater Kota Kinabalu", "place": "Kota Kinabalu",
+     "districts": [("Sabah", "Kota Kinabalu"), ("Sabah", "Penampang"), ("Sabah", "Putatan")],
+     "basis": "Kota Kinabalu with the built-up Penampang and Putatan districts (Sabah, outside the NPP)"},
+]
 INPUTS = {}
 
 
@@ -495,37 +525,58 @@ YIELDS = [
 
 
 def city_sites(props, shapes, pop, year, grid, xy, owners, county):
-    """Skeleton cities: every district of CITY_FLOOR+ residents, named after its largest Natural Earth place."""
+    """Cities: the CONURBATIONS (groups of whole districts), then every other district of CITY_FLOOR+ residents,
+    named after its largest Natural Earth place. Each banner sits at a place inside the group's principal district."""
     places_ne = [(f["properties"], f["geometry"]["coordinates"]) for f in features("populated_places")
                  if f["properties"].get("ADM0_A3") == "MYS"]
     points = [project(shapely.Point(c)) for _, c in places_ne]
-    out, taken = [], set()
-    order = sorted(range(len(props)), key=lambda i: -pop[(props[i]["state"], props[i]["district"])][year])
-    for i in order:
-        p = props[i]
-        series = pop[(p["state"], p["district"])]
-        if series[year] < CITY_FLOOR:
-            break
+    index = {(p["state"], p["district"]): i for i, p in enumerate(props)}
+    taken, grouped = set(), set()
+
+    def site(i, place=None):
+        """Name and (x, y) of district i's banner: the named place if given, else its largest Natural Earth place."""
         inside = [(ne, pt) for (ne, _), pt in zip(places_ne, points) if shapes[i].covers(pt)]
+        if place:
+            inside = [t for t in inside if t[0]["NAME"] == place]
         if inside:
             ne, pt = max(inside, key=lambda t: t[0].get("POP_MAX") or 0)
-            name, (x, y) = ne["NAME"], xy(*FROM_MAP.transform(pt.x, pt.y))
-        else:
-            c = shapes[i].representative_point()
-            name, (x, y) = p["district"], xy(*FROM_MAP.transform(c.x, c.y))
+            return ne["NAME"], xy(*FROM_MAP.transform(pt.x, pt.y))
+        c = shapes[i].representative_point()
+        return place or props[i]["district"], xy(*FROM_MAP.transform(c.x, c.y))
+
+    def city(id, name, full, members, place=None):
+        series = defaultdict(float)
+        for i in members:
+            for y, v in pop[(props[i]["state"], props[i]["district"])].items():
+                series[y] += v
+        label, (x, y) = site(members[0], place)
         x, y = float(x), float(y)
         cell = grid.cell_at(x, y)
-        if cell < 0 or owners[cell] < 0 or cell in taken:
-            mine = [c for c in range(grid.size) if county[c] == i and c not in taken]
+        if cell < 0 or county[cell] not in members or cell in taken:
+            mine = [c for c in range(grid.size) if county[c] == members[0] and c not in taken]
             cell = min(mine, key=lambda c: math.dist(grid.center(*grid.col_row(c)), (x, y))) if mine else cell
         taken.add(cell)
-        out.append(dict(id=f"my-{p['code_state']:02d}{p['code_district']:02d}", name=name,
-                        full=f"{p['district']} district, {p['state']}", states=[STATES[p["code_state"]][0]],
-                        metro=series[year] >= 500_000, capital=p["state"] == "W.P. Kuala Lumpur",
-                        x=round(x, 1), y=round(y, 1), cell=int(cell),
-                        footprint=sorted(c for c in range(grid.size) if county[c] == i) or [int(cell)],
-                        **figures(series, year)))
-    return out
+        codes = sorted({props[i]["code_state"] for i in members})
+        return dict(id=id, name=name or label, full=full, states=[STATES[s][0] for s in codes],
+                    metro=series[year] >= 500_000,
+                    capital=any(props[i]["state"] == "W.P. Kuala Lumpur" for i in members),
+                    x=round(x, 1), y=round(y, 1), cell=int(cell),
+                    footprint=sorted(c for c in range(grid.size) if county[c] in members) or [int(cell)],
+                    **figures(dict(series), year))
+
+    out = []
+    for g in CONURBATIONS:
+        members = [index[d] for d in g["districts"]]
+        grouped.update(members)
+        out.append(city(g["id"], g["name"], f"{g['full']} · {len(members)} districts", members, g["place"]))
+    for i in sorted(range(len(props)), key=lambda i: -pop[(props[i]["state"], props[i]["district"])][year]):
+        p = props[i]
+        if pop[(p["state"], p["district"])][year] < CITY_FLOOR:
+            break
+        if i not in grouped:
+            out.append(city(f"my-{p['code_state']:02d}{p['code_district']:02d}", None,
+                            f"{p['district']} district, {p['state']}", [i]))
+    return sorted(out, key=lambda c: -c["population"])
 
 
 def download_inputs(force):

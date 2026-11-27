@@ -92,3 +92,59 @@ class EthnicityAndReligionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Published 2020 populations of the conurbations (Wikipedia's articles on each, from DOSM Census 2020 counts by local
+# authority). A whole-district group should land near them; a big gap means a district is wrongly in or out.
+PUBLISHED_2020 = {"my-gtn": 2_843_344, "my-jb": 2_487_601, "my-kk": 731_406, "my-kch": 788_946}
+
+
+class ConurbationTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cities = load("cities")
+        cls.world = load("world")
+        cls.by_id = {c["id"]: c for c in cls.cities}
+
+    def test_no_district_in_two_cities(self):
+        seen = {}
+        for c in self.cities:
+            for d in {self.world["county"][cell] for cell in c["footprint"]}:
+                self.assertNotIn(d, seen, f"district {d} is in {seen.get(d)} and {c['id']}")
+                seen[d] = c["id"]
+
+    def test_footprints_are_the_member_districts(self):
+        from pipeline.malaysia import CONURBATIONS
+
+        counties = self.world["counties"]
+        for g in CONURBATIONS:
+            members = {(counties[i]["state"], counties[i]["name"]) for i in
+                       {self.world["county"][cell] for cell in self.by_id[g["id"]]["footprint"]}}
+            # A small member (Putatan) may own no hex at 6 km; its people still count, but no foreign hex may join.
+            self.assertLessEqual(members, set(g["districts"]), g["id"])
+            self.assertIn(g["districts"][0], members, g["id"])
+
+    def test_kuala_lumpur_spans_both_territories(self):
+        kl = self.by_id["my-kl"]
+        self.assertEqual(set(kl["states"]), {"KUL", "PJY", "SGR"})
+        self.assertEqual([c["id"] for c in self.cities if c["capital"]], ["my-kl"])
+
+    def test_banners_sit_in_the_principal_district(self):
+        from pipeline.malaysia import CONURBATIONS
+
+        counties = self.world["counties"]
+        for g in CONURBATIONS:
+            d = counties[self.world["county"][self.by_id[g["id"]]["cell"]]]
+            self.assertEqual((d["state"], d["name"]), g["districts"][0], g["id"])
+
+    def test_close_to_published_totals(self):
+        from pipeline import malaysia
+
+        if not (malaysia.SOURCE_DIR / "population_district.csv").exists():
+            self.skipTest("raw DOSM population not downloaded")
+        pop, _ = malaysia.population()
+        for g in malaysia.CONURBATIONS:
+            total = sum(pop[d][2020] for d in g["districts"])
+            if g["id"] in PUBLISHED_2020:
+                self.assertAlmostEqual(total / PUBLISHED_2020[g["id"]], 1, delta=0.1, msg=g["id"])
+            self.assertGreaterEqual(total, 500_000, g["id"])
