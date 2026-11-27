@@ -1364,7 +1364,7 @@ export function install(app) {
       // Under the name: what the original map is to the others, and for someone with several maps how many, with
       // their rating taken together. (One map's rating is on its line.)
       const sub = [
-        m.original ? "usaciv, the map the others began with" : "",
+        m.original ? "usaciv inspired EarthCiv and the community maps it showcases" : "",
         m.ports.length > 1 ? plural(m.ports.length, "map") : "",
         m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}/5</span> <small>(${m.n})</small>` : "",
       ].filter(Boolean);
