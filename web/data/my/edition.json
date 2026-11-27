@@ -55,6 +55,7 @@
     "nation",
     "states",
     "lenses",
+    "resources",
     "sources"
   ],
   "text": "text.json",

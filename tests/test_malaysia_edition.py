@@ -205,6 +205,10 @@ class ResourcesTest(unittest.TestCase):
             self.assertIsNotNone(s["land"], s["abbr"])
             self.assertLessEqual(sum(v for v in s["land"].values() if v is not None), 1.01, s["abbr"])
 
+    def test_manifest_lists_resources(self):
+        # The app requests only the files edition.json lists: without "resources" the map shows no resource layer.
+        self.assertIn("resources", load("edition")["files"])
+
     def test_text_pack_states_the_gaps(self):
         text = load("text")
         self.assertIn("Not on the map", text["almanac.resources_intro"])
