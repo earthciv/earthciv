@@ -10,8 +10,9 @@
   <!-- This deployment opens on the world map (data-home="world": js/app/home.js, js/ext/ports/), where any country can
        be clicked. The editions live at ?country=us and ?country=ca; data-default-country names the edition that old
        links without ?country= (such as /#city=35620) still open (js/app/edition-index.js). Without data-home the page opens
-       on that edition. The deployment build also adds public preview pages for shared map views. -->
-  <link rel="canonical" href="https://earthciv.org/">
+       on that edition. The deployment build also adds public preview pages for shared map views.
+       No canonical link here: this one file serves every view, so app/home.js gives each view its own (og:url for the
+       world map, ?country=<id> for an edition), and the build writes robots.txt and sitemap.xml from og:url too. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="EarthCiv">
   <meta property="og:title" content="EarthCiv — The real world, mapped like a strategy game">

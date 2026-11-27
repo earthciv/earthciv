@@ -5,9 +5,11 @@ from __future__ import annotations
 import base64
 import json
 import re
-from html import escape, unescape
+from html import escape
 from pathlib import Path
 from urllib.parse import urlencode, urljoin
+
+from .sitemap import site_address
 
 
 def _route_key(value: str) -> str:
@@ -16,7 +18,7 @@ def _route_key(value: str) -> str:
     return value
 
 
-def _write_page(out: Path, canonical: str, edition: str, country: str, card: dict, jpeg: bytes) -> None:
+def _write_page(out: Path, site: str, edition: str, country: str, card: dict, jpeg: bytes) -> None:
     kind, name = card["kind"], card["name"]
     route = Path("share", edition)
     app = "?" + urlencode({"country": edition})
@@ -39,7 +41,7 @@ def _write_page(out: Path, canonical: str, edition: str, country: str, card: dic
         description = f"Explore the cities, terrain, and economy of {country} on EarthCiv’s interactive strategy map."
         image_alt = f"Hex terrain map of {country}"
 
-    url = urljoin(canonical, route.as_posix() + "/")
+    url = urljoin(site, route.as_posix() + "/")
     image = url + "preview.jpg"
     og = {
         "type": "website", "site_name": "EarthCiv", "title": title, "description": description,
@@ -90,11 +92,8 @@ def build_share_pages(web: Path, out: Path) -> int:
         raise SystemExit("Packaging needs Playwright. Run uv run --group harness python -m pipeline package.") from error
     from harness.record import serve
 
-    index = (web / "index.html").read_text(encoding="utf-8")
-    canonical_tag = re.search(r'<link rel="canonical" href="([^"]+)">', index)
-    if not canonical_tag:
-        raise ValueError("The site index needs its canonical link to generate absolute social preview URLs.")
-    canonical = unescape(canonical_tag[1])
+    # Preview URLs are absolute, so they are built on the site's address.
+    site = site_address((web / "index.html").read_text(encoding="utf-8"))
     editions = json.loads((web / "data/editions.json").read_text(encoding="utf-8"))["editions"]
     count = 0
     with sync_playwright() as playwright:
@@ -112,7 +111,7 @@ def build_share_pages(web: Path, out: Path) -> int:
                 cards = page.evaluate("() => window.socialCards.then(({cards}) => cards)")
                 for card in cards:
                     jpeg = page.evaluate("(card) => window.socialCards.then(({render}) => render(card))", card)
-                    _write_page(out, canonical, id_, edition["name"], card, base64.b64decode(jpeg))
+                    _write_page(out, site, id_, edition["name"], card, base64.b64decode(jpeg))
                 count += len(cards)
         finally:
             server.shutdown()

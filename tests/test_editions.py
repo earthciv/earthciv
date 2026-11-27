@@ -119,6 +119,9 @@ class IndexTest(unittest.TestCase):
                 for name in ("world", "cities", "nation"):
                     self.assertIn(name, m["files"], f"{folder.name}: the map needs {name}.json")
                 self.assertTrue((folder / m["text"]).is_file())
+                if "description" in m:
+                    self.assertIsInstance(m["description"], str)
+                    self.assertTrue(m["description"].strip(), f"{folder.name}: the description is empty")
 
 
 class HomePicturesTest(unittest.TestCase):

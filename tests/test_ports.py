@@ -114,7 +114,7 @@ class WorldHomeTest(unittest.TestCase):
 
     def test_boot_loads_either_the_world_map_or_an_edition(self):
         boot = self.read("js", "boot.js")
-        self.assertIn('import { OPENS_ON_WORLD } from "./app/home.js"', boot)
+        self.assertRegex(boot, r'import \{ OPENS_ON_WORLD\b[^}]*\} from "\./app/home\.js"')
         self.assertIn('import("./ext/ports/home.js")', boot)
         self.assertIn('import("./main.js")', boot)
         # The world map must not pull in an edition's code: boot.js imports main.js only on the edition path.

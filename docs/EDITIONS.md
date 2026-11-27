@@ -62,7 +62,8 @@ map asks for no picture. `pipeline/home_pictures.py` makes both files from the r
 | --- | --- | --- |
 | `contract` | yes | `3` |
 | `id`, `name`, `emblem` | yes | As in `editions.json`. |
-| `title` | yes | The page title: `"EarthCiv — Canada as a strategy game"`. |
+| `title` | yes | The page title: `"EarthCiv — Canada as a strategy game"`. Search engines list each edition as its own page, so it should differ from the world map's title and every other edition's. |
+| `description` | no | The page's description for search results. Without it the edition shows the world map's. |
 | `map_label` | yes | The map's accessible name: `"Hex map of Canada"`. |
 | `files` | yes | The data files that exist, without `.json`. The app requests only these, so a missing optional file is not an error; a listed file that fails to load is. `world`, `cities` and `nation` are required. |
 | `text` | yes | The text pack's file name, `"text.json"`. |

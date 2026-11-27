@@ -1,5 +1,5 @@
 import { DEFAULT_EDITION, EDITIONS, EDITION_ID, dataURL, declares, edition } from "./app/edition.js";
-import { editionUrl, pinEditionInUrl } from "./app/home.js";
+import { declareCanonical, editionUrl, pinEditionInUrl } from "./app/home.js";
 import { VIEW, defaults, txt } from "./app/text.js";
 import { Camera } from "./camera.js";
 import { prepareWorld, applyLens, stateIndex } from "./world.js";
@@ -85,6 +85,8 @@ async function main() {
   pinEditionInUrl(EDITION_ID);
   picker.onchange = () => location.assign(editionUrl(picker.value, DEFAULT_EDITION));
   document.title = edition.title || edition.name;
+  if (edition.description) document.querySelector('meta[name="description"]')?.setAttribute("content", edition.description);
+  declareCanonical(EDITION_ID, DEFAULT_EDITION);
   document.querySelector(".brand-emblem").textContent = edition.emblem || "";
   document.getElementById("map").setAttribute("aria-label", edition.map_label || `Hex map of ${edition.name}`);
   const [world, cities, nation, lenses, sources, resources, statesData] = await Promise.all([

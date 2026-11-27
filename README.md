@@ -190,10 +190,10 @@ uv run --group harness python -m playwright install chromium-headless-shell  # o
 uv run --group harness python -m pipeline package                            # → usaciv.zip
 ```
 
-`usaciv.zip` contains the static site, generated city and lens share pages, and `usaciv-source.zip` for the in-app
-help download. If you publish your own copy, change the address `earthciv.org` in
-`web/index.html` (the social-card tags), in `SITE_URL` in `web/js/app/project.js` (printed on share images) and in
-`web/dev/trailer/storyboard.js`.
+`usaciv.zip` contains the static site, generated city and lens share pages, `robots.txt`, `sitemap.xml` and
+`usaciv-source.zip` for the in-app help download. If you publish your own copy, change the address `earthciv.org` in
+`web/index.html` (the social-card tags; `og:url` also gives the canonical links, `robots.txt` and the sitemap), in
+`SITE_URL` in `web/js/app/project.js` (printed on share images) and in `web/dev/trailer/storyboard.js`.
 
 To rebuild the data from the original publishers:
 
