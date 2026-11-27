@@ -1,15 +1,20 @@
 // Phones and touch screens. The top bar on phones (css/style.css, max-width 700px) is two fixed rows instead of one
-// sideways-scrolling strip: the map menu, World, a search button and a menu (Advisors, Share, Help,
-// Almanac and any extension buttons) on top, the national yields below. This wires the parts CSS cannot:
+// sideways-scrolling strip: the map menu, World, the maker's account, a search button and a menu (Advisors, Share,
+// Help, Almanac and any extension buttons) on top, the national yields below. This wires the parts CSS cannot:
 //  * the menu button and closing the menu;
 //  * the search field's close button (the field opens over the first row while it has focus);
-//  * dropping the word "World" (keeping its globe and count) when the first row is too narrow for it;
+//  * dropping the word "World" and the map count, then the maker's name, when the first row is too narrow for them;
 //  * the map's Home button;
 //  * on iOS, stopping Safari from zooming the page into a text field or menu whose font is under 16 px.
 import { icon } from "./icon.js";
 import { fitMenu } from "./mapPicker.js";
 
 const PHONE = "(max-width: 700px)";
+// The first row's classes for a narrow screen: World without its word and its map count, the maker's name cut short
+// or left out (css/ports.css).
+const TIGHT = ["tb-tight", "tb-tight-count", "tb-cut-maker", "tb-tight-maker"];
+const MAKER_MIN = 90; // px of chip: its picture and about 7 letters of the name
+const MENU_SLACK = 3; // px the map menu gives up without cutting its name (fitMenu leaves it 4)
 const MENU_SVG = `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>`;
 const HOME_SVG = `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>`;
 
@@ -65,36 +70,49 @@ export function initMobile({ app } = {}) {
     });
   }
 
-  // --- first row: drop the "World" label when it does not fit ----------------------------------------------------
-  // The switcher is measured with every label showing, whatever the row shows at the moment: the map menu at the
-  // width of its name and World with its word. The row can hold the switcher narrower than that (css/style.css then
-  // cuts the map's name short), so its own width would not say. The answer depends on the window alone, so hiding
-  // the word cannot flip it back (no resize loop).
+  // --- first row: make room for the map name and maker ----------------------------------------------------------
+  // Start with every label visible so the result depends on the available width, even when the map name is clipped.
   const switcher = bar.querySelector(".country-switcher");
   const searchBox = bar.querySelector(".search");
   function fitFirstRow() {
     if (!switcher) return;
     if (!phone.matches) {
-      bar.classList.remove("tb-tight");
+      bar.classList.remove(...TIGHT);
       return;
     }
     // While the search field is open it covers the row (and a phone keyboard resizes the window): measure later.
     if (searchBox?.matches(":focus-within")) return;
-    bar.classList.remove("tb-tight");
+    bar.classList.remove(...TIGHT);
     const mapMenu = switcher.querySelector(".map-picker");
     const world = switcher.querySelector(".ports-launch");
+    const makerWidth = fullWidth(switcher.querySelector(".map-maker"));
     const inner = parseFloat(getComputedStyle(switcher).columnGap) || 0;
-    const needs = (mapMenu ? fitMenu(mapMenu) : 0) + (world ? inner + world.offsetWidth : 0);
+    const menuWidth = mapMenu ? fitMenu(mapMenu) : 0;
     const cs = getComputedStyle(bar);
     const gap = parseFloat(cs.columnGap) || 0;
     const avail = bar.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
     let rest = gap; // the spacer between the switcher and Search takes a gap of its own
     for (const el of [searchBox, menuBtn]) if (el) rest += el.offsetWidth + gap;
-    bar.classList.toggle("tb-tight", needs + rest > avail);
+    if (!world) return;
+    // World gives up its word and its map count together. Then the maker's name is cut short, and where less than
+    // MAKER_MIN would be left of the chip, it shows the maker's picture alone.
+    const room = avail - rest - menuWidth - inner; // for World and the maker after it
+    const makerNeeds = makerWidth ? inner + makerWidth : 0;
+    if (world.offsetWidth + makerNeeds > room) bar.classList.add("tb-tight", "tb-tight-count");
+    const makerRoom = room - world.offsetWidth - inner; // World measured again, as it now shows
+    if (!makerWidth || makerRoom >= makerWidth - MENU_SLACK) return;
+    bar.classList.add(makerRoom < Math.min(makerWidth, MAKER_MIN) ? "tb-tight-maker" : "tb-cut-maker");
+  }
+  // The maker's chip with its whole name (up to its max-width), however much of it the row shows now.
+  function fullWidth(maker) {
+    if (!maker?.offsetWidth) return 0;
+    const label = maker.querySelector(".map-maker-label");
+    const cap = parseFloat(getComputedStyle(maker).maxWidth) || Infinity;
+    return Math.min(cap, maker.offsetWidth + (label ? label.scrollWidth - label.clientWidth : 0));
   }
   if (switcher) {
-    // World arrives with ext/ports, after this has run, and takes its size once its stylesheet has loaded. Each part
-    // is watched as well as the switcher, which does not resize while the row holds it to the room there is.
+    // World and the maker arrive with ext/ports, after this has run, and take their size once the stylesheet loads.
+    // Each part is watched as well as the switcher, which does not resize while the row holds it to the room there is.
     const refit = typeof ResizeObserver === "function" ? new ResizeObserver(() => fitFirstRow()) : null;
     const watched = new Set();
     const watchParts = () => {

@@ -110,15 +110,16 @@ class MakersWiringTest(unittest.TestCase):
 
     def test_world_view_names_the_maker_wherever_a_map_is_shown(self):
         self.assertRegex(self.index, r'import \{[^}]*\bmakerOf\b[^}]*\} from "\./makers\.js";')
-        # On a map's card, in the bar above an open map, on its loading screen and in the note under it.
+        # On a map's card, in both map bars, on its loading screen and in the note under it.
         self.assertIn('<div class="pc-by">by ${makerNameHtml(maker)}</div>', self.index)
-        self.assertIn('<span class="ports-vby" id="ports-vby" hidden></span>', self.index)
+        self.assertIn("renderTopbarMaker(editionMaker,", self.index)
+        self.assertIn('renderTopbarMaker(overlay.querySelector(".ports-vbar .map-maker"), port);', self.index)
         self.assertIn('id="ports-vloading-by"', self.index)
         self.assertIn('class="ports-vnotice-by"', self.index)
         # The big button names the maker before anything else.
         self.assertIn("const by = maker ? `by ${maker.name} · ` : \"\";", self.index)
         css = read("web", "css", "ports.css")
-        for cls in (".mk-av", ".mk-pic", ".mk-name", ".pc-by", ".ports-vby", ".wv-makers", ".mk-row", ".mk-map"):
+        for cls in (".mk-av", ".mk-pic", ".mk-name", ".pc-by", ".map-maker-chip", ".wv-makers", ".mk-row", ".mk-map"):
             self.assertIn(cls, css)
 
     def test_the_country_list_puts_the_makers_forward(self):

@@ -32,7 +32,7 @@ import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listM
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127b", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127c", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
@@ -225,6 +225,8 @@ export function install(app) {
 
   // --- the edition underneath (when not home) and the way to the world from it -------------------------------------
   const picker = home ? null : document.getElementById("country-picker");
+  let editionMaker = null;
+  let editionKind = null;
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
   const editionUnder = EDITIONS.find((e) => e.id === EDITION_ID);
   const editionName = editionUnder?.name || "the map";
@@ -324,6 +326,19 @@ export function install(app) {
       syncLaunchCount();
       app.on("mode", ({ name }) => btn.setAttribute("aria-pressed", String(name === MODE)));
     }
+    if (switcher) {
+      // After World, as in the bar above a community map: the edition's maker, then what kind of map it is. Both
+      // show once the list of maps is here, so neither moves the other.
+      editionMaker = document.createElement("span");
+      editionMaker.className = "map-maker";
+      editionMaker.hidden = true;
+      editionMaker.addEventListener("error", removeBrokenMakerPicture, true);
+      editionKind = document.createElement("span");
+      editionKind.className = `pc-badge ports-vkind ${KIND.merged.cls}`;
+      editionKind.textContent = KIND.merged.label;
+      editionKind.hidden = true;
+      switcher.append(editionMaker, editionKind);
+    }
 
     if (picker) {
       // The edition's menu gets the world map now and the community maps as soon as their list is here.
@@ -351,6 +366,8 @@ export function install(app) {
     if (!portsP) {
       portsP = fetchJson(new URL("ports.json", DATA_URL)).then((portsDoc) => {
         basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
+        renderTopbarMaker(editionMaker, basePorts.find((port) => port.editionId === EDITION_ID));
+        if (editionKind) editionKind.hidden = false;
         syncLaunchCount();
         syncMenus();
         return basePorts;
@@ -428,7 +445,7 @@ export function install(app) {
   }
 
   // A maker's picture: the one on their GitHub account, drawn over their initials, which stay where there is no
-  // account or the picture does not load (bindOverlayEvents). The browser asks GitHub for it without naming this
+  // account or the picture does not load. The browser asks GitHub for it without naming this
   // page (referrerpolicy), and only once the picture is about to be seen (loading="lazy").
   function avatarHtml(maker, cls = "") {
     const more = cls ? ` ${cls}` : "";
@@ -436,6 +453,29 @@ export function install(app) {
     const src = avatarUrl(maker.github, AVATAR_PX);
     return `<span class="mk-av${more}" style="--mk-hue:${hueOf(maker.key)}" aria-hidden="true"><span class="mk-ini">${esc(initials(maker.name))}</span>${
       src ? `<img class="mk-pic" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ""}</span>`;
+  }
+
+  // A failed image leaves the initials underneath it. Capture the event because image errors do not bubble.
+  function removeBrokenMakerPicture(e) {
+    if (e.target instanceof HTMLImageElement && e.target.classList.contains("mk-pic")) e.target.remove();
+  }
+
+  // Both map bars highlight the current map's maker, including the account behind an EarthCiv edition.
+  function renderTopbarMaker(slot, port) {
+    if (!slot) return;
+    const maker = makerOf(port);
+    slot.hidden = !maker;
+    if (!maker) {
+      slot.replaceChildren();
+      return;
+    }
+    const label = maker.twitter ? `@${maker.twitter}` : maker.name;
+    const href = maker.twitter ? `https://x.com/${maker.twitter}` : maker.url;
+    const title = `Map maker: ${label}`;
+    const content = `${avatarHtml(maker)}<span class="map-maker-label">${esc(label)}</span>`;
+    slot.innerHTML = href
+      ? `<a class="map-maker-chip" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}" aria-label="${esc(title)}">${content}</a>`
+      : `<span class="map-maker-chip" title="${esc(title)}">${content}</span>`;
   }
 
   // A maker's name: a link to their GitHub profile, or to the page of theirs that the catalog names.
@@ -693,9 +733,9 @@ export function install(app) {
               <select id="ports-vswitch" class="map-picker" aria-label="Switch map" title="Switch map"></select>
             </div>
             <button type="button" class="ports-launch" data-act="back-atlas">${LAUNCH_HTML}</button>
+            <span class="map-maker" hidden></span>
           </div>
           <span class="pc-badge ports-vkind" id="ports-vkind"></span>
-          <span class="ports-vby" id="ports-vby" hidden></span>
           <div class="ports-vactions" id="ports-vactions"></div>
         </div>
         <div class="ports-vstage">
@@ -779,11 +819,7 @@ export function install(app) {
     });
 
     overlay.addEventListener("click", onOverlayClick);
-    // A maker's picture that does not load leaves their initials in its place. (An image's error does not bubble,
-    // so it is caught on its way down.)
-    overlay.addEventListener("error", (e) => {
-      if (e.target instanceof HTMLImageElement && e.target.classList.contains("mk-pic")) e.target.remove();
-    }, true);
+    overlay.addEventListener("error", removeBrokenMakerPicture, true);
 
     // Hovering a row or a card highlights its country, or its map's countries, on the world map.
     sideEl.addEventListener("pointerover", (e) => {
@@ -1634,16 +1670,13 @@ export function install(app) {
     const kind = overlay.querySelector("#ports-vkind");
     kind.className = `pc-badge ports-vkind ${KIND[k].cls}`;
     kind.textContent = KIND[k].label;
-    const maker = creditOf(port);
-    const by = overlay.querySelector("#ports-vby");
-    by.hidden = !maker;
-    by.innerHTML = maker ? `<span class="ports-vby-lbl">by</span>${avatarHtml(maker)}${makerNameHtml(maker)}` : "";
+    renderTopbarMaker(overlay.querySelector(".ports-vbar .map-maker"), port);
     const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
     overlay.querySelector("#ports-vactions").innerHTML = `
       <div class="rt rt-bar" data-rating-of="${esc(port.id)}" hidden></div>
       <button type="button" class="ports-btn ports-btn-ghost" data-act="reload-frame" title="Reload" aria-label="Reload">↻</button>
       ${repoUrl ? `<a class="ports-btn ports-btn-ghost ports-vgh" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer">GitHub ${EXT_SVG}</a>` : ""}
-      <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
+      <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(port.name)} in a new tab" title="Open ${esc(port.name)} in a new tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
       ${home ? "" : `<button type="button" class="icon-btn" data-act="close" aria-label="Back to ${esc(editionName)}" title="Back to ${esc(editionName)}">${icon("close", "✕", { size: 12 })}</button>`}`;
     ratings.sync(overlay.querySelector("#ports-viewer"), portById);
     fillMenu(overlay.querySelector("#ports-vswitch"), port.id);

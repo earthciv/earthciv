@@ -34,7 +34,32 @@
   .ports-launch { padding: 3px 8px 3px 7px; gap: 5px; font-size: 12.5px; }
 }
 @media (max-width: 700px) {
-  .ports-launch { height: 34px; padding: 0 8px; gap: 5px; font-size: 12px; } /* as tall as the map menu beside it */
+  .ports-launch { height: 34px; min-width: 34px; justify-content: center; padding: 0 8px; gap: 5px; font-size: 12px; }
+  #topbar.tb-tight-count .ports-launch-count { display: none; }
+}
+
+/* The selected map's account sits beside World in both map bars. */
+.map-maker { flex: none; max-width: 170px; }
+.map-maker-chip {
+  display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px 0 3px;
+  background: linear-gradient(180deg, #514225, #302719); border: 1px solid var(--gold);
+  border-radius: 16px; color: var(--gold-bright); font: 600 12px var(--sans); text-decoration: none;
+}
+a.map-maker-chip:hover { background: #594728; border-color: var(--gold-bright); }
+.map-maker-chip .mk-av { width: 20px; height: 20px; font-size: 9px; }
+.map-maker-label { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .map-maker { max-width: 140px; }
+  .map-maker-chip { height: 34px; padding-right: 5px; border-radius: 17px; font-size: 11px; }
+  /* An edition's first row on a phone: after World's word, the maker's name is cut short before the map's name is
+     (tb-cut-maker), and gives way to the picture alone when too little of it would show (tb-tight-maker). */
+  #topbar.tb-cut-maker .map-maker { flex: 0 100 auto; min-width: 34px; }
+  #topbar.tb-tight-maker .map-maker-chip { width: 34px; justify-content: center; padding: 0; }
+  #topbar.tb-tight-maker .map-maker-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}
+@media (max-width: 375px) {
+  .ports-vbar .map-maker-chip { width: 34px; justify-content: center; padding: 0; }
+  .ports-vbar .map-maker-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
 }
 
 /* ---------- the world view: its own top bar above the map and the country panel ---------- */
@@ -554,7 +579,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
    the menu's look), at the same place and size, so the way to every other map stays where it was. */
 .ports-vbar {
   position: relative; z-index: 1; /* its shadow falls on the map below */
-  display: flex; align-items: center; gap: 10px; padding: 5px 12px; flex: none; /* one row: the map's name shortens */
+  display: flex; align-items: center; gap: 16px; padding: 0 12px; flex: none; /* one row: the map's name shortens */
   min-height: var(--topbar-h); /* where the world view's top bar was, at the same height */
   background: linear-gradient(180deg, #24364a, #131e2a); border-bottom: 1px solid var(--gold);
   box-shadow: 0 2px 10px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .25);
@@ -569,14 +594,6 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .ports-vbar[data-tight="3"] .brand { letter-spacing: 0; }
 .ports-vbar[data-tight="3"] .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
 .ports-vkind { flex: none; }
-/* Whose map is open. In a bar short of room it gives way before the map's name does. */
-.ports-vby {
-  flex: 0 100 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden;
-  font-size: 12.5px; color: var(--ink-dim); white-space: nowrap;
-}
-.ports-vby[hidden], .ports-vloading-by[hidden] { display: none; }
-.ports-vby .mk-av { width: 22px; height: 22px; font-size: 10px; }
-.ports-vby .mk-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ports-vactions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
 
 .ports-vstage { position: relative; flex: 1; min-height: 0; background: #0c2238; }
@@ -665,7 +682,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .ports-tip { display: none; }
   /* Phones: the bar is laid out as an edition's first row is, with the same finger-sized controls. New tab shows as
      an icon (the words stay for screen readers); GitHub stays on the map's card. */
-  .ports-vbar { gap: 5px; padding: 5px 6px; }
+  .ports-vbar { gap: 5px; padding: 0 6px; min-height: 44px; }
   .ports-vbar .country-switcher, .ports-vactions { gap: 5px; }
   .ports-vbar .ports-btn { height: 34px; min-width: 34px; justify-content: center; padding: 0 8px; }
   .ports-vbar .ports-vlbl {
@@ -673,7 +690,6 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   }
   .ports-vgh { display: none; }
   .rt-bar { display: none; } /* no room in a phone's bar: a map is rated on its card */
-  .ports-vby { display: none; } /* nor for its maker: the note under the map names them */
   .mk-map { min-height: 42px; font-size: 14px; }
 }
 /* Picture cards where room is short (the sheet on phones and tablets, a laptop's low window): side by side, with
