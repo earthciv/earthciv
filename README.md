@@ -399,6 +399,28 @@ their code or data.
 The look is inspired by turn-based 4X strategy games, but every glyph, icon and texture here is original and drawn
 in code. This project is not affiliated with or endorsed by any game publisher.
 
+## Privacy
+
+earthciv.org has no sign-in and no ads, and its code sets no cookies. What it learns about a visit:
+
+- **Visits are counted, not people.** [Cloudflare Web Analytics](https://www.cloudflare.com/web-analytics/) reports
+  how many visits and page views each of the site's pages had, which page linked to it, how fast it loaded, and the
+  visitor's country, browser, operating system and kind of device. Cloudflare says it uses no cookies or browser
+  storage for this and does not fingerprint visitors; it counts visits and cannot say how many people made them. Of
+  a page's address it [logs nothing after the `?`](https://developers.cloudflare.com/web-analytics/faq/).
+- **A rating is kept under a key made from the visitor's network address,** never the address itself
+  ([docs/RATINGS.md](docs/RATINGS.md#what-is-stored)).
+- **A few settings stay in the browser** (`localStorage`): the lenses used last, panel settings, the stars the
+  visitor gave and the links to maps they added for themselves. They are not sent anywhere.
+- **A community map is its author's own site,** shown in a frame or opened in a new tab. That site sees the visit
+  as it would any other.
+- **Cloudflare hosts the site,** so it receives every request, with its IP address, as any host does
+  ([its privacy policy](https://www.cloudflare.com/privacypolicy/)).
+
+The visit count is a setting of earthciv.org's host, not code in this repository: Cloudflare adds its script
+(`static.cloudflareinsights.com/beacon.min.js`) to the pages it serves. A copy of this project hosted elsewhere has
+no such script. A content blocker that stops the script stops the count, and the site works the same without it.
+
 ## Ideas
 
 For the United States edition:

@@ -12,6 +12,11 @@ deploys and works the same, and shows no stars.
 Production is the Cloudflare Pages project `usaciv-canada`, created by direct upload. It answers at
 https://usaciv-canada.pages.dev and at the custom domain https://earthciv.org. Its settings are in `wrangler.toml`.
 
+One setting is not in that file: Web Analytics, which counts the site's visits
+([what it counts](../README.md#privacy)). It is switched on in the Cloudflare dashboard, under Workers & Pages →
+`usaciv-canada` → Metrics. From the next deployment on, Cloudflare adds its script to the end of every page it
+serves. The script is not in `dist/usaciv/`, and a copy of this project deployed elsewhere does not get it.
+
 ## Before a deploy
 
 ```sh
@@ -57,4 +62,7 @@ folder it is run in; from anywhere else the site would upload without its Functi
   edition, and an unknown address such as https://earthciv.org/no-such-page answers 404.
 - In the browser, each view's `link[rel=canonical]` is its own address: `https://earthciv.org/` on the world map,
   `https://earthciv.org/?country=ca` on Canada. The page sets it; the HTML file has none.
+- While Web Analytics is switched on, the page loads Cloudflare's script:
+  `curl -s https://earthciv.org/ | grep -c cloudflareinsights` prints `1`. It prints `0` when the deployment was
+  made before the switch, or the switch is off.
 - The browser console shows no errors on either edition.
