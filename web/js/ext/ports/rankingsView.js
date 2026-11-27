@@ -9,6 +9,8 @@
 //     figure is from another year (with that year, never ranked), then the places with no figure at all.
 //   * Demographics, on a country's card: where it stands on every measure, beside the highest, the average and the
 //     lowest, after a strategy game's demographics screen (demographicsHtml).
+//   * The map as a lens while a tab is open: each ranked country in the tab's colours (lensFills), with its key
+//     (lensLegendHtml) and a line for the hover tip (lensTip).
 //
 // This module only writes HTML: the data rules are ./rankings.js, and ./index.js wires the clicks. A row is a button
 // with data-select (its country's card opens) and data-hover (the map outlines the country).
@@ -16,7 +18,7 @@
 import { esc } from "../../app/escape.js";
 import { emblem } from "../advisors/core/emblems.js";
 import { ROSTER } from "../advisors/core/roster.js";
-import { OVERALL, cellOf, formatValue, groupOf, listWords, measureOf, ordinal, rankOf, ranking, standing, summary, tabOf } from "./rankings.js";
+import { NO_DATA, OVERALL, RAMPS, cellOf, formatValue, groupOf, lensScale, listWords, measureOf, ordinal, rampColor, rankOf, ranking, standing, summary, tabOf } from "./rankings.js";
 
 /** The medallion of the Overall tab and of the screen itself. */
 export const RANKINGS_ADVISOR = { id: "rankings", name: "World Rankings", role: "Every tab at once", color: "#c9a45c", dark: "#3a2f15" };
@@ -255,4 +257,44 @@ function demographicRowHtml(doc, iso, r, { name, nameOf, flag }) {
       <td class="dm-avg">${s ? short(s.average) : "–"}</td>
       <td class="dm-x">${s ? extreme(s.lowest) : "–"}</td>
     </tr>`;
+}
+
+// --- the map as a lens --------------------------------------------------------------------------------------------------
+/** The open tab's colour for every country ranked on it (Map iso → #rrggbb). Any other country is NO_DATA. */
+export function lensFills(doc, key) {
+  const scale = lensScale(doc, key);
+  const stops = RAMPS[groupOf(doc, key)?.key] || RAMPS.economy;
+  const fills = new Map();
+  if (scale) for (const x of ranking(doc, key).rows) fills.set(x.iso, rampColor(stops, scale.t(x.value)));
+  return fills;
+}
+
+/** The lens's key, where the map key is: the measure, its year and unit, the colours from low to high, no figure. */
+export function lensLegendHtml(doc, key) {
+  const m = measureOf(doc, key);
+  const g = groupOf(doc, key);
+  const scale = lensScale(doc, key);
+  if (!m || !scale) return "";
+  const adv = advisorOf(g.key);
+  const stops = RAMPS[g.key] || RAMPS.economy;
+  const ticks = scale.ticks.map((v, i) => `<span>${i === 0 ? "≤ " : i === scale.ticks.length - 1 ? "≥ " : ""}${esc(formatValue(m, v, { short: true }))}</span>`).join("");
+  return `<div class="lg-rk" style="${advStyle(adv)}">
+      <div class="lg-rk-head">${emblem(adv, 22)}<b>${esc(m.label)}</b><small>${m.year} · ${esc(m.unit)}${scale.log ? " · log scale" : ""}</small></div>
+      <div class="lg-rk-ramp" style="background:linear-gradient(90deg,${stops.join(",")})"></div>
+      <div class="lg-rk-ticks">${ticks}</div>
+      <div class="lg-rk-nd"><i style="background:${NO_DATA}"></i>No ${m.year} figure, so not ranked</div>
+    </div>`;
+}
+
+/** What the map's hover tip says of a country under the lens: {value, rank} as plain text. */
+export function lensTip(doc, key, iso) {
+  const m = measureOf(doc, key);
+  const c = cellOf(doc, key, iso);
+  if (!m) return null;
+  if (!c) return { value: `${m.label}: no figure`, rank: "" };
+  const at = c.ranked ? rankOf(doc, key, iso) : null;
+  return {
+    value: `${m.label} ${c.year}: ${formatValue(m, c.value)}`,
+    rank: at ? `${ordinal(at.rank)} of ${at.of}${at.tied ? " (tied)" : ""}` : `Not ranked: no ${m.year} figure`,
+  };
 }

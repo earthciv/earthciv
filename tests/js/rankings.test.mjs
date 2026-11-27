@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import {
   OVERALL, cellOf, formatValue, lensScale, listWords, measureOf, ordinal, rampColor, rankOf, ranking, standing, summary, tabOf, RAMPS,
 } from "../../web/js/ext/ports/rankings.js";
-import { demographicsHtml, rankingsHtml } from "../../web/js/ext/ports/rankingsView.js";
+import { demographicsHtml, lensFills, lensLegendHtml, lensTip, rankingsHtml } from "../../web/js/ext/ports/rankingsView.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const DOC = JSON.parse(readFileSync(new URL("web/data/world-rankings.json", ROOT), "utf8"));
@@ -216,4 +216,36 @@ test("Demographics: a figure from another year shows its year and no rank; no fi
   assert.match(html, /<td class="dm-rank is-none" title="Not ranked: no 2024 figure">–<\/td>/);
   assert.match(html, /35\.2%<\/a><small>2017<\/small>/);
   assert.match(demographicsHtml(SMALL, "TW", { nameOf, flag: (iso) => iso }), /The World Bank publishes no figures for Taiwan\./);
+});
+
+test("the lens colours every ranked country, and only those", () => {
+  for (const m of DOC.measures) {
+    const fills = lensFills(DOC, m.key);
+    const r = ranking(DOC, m.key);
+    assert.equal(fills.size, r.rows.length, m.key);
+    for (const x of r.rows) assert.match(fills.get(x.iso), /^#[0-9a-f]{6}$/, `${m.key} ${x.iso}`);
+    for (const x of r.others) assert.equal(fills.has(x.iso), false, `${m.key} ${x.iso} is from another year`);
+  }
+  // The highest and the lowest take the ramp's two ends.
+  const gdp = ranking(DOC, "gdp");
+  assert.equal(lensFills(DOC, "gdp").get(gdp.rows[0].iso), RAMPS.economy.at(-1));
+  assert.equal(lensFills(DOC, "gdp").get(gdp.rows.at(-1).iso), RAMPS.economy[0]);
+});
+
+test("the lens's key: measure, year, scale and the colour of no figure", () => {
+  const html = lensLegendHtml(DOC, "gdp");
+  assert.match(html, /<b>GDP<\/b><small>2025 · current US\$ · log scale<\/small>/);
+  assert.equal((html.match(/<span>/g) || []).length, 5);
+  assert.match(html, /<span>≤ \$/);
+  assert.match(html, /<span>≥ \$/);
+  assert.match(html, /No 2025 figure, so not ranked/);
+  assert.doesNotMatch(lensLegendHtml(DOC, "life"), /log scale/);
+  assert.equal(lensLegendHtml(DOC, "nonsense"), "");
+});
+
+test("the hover tip under the lens: figure, year and rank, or why there is no rank", () => {
+  assert.deepEqual(lensTip(SMALL, "net", "DK"), { value: "net 2024: 99.8%", rank: "4th of 4" });
+  assert.deepEqual(lensTip(SMALL, "net", "BH"), { value: "net 2024: 100%", rank: "1st of 4 (tied)" });
+  assert.deepEqual(lensTip(SMALL, "net", "TV"), { value: "net 2017: 35.2%", rank: "Not ranked: no 2024 figure" });
+  assert.deepEqual(lensTip(SMALL, "net", "ZZ"), { value: "net: no figure", rank: "" });
 });

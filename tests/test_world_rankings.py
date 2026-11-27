@@ -206,6 +206,13 @@ class RankingsWiringTest(unittest.TestCase):
         self.assertIn("${figuresHtml(iso)}", self.index)
         self.assertNotIn("world-figures", self.index)  # the card's three old figures are among the ten
 
+    def test_an_open_tab_colours_the_map(self):
+        world_map = read("web", "js", "ext", "ports", "worldMap.js")
+        self.assertIn("    setLens(next) {", world_map)
+        self.assertIn("for (const item of lens ? [] : pinCoords) {", world_map)  # no pins under a lens
+        self.assertIn("map.setLens(key ? { fills: lensFills(rankDoc, key), noData: NO_DATA } : null);", self.index)
+        self.assertIn("syncLens(); // the map key, or the open tab's colours", self.index)
+
     def test_rankings_have_their_own_address(self):
         self.assertIn('app.hash.register("rankings"', self.index)
         home = read("web", "js", "app", "home.js")
@@ -229,7 +236,7 @@ class RankingsWiringTest(unittest.TestCase):
     def test_styles_exist(self):
         css = read("web", "css", "ports.css")
         for cls in (".wv-rank-btn", ".wv-rankings", ".rk-tab", ".rk-card", ".rk-row", ".rk-mine", ".rk-bubble", ".rk-code",
-                    ".dm-table", ".dm-k", ".dm-rank", ".dm-avg"):
+                    ".dm-table", ".dm-k", ".dm-rank", ".dm-avg", ".ports-legend.is-lens", ".lg-rk-ramp"):
             self.assertIn(cls, css)
 
 
