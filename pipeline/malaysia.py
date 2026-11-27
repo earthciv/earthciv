@@ -27,7 +27,7 @@ from shapely.geometry import shape
 from shapely.ops import unary_union
 
 from . import malaysia_economy as economy
-from . import malaysia_resources
+from . import malaysia_layers, malaysia_resources
 from .build.lenses import DOMAIN_NOTE, percentile_domain
 from .build.world import (
     COAST,
@@ -162,6 +162,7 @@ source("natural_earth", "Natural Earth v5.1.2", "Natural Earth", "https://www.na
            for layer in ("admin_0_countries", "lakes", "rivers_lake_centerlines", "populated_places")})
 
 malaysia_resources.register_inputs(source)  # M3: power plants, oil and gas sites, crops, forest reserves, minerals
+malaysia_layers.register_inputs(source)  # M4: roads, rail, airports, wonders, floods
 
 # Esri land-cover colours (from the service's legend) -> world.json cover ids. 12 marks water, 0 no data.
 PALETTE = {
@@ -417,6 +418,7 @@ def build(radius):
     resources = malaysia_resources.resources_doc(SOURCE_DIR, grid, xy, owners, states, county, props, places, palm_ha)
     malaysia_resources.state_fields(state_data, states, owners, pct, metrics["cover"], resources, SOURCE_DIR)
     write("resources", resources)
+    malaysia_layers.write_layers(write, SOURCE_DIR, grid, xy, owners, states, county, counties, places, NEW_DISTRICTS)
     write("world", dict(version=2, grid=grid.to_dict(), width=round(width, 1), height=round(height, 1), margin=MARGIN,
                         owner=owners, county=county, **metrics, pct=pct, states=states, counties=counties,
                         rivers=rivers, tables={"water": water_table, "relief": RELIEF_TABLE, "cover": cover_table}))

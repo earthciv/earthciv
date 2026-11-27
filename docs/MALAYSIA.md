@@ -144,3 +144,40 @@ flagged in the text pack; Johor and Selangor capacity may be overstated.
   data.gov.my archive spreadsheet, are a cross-check: Johor 740k ha, Pahang 725k, Sabah 1.54M, Sarawak 1.44M.)
 * **Large Sarawak hydro** (Bakun, Murum) is missing from the WRI database and is not added by hand.
 * Forest reserves have state totals only.
+
+## Map layers (`infrastructure.json`, `wonders.json`, `disasters.json`)
+
+Built by `pipeline/malaysia_layers.py` (called from `pipeline/malaysia.py`); the worked example is Canada's
+`infrastructure()`, `wonders()` and `canada_disasters.py`. Every input is registered in `sources.json`.
+
+| Layer | Source | Rule |
+|---|---|---|
+| Roads | Natural Earth v5.1.2 1:10m roads (the pinned release's shapefile, read by a small stdlib reader, so no new dependency) | Scale rank 8 or less, sampled every 4 km and snapped to hex links as Canada does. Class 0 ("main highway") is rank 5 or less, class 1 ("major road") ranks 6 to 8. Natural Earth is map art: roads it omits are missing |
+| Rail | Natural Earth v5.1.2 1:10m railroads | Tier 0 (main line) is rank 5 or less, every other rank is a secondary line. About 140 links: Natural Earth's coverage of Malaysian rail is partial |
+| Airports | OurAirports (positions, by IATA code) with Wikidata's annual passengers (CC0, cached SPARQL result `wikidata_airport_passengers.json`; originally from Malaysia Airports and the Department of Civil Aviation) | Every airport with 900,000+ passengers in **2019**, the last year before the pandemic and the one year most airports have. The figures are total passengers (arrivals plus departures); `enplanements` (the "boardings" the viewer shows) is **half of them, an estimate**, and the row keeps `passengers`. Hub classes by passengers: large 5 million+, medium 2 million+, small 900,000+. Airports with no 2019 figure (Ipoh, Kuantan, Labuan and others) are not shown. There is no prior-year figure and no cargo |
+| Wonders: World Heritage | UNESCO's list for Malaysia (hand-entered positions, checked against OpenStreetMap and Wikidata) | The six inscribed properties: Gunung Mulu, Kinabalu Park, Melaka and George Town (one property drawn at both cities, so seven wonders), the Lenggong Valley, the Niah Caves and FRIM Selangor Forest Park (2025). Not ranked |
+| Wonders: parks | hand-picked | Taman Negara, Bako, Endau-Rompin, Tunku Abdul Rahman Park and Royal Belum State Park (not UNESCO sites). Malaysia publishes no open visitor counts by park, so they are `curated` and not ranked. No park footprints are published as open data, so `cells` is null |
+| Wonders: research universities | The five public universities the Ministry of Higher Education designated Research Universities (UM, UKM, USM, UPM in 2006, UTM in 2010), ranked by lecturers in 2025 (`lecturers_uni`, MOHE via data.gov.my) | At most 2 per city, as Canada. **UPM is left out** because UM and UKM already fill Greater Kuala Lumpur; the rule text says so. Malaysia publishes no research spending or doctoral enrolment by university. Campus points come from the project geocoder (OpenStreetMap) |
+| Wonders: landmarks | hand-picked | Petronas Twin Towers, Bakun Dam, Kellie's Castle and the Langkawi Sky Bridge: none a place of worship, at most one per city, none on the hex of another wonder. Candidates dropped for sharing a city or hex with another wonder: Perdana Putra (Putrajaya, Greater Kuala Lumpur), the Penang Bridge (George Town); Sipadan has no land hex in reach |
+| Disasters | DOSM *Impact of Floods* workbooks, 2022–2025 releases (each carries two years; each year is taken from the latest release that has it) | `floods`: the value of flood losses in current ringgit (RM thousand) per year 2021–2025, by state (six categories, totals) and by district. The 2021 release has no workbook; 2021 is the one in the 2022 report. DOSM's `n.a` and broken cells are `null`, its `-` ("not affected") is 0. **District figures cover only living quarters, vehicles, business premises and manufacturing** (agriculture and infrastructure are published by state only), so districts do not add up to the state or the nation. **2021 state rows are partial**: DOSM published that year's agriculture and infrastructure losses for the nation only (RM 90.6 million and RM 2.0 billion), so the states add up to RM 4.0 billion of the national RM 6.1 billion (`states_complete` is false for 2021, and the viewer's multi-year sum starts in 2022); from 2022 they add up to the nation. Perlis and the federal territories take their state row; districts DOSM only lists after 2025 are split over their parents with the M2 crosswalk |
+
+The viewer reads the flood block from a generic shape (`disasters.json` `floods`, DATA_CONTRACTS.md); the layer tooltip
+and the Culture advisor read a wonders rule's `measure` / `measure_name` (any ranking) and `listed` (a published list).
+
+### Left out, and why
+
+* **`trade.json`** (freight between states): no open inter-state freight data. the DOSM trade tables found (data.gov.my
+  catalogue and open.dosm.gov.my) are national external trade, not flows between places.
+* **`military.json`**: no open list of bases or land areas that a base could be checked against was found (the Ministry of Defence
+  publishes none), and an uncited list would break the "hand-checked and defensible" rule. No Encampment is drawn.
+* **Ports** (in `infrastructure.json`): there are no open cargo statistics by port, and Natural Earth's 1:10m port
+  points lack Port Klang and Tanjung Pelepas, the two largest. A list without a measure would be an arbitrary one, so
+  `ports` is empty and `rules.ports` says why. Wikidata lists ports but no tonnage.
+* **Disaster events**: DOSM gives losses, not events, dates, deaths or other hazards (landslides, storms), so only floods
+  are shown and the text pack says so.
+* **Park and university rankings by visitors or research spending**: not published as open data.
+
+Bakun Dam is a hand-picked landmark here; that does not conflict with the resources layer, which leaves the large Sarawak hydro plants out only because WRI omits them and no capacity is typed in by hand.
+
+Race and religion (PLAN.md): no wonder is chosen by a community or a faith; no place of worship is a wonder; the
+tests check wonder names and rule texts.

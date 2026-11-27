@@ -352,3 +352,149 @@ class ResourcesTest(unittest.TestCase):
         self.assertIn("Not on the map", text["almanac.resources_intro"])
         self.assertTrue(any("Mines are not mapped" in c for c in text["advisor.energy.caveats"]))
         self.assertTrue(any("oil palm" in c.lower() for c in text["advisor.land.caveats"]))
+
+
+class LayersTest(unittest.TestCase):
+    """infrastructure.json, wonders.json and disasters.json (pipeline/malaysia_layers.py); trade and military are left out."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.world = load("world")
+        cls.abbrs = [s["abbr"] for s in cls.world["states"]]
+        cls.edition = load("edition")
+        cls.infra, cls.wonders, cls.dis = load("infrastructure"), load("wonders"), load("disasters")
+
+    def test_manifest_lists_the_layers_and_not_the_ones_left_out(self):
+        files = self.edition["files"]
+        for name in ("infrastructure", "wonders", "disasters"):
+            self.assertIn(name, files)
+        for name in ("trade", "military"):  # no open inter-state freight or base list: the docs say why
+            self.assertNotIn(name, files)
+            self.assertFalse((DATA / f"{name}.json").exists())
+        text = load("text")
+        self.assertTrue(any("freight" in c and "Military" in c for c in text["advisor.commerce.caveats"]))
+
+    def test_road_and_rail_links_join_neighbouring_land_hexes(self):
+        from pipeline.core.hexgrid import HexGrid
+
+        grid = HexGrid(**{k: self.world["grid"][k] for k in ("radius", "cols", "rows")})
+        owner = self.world["owner"]
+        for layer, tiers in (("roads", self.infra["road_classes"]), ("rail", self.infra["rail_tiers"])):
+            seen = set()
+            self.assertGreater(len(self.infra[layer]), 50, layer)
+            for a, b, tier in self.infra[layer]:
+                self.assertLess(a, b)
+                self.assertIn(b, grid.neighbours(a))
+                self.assertGreaterEqual(owner[a], 0)
+                self.assertGreaterEqual(owner[b], 0)
+                self.assertLess(tier, len(tiers))
+                self.assertNotIn((a, b), seen)
+                seen.add((a, b))
+
+    def test_ports_are_left_out_and_say_why(self):
+        self.assertEqual(self.infra["ports"], [])
+        self.assertIn("no open cargo statistics", self.infra["rules"]["ports"])
+
+    def test_airports_are_one_year_on_land_with_hub_classes_by_passengers(self):
+        airports = self.infra["airports"]
+        self.assertTrue(airports)
+        floor = {h: None for h in self.infra["hubs"]}
+        for a in airports:
+            self.assertEqual(a["year"], 2019)
+            self.assertGreaterEqual(a["passengers"], 900_000)
+            self.assertEqual(a["enplanements"], round(a["passengers"] / 2))  # boardings are half the passengers
+            self.assertGreaterEqual(self.world["owner"][a["cell"]], 0)
+            self.assertEqual(self.abbrs[self.world["owner"][a["cell"]]], a["state"])
+            self.assertIn(a["hub"], floor)
+        by_hub = {h: [a["passengers"] for a in airports if a["hub"] == h] for h in "LMS"}
+        self.assertGreater(min(by_hub["L"]), max(by_hub["M"]))
+        self.assertGreater(min(by_hub["M"]), max(by_hub["S"]))
+        self.assertEqual([a["passengers"] for a in airports], sorted((a["passengers"] for a in airports), reverse=True))
+        self.assertIn("estimate", self.infra["rules"]["airports"])
+
+    def test_wonders_stand_on_land_in_their_state_under_published_rules(self):
+        rules = {r["id"]: r for r in self.wonders["rules"]}
+        self.assertEqual(set(rules), {"world_heritage", "national_park", "research_university", "landmark"})
+        for w in self.wonders["wonders"]:
+            self.assertIn(w["rule"], rules)
+            self.assertIn(w["kind"], rules[w["rule"]]["kinds"] if "kinds" in rules[w["rule"]] else [rules[w["rule"]]["kind"]])
+            owner = self.world["owner"][w["cell"]]
+            self.assertGreaterEqual(owner, 0, w["name"])
+            self.assertEqual(self.abbrs[owner], w["state"], w["name"])
+        self.assertEqual(len([w for w in self.wonders["wonders"] if w["rule"] == "world_heritage"]), 7)  # 6 properties, Melaka and George Town drawn twice
+
+    def test_no_wonder_is_chosen_by_faith_or_community(self):
+        words = ("mosque", "masjid", "temple", "kuil", "church", "gereja", "wat ", "shrine", "cathedral", "surau")
+        for w in self.wonders["wonders"]:
+            self.assertFalse(any(x in w["name"].lower() for x in words), w["name"])
+        for r in self.wonders["rules"]:
+            self.assertFalse(any(x in r["text"].lower() for x in ("muslim", "buddhist", "hindu", "christian", "malay ", "chinese ")), r["id"])
+
+    def test_universities_are_ranked_by_lecturers_with_a_city_cap(self):
+        unis = [w for w in self.wonders["wonders"] if w["rule"] == "research_university"]
+        staff = [w["metrics"]["lecturers"] for w in unis]
+        self.assertEqual(staff, sorted(staff, reverse=True))
+        self.assertEqual([w["rank"] for w in unis], list(range(1, len(unis) + 1)))
+        cities = [w["cbsa"] for w in unis if w["cbsa"]]
+        self.assertLessEqual(max(cities.count(c) for c in set(cities)), 2)
+        rule = next(r for r in self.wonders["rules"] if r["id"] == "research_university")
+        self.assertEqual(rule["measure"], "lecturers")
+
+    def test_curated_landmarks_never_share_a_hex_or_city_with_another_wonder(self):
+        landmarks = [w for w in self.wonders["wonders"] if w["rule"] == "landmark"]
+        cities = [w["cbsa"] for w in landmarks if w["cbsa"]]
+        self.assertEqual(len(cities), len(set(cities)))
+        others = {w["cell"] for w in self.wonders["wonders"] if w["rule"] in ("world_heritage", "national_park")}
+        self.assertFalse(others & {w["cell"] for w in landmarks})
+
+    def test_floods_use_null_for_missing_figures_and_zero_for_unaffected(self):
+        floods = self.dis["floods"]
+        years = floods["years"]
+        self.assertEqual(years, [2021, 2022, 2023, 2024, 2025])
+        self.assertEqual(len(floods["national"]["loss_k"]), len(years))
+        states = floods["states"]
+        self.assertEqual(set(states), set(self.abbrs))
+        self.assertIsNone(states["LBN"]["loss_k"][0])  # DOSM published no 2021 figure for Labuan: not zero
+        self.assertEqual(states["PNG"]["loss_k"][0], 0)  # "-": not affected
+        self.assertGreater(states["SGR"]["loss_k"][0], 3e6)  # the December 2021 floods, RM thousand
+        # 2021: DOSM gave agriculture and infrastructure for the nation only, so the states fall short; from 2022 they add up
+        self.assertEqual(floods["states_complete"], [False, True, True, True, True])
+        self.assertIn("nation only", floods["states_note"])
+        for i, complete in enumerate(floods["states_complete"]):
+            total = sum(s["loss_k"][i] or 0 for s in states.values())
+            ratio = total / floods["national"]["loss_k"][i]
+            if complete:
+                self.assertAlmostEqual(ratio, 1, delta=0.001)
+            else:
+                self.assertLess(ratio, 0.8)
+
+    def test_flood_districts_follow_the_world_and_are_not_state_totals(self):
+        counties = self.dis["floods"]["counties"]
+        self.assertEqual([r[0] for r in counties["rows"]], [c["geoid"] for c in self.world["counties"]])
+        self.assertTrue(all(len(r) == 6 for r in counties["rows"]))
+        self.assertIn("by state only", counties["note"])
+        self.assertLess(sum(r[2] or 0 for r in counties["rows"]), self.dis["floods"]["national"]["loss_k"][1])
+
+    def test_text_pack_states_the_gaps(self):
+        text = load("text")
+        self.assertTrue(any("Natural Earth" in c and "Port Klang" in c for c in text["advisor.commerce.caveats"]))
+        self.assertTrue(any("only floods are shown" in c for c in text["advisor.culture.caveats"]))
+        self.assertEqual(text["advisor.culture.disaster_sources"], ["dosm_floods"])
+
+
+class LayerReaderTest(unittest.TestCase):
+    """The small file readers of pipeline/malaysia_layers.py."""
+
+    def test_flood_cells_keep_missing_apart_from_zero(self):
+        from pipeline import malaysia_layers as layers
+
+        self.assertEqual(layers._value("-"), 0.0)
+        self.assertIsNone(layers._value("n.a"))
+        self.assertIsNone(layers._value("#REF!"))
+        self.assertIsNone(layers._value(None))
+        self.assertEqual(layers._value("12.5"), 12.5)
+
+    def test_spreadsheet_columns_count_like_letters(self):
+        from pipeline import malaysia_layers as layers
+
+        self.assertEqual([layers.column(c) for c in ("A", "Z", "AA", "AB")], [1, 26, 27, 28])

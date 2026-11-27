@@ -1,12 +1,15 @@
 {
   "advisor.commerce.caveats": [
-    "Freight routes and ports are not yet built for the Malaysia edition."
+    "Trade routes are not built: no open freight flows between states were found (DOSM's trade tables are national external trade). Military bases are not built either: no open list of properties was found to check them against.",
+    "Roads and rail are Natural Earth's 1:10m lines, map art rather than a survey: many Sabah and Sarawak roads and part of the rail network are missing. Ports are not shown: there are no open cargo statistics by port, and Natural Earth's port points leave out Port Klang and Tanjung Pelepas.",
+    "Airports are those with 900,000 or more passengers in 2019, the last year before the pandemic, from Wikidata's statements; airports with no 2019 figure there (Ipoh, Kuantan, Labuan and others) are not shown. Boardings are half the total passengers, an estimate."
   ],
   "advisor.culture.caveats": [
-    "Faith, wonders and disasters are not yet built for the Malaysia edition."
+    "Wonders are chosen by published rules and never by community or faith: UNESCO's World Heritage list, a short hand-picked list of parks and landmarks that are not places of worship, and the five designated Research Universities ranked by lecturers in 2025 (public universities only; at most two per city, so a third Klang Valley university is left out).",
+    "Flood figures are DOSM's estimated value of losses per year in current ringgit, from its Impact of Floods reports for 2021 to 2025, not a count of events: each year comes from the latest report that carries it, a blank is a figure DOSM did not publish, and the December 2021 floods dominate the series. For 2021 the state rows leave out agriculture and infrastructure (published for the nation only), so the state totals add up from 2022. Malaysia has no open disaster database of events, deaths or other hazards, so only floods are shown."
   ],
   "advisor.culture.disaster_sources": [
-    "dosm_population"
+    "dosm_floods"
   ],
   "advisor.culture.sources": [
     "dosm_population"
@@ -99,5 +102,19 @@
   "cv.economy_note": "DOSM real GDP, {gdp_year}, constant 2015 ringgit, counted where the work is done. Per person divides by the residents of {gdp_year}.",
   "cv.economy_note.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
   "cv.workforce_note": "Labour Force Survey 2021 workers by industry for each state, shared over districts by their 2020 GDP in the matching sector: an estimate, counted where people live.",
-  "report.gold_basis": "constant 2015 {currency}"
+  "report.gold_basis": "constant 2015 {currency}",
+  "layers.toggle.roads": "Main highways and major roads from Natural Earth, as map art",
+  "layers.toggle.rail": "Rail lines from Natural Earth, as map art (coverage of Malaysia is partial)",
+  "layers.toggle.hubs": "Airports with 900,000+ passengers in 2019 (Wikidata, from Malaysia Airports and the Department of Civil Aviation); ports are not shown",
+  "layers.toggle.wonders": "UNESCO World Heritage Sites, hand-picked parks and landmarks, and the designated research universities by lecturers",
+  "layers.airport_source": "Total passengers in 2019 (Wikidata); boardings are half of them, an estimate. Hub classes are by passengers: large 5 million or more, medium 2 million, small 900,000.",
+  "advisor.commerce.pax_note": "Passenger boardings in 2019, estimated as half of the total passengers (arrivals plus departures) that Wikidata records; no change on the year before is shown.",
+  "advisor.commerce.ports_what": "ports",
+  "advisor.commerce.cargo_note": "Malaysia has no open air-cargo figures by airport, so no airport is ranked by cargo.",
+  "advisor.culture.wonders_note": "Hover a wonder to find it on the map; click to fly there. World Heritage Sites are UNESCO's list; parks and landmarks are hand-picked and not ranked; the research universities are the five the Ministry of Higher Education designated, ranked by lecturers.",
+  "advisor.culture.disasters_kicker": "Flood losses, DOSM Impact of Floods",
+  "advisor.commerce.blurb": "The busiest airports, and the highways and rail lines that tie the map together.",
+  "layers.toggle.military": "Not built for Malaysia: no open list of bases or their land was found, so this switch draws nothing",
+  "layers.toggle.trade": "Not built for Malaysia: no open freight flows between states were found, so this switch draws nothing",
+  "advisor.military.blurb": "Bases and defence: not built for Malaysia, as no open list of bases was found."
 }

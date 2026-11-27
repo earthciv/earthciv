@@ -46,8 +46,9 @@ export async function mount(ctx) {
   const nm = trade?.national_musd || {};
   const topPort = infra?.ports?.[0], topAir = infra?.airports?.[0];
   el.insertAdjacentHTML("beforeend", tiles([
-    { label: "Domestic freight", value: fin(nm.domestic) ? money(nm.domestic * MUSD) : "–", sub: `${esc(trade?.vintage || "FAF")} · by value` },
-    { label: "Busiest port", value: topPort ? `${count3(topPort.tons)} t` : "–", sub: topPort ? topPort.name : "" },
+    // A tile appears only when its file has something to report (an edition without trade.json or ports skips it).
+    ...(trade ? [{ label: "Domestic freight", value: fin(nm.domestic) ? money(nm.domestic * MUSD) : "–", sub: `${esc(trade?.vintage || "FAF")} · by value` }] : []),
+    ...(topPort ? [{ label: "Busiest port", value: `${count3(topPort.tons)} t`, sub: topPort.name }] : []),
     { label: "Busiest airport", value: topAir ? count3(topAir.enplanements) : "–", sub: topAir ? `${topAir.id} boardings ${topAir.year}` : "" },
   ]) + (trade ? `<p class="adv-callout">${rich("advisor.commerce.callout", { year: trade.year ?? "", imports: money(nm.import * MUSD), exports: money(nm.export * MUSD) })}</p>` : ""));
 
@@ -287,7 +288,7 @@ export async function mount(ctx) {
       portBubbles?.setHot(p ? p.key : null);
     };
     // Ports with only a total (Transport Canada publishes each port authority's total only) get plain bars.
-    portBars = !portSplit ? barList(pBody, {
+    portBars = !ports.length ? null : !portSplit ? barList(pBody, {
       rank: true, ariaLabel: "Busiest ports by tonnage",
       rows: ports.slice(0, 15).map((p) => ({ key: p.key, label: p.name, sub: p.state, value: p.tons, text: `${count3(p.tons)} t`, color: PORT_COLOR })),
       onHover: (r) => portHover(r ? ports.find((p) => p.key === r.key) : null),
@@ -298,7 +299,7 @@ export async function mount(ctx) {
       onHover: (x) => portHover(x ? ports.find((p) => p.key === x.row.key) : null),
       onClick: (x) => flyTo(ports.find((p) => p.key === x.row.key)),
     });
-    pBody.insertAdjacentHTML("beforeend", (portSplit ? swatchLegend(PK) : "") + `<p class="adv-note">Top 15 of ${int(ports.length)} ${esc(txt("advisor.commerce.ports_what"))}.</p>`);
+    if (ports.length) pBody.insertAdjacentHTML("beforeend", (portSplit ? swatchLegend(PK) : "") + `<p class="adv-note">Top 15 of ${int(ports.length)} ${esc(txt("advisor.commerce.ports_what"))}.</p>`);
 
     const aBody = section(el, { title: "Airports", kicker: esc(v.airports || ""), note: esc(infra.rules?.airports || "") });
     const airports = (infra.airports || []).map((a) => ({ ...a, key: `a${a.id}` }));
