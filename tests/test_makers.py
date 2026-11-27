@@ -138,12 +138,19 @@ class MakersWiringTest(unittest.TestCase):
         self.assertIn("https://earthciv.org/#makers=all", read("README.md"))
 
     def test_this_sites_account_is_the_repository_owner(self):
-        # The editions credited to this site are those whose repository is this one.
+        # Unattributed editions in this repository fall back to the organization account, while the built-in editions
+        # name their makers explicitly.
         self.assertIn('const REPO_URL = "https://github.com/earthciv/earthciv";', self.index)
         self.assertIn('const HOUSE = new URL(REPO_URL).pathname.split("/")[1].toLowerCase();', self.index)
         ports = json.loads(PORTS_PATH.read_text(encoding="utf-8"))["ports"]
+        by_id = {p["id"]: p for p in ports}
         house = [p["id"] for p in ports if (p.get("repo") or "").lower() == "earthciv/earthciv" and "author_github" not in p]
-        self.assertEqual(house, ["ca"])
+        self.assertEqual(house, [])
+        self.assertEqual(by_id["us"]["author_github"], "karpathy")
+        self.assertEqual(by_id["ca"]["author"], "manpreetsgarha")
+        self.assertEqual(by_id["ca"]["author_github"], "manpreetsgarha")
+        self.assertEqual(by_id["ca"]["author_twitter"], "manpreetsgarha")
+        self.assertNotIn("author_url", by_id["ca"])
 
     def test_pictures_are_asked_for_without_naming_the_page(self):
         # The only pictures from another site are the makers', from GitHub's picture host. The request carries no

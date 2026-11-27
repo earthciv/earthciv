@@ -280,9 +280,16 @@ test("one map is the original, and its maker leads the list", () => {
   assert.equal(ranked[0].github, "karpathy");
   // The U.S. edition is his map too, so it is credited to him and not to this site.
   assert.deepEqual(ranked[0].ports.map((p) => p.id), ["us", "usaciv-original"]);
-  assert.equal(ranked.at(-1).house, true);
-  assert.deepEqual(ranked.at(-1).ports.map((p) => p.id), ["ca"]);
-  assert.equal(ranked.filter((m) => m.house).length, 1);
+  // The Canada edition is credited to manpreetsgarha, not the organization account.
+  const canada = makers.find((m) => m.key === "manpreetsgarha");
+  assert.ok(canada);
+  assert.equal(canada.name, "manpreetsgarha");
+  assert.equal(canada.github, "manpreetsgarha");
+  assert.equal(canada.twitter, "manpreetsgarha");
+  assert.equal(canada.url, "https://github.com/manpreetsgarha");
+  assert.equal(canada.house, false);
+  assert.deepEqual(canada.ports.map((p) => p.id), ["ca"]);
+  assert.equal(ranked.filter((m) => m.house).length, 0);
 });
 
 test("the same person's maps are listed together", () => {
