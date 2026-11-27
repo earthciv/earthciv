@@ -7,6 +7,8 @@
   reads only behind hasText() are optional.
 * No code under web/js compares the edition with a literal id such as "us" or "ca". What differs between editions
   comes from the manifest, the text pack or the shape of the data.
+* An edition that declares pictures for its card on the world map ("home_pictures") has them, in the shape the card
+  shows, and pipeline/home_pictures.py can make them again.
 """
 
 import json
@@ -21,6 +23,10 @@ JS = ROOT / "web" / "js"
 REQUIRED = ("contract", "id", "name", "title", "emblem", "map_label", "files", "text")
 CONTRACT = 3
 SAFE_HREF = re.compile(r"^(https://|http://|#|[a-z0-9_./-]+$)", re.I)
+# The pictures on the world map's edition cards: file name -> (width, height) in px.
+PICTURES = {"home.jpg": (716, 208), "home-small.jpg": (519, 288)}
+# Both load on the home page before anything is clicked; the four files ship at 43 to 61 kB.
+PICTURE_MAX_BYTES = 90_000
 
 
 def load(path: Path):
@@ -37,6 +43,20 @@ def edition_dirs() -> list[Path]:
 
 def js_sources() -> dict[Path, str]:
     return {p: p.read_text(encoding="utf-8") for p in sorted(JS.rglob("*.js"))}
+
+
+def jpeg_size(path: Path) -> tuple[int, int]:
+    """Width and height from a JPEG's frame header, read by hand: the tests use only the standard library."""
+    data = path.read_bytes()
+    if data[:2] != b"\xff\xd8":
+        raise AssertionError(f"{path.name} is not a JPEG")
+    i = 2
+    while i + 9 <= len(data) and data[i] == 0xFF:
+        marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
+        if marker in (0xC0, 0xC1, 0xC2):  # the frame header: baseline, extended or progressive
+            return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+        i += 2 + length
+    raise AssertionError(f"{path.name} has no frame header")
 
 
 def sanitizer_sets() -> tuple[set[str], set[str]]:
@@ -99,6 +119,55 @@ class IndexTest(unittest.TestCase):
                 for name in ("world", "cities", "nation"):
                     self.assertIn(name, m["files"], f"{folder.name}: the map needs {name}.json")
                 self.assertTrue((folder / m["text"]).is_file())
+
+
+class HomePicturesTest(unittest.TestCase):
+    """The pictures on the world map's edition cards (docs/EDITIONS.md, pipeline/home_pictures.py)."""
+
+    def test_declared_pictures_exist_in_the_shape_the_cards_show(self):
+        for e in index()["editions"]:
+            self.assertIn(e.get("home_pictures", False), (True, False), f"{e['id']}: home_pictures is true or absent")
+            for name, size in PICTURES.items():
+                path = DATA / e["id"] / name
+                with self.subTest(edition=e["id"], picture=name):
+                    if not e.get("home_pictures"):
+                        self.assertFalse(path.exists(), "a picture nothing shows: declare home_pictures in editions.json")
+                        continue
+                    self.assertTrue(path.is_file(), "declared in editions.json but missing")
+                    self.assertEqual(jpeg_size(path), size)
+                    self.assertLess(path.stat().st_size, PICTURE_MAX_BYTES)
+
+    def test_the_script_can_make_every_declared_picture_again(self):
+        from pipeline import home_pictures
+
+        self.assertEqual({f"{name}.jpg": size for name, size in home_pictures.SIZES.items()}, PICTURES)
+        declared = {e["id"] for e in index()["editions"] if e.get("home_pictures")}
+        self.assertEqual(set(home_pictures.VIEWS), declared, "pipeline/home_pictures.py VIEWS and editions.json differ")
+        width, height = home_pictures.WINDOW
+        for edition, view in home_pictures.VIEWS.items():
+            self.assertEqual(len(view["at"]), 3)
+            for name in home_pictures.SIZES:
+                with self.subTest(edition=edition, picture=name):
+                    box = home_pictures.crop_box(name, *view[name])
+                    self.assertGreaterEqual(min(box["x"], box["y"]), 0)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    self.assertLessEqual(box["y"] + box["height"], height)
+                    # Scaled down from the screenshot, never up.
+                    self.assertGreaterEqual(box["width"] * home_pictures.DENSITY, home_pictures.SIZES[name][0])
+
+    def test_the_world_map_shows_them_in_their_own_shapes(self):
+        js = (JS / "ext" / "ports" / "index.js").read_text(encoding="utf-8")
+        css = (ROOT / "web" / "css" / "ports.css").read_text(encoding="utf-8")
+        self.assertIn("e.home_pictures === true", js)
+        wide = re.search(r'<img src="\$\{pic\}\.jpg" [^>]*width="(\d+)" height="(\d+)"', js)
+        small = re.search(r'<source media="([^"]+)" srcset="\$\{pic\}-small\.jpg" width="(\d+)" height="(\d+)">', js)
+        self.assertIsNotNone(wide, "the card's <img> has changed: update this test with it")
+        self.assertIsNotNone(small, "the card's <source> has changed: update this test with it")
+        self.assertEqual((int(wide[1]), int(wide[2])), PICTURES["home.jpg"])
+        self.assertEqual((int(small[2]), int(small[3])), PICTURES["home-small.jpg"])
+        self.assertIn(f"aspect-ratio: {wide[1]} / {wide[2]};", css)
+        # The squarer file and the squarer box are chosen on one media condition, in the markup and in the stylesheet.
+        self.assertIn(f"@media {small[1]} {{\n  .wv-tile-pic img {{ aspect-ratio: {small[2]} / {small[3]}; }}", css)
 
 
 class TextPackTest(unittest.TestCase):

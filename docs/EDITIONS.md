@@ -11,6 +11,7 @@ web/data/
     edition.json         the manifest: names, terms, currency, display hints, which files exist
     text.json            the text pack: every sentence that differs between editions
     world.json …         the data files the manifest lists
+    home.jpg, home-small.jpg   optional: pictures of its map for its card on the world map
 ```
 
 ## The one rule
@@ -40,8 +41,8 @@ edition state in the hash (such as `/#city=35620`) open the default edition. Lin
   "contract": 3,
   "default": "us",
   "editions": [
-    {"id": "us", "name": "United States", "emblem": "★"},
-    {"id": "ca", "name": "Canada", "emblem": "🍁"}
+    {"id": "us", "name": "United States", "emblem": "★", "home_pictures": true},
+    {"id": "ca", "name": "Canada", "emblem": "🍁", "home_pictures": true}
   ]
 }
 ```
@@ -49,6 +50,11 @@ edition state in the hash (such as `/#city=35620`) open the default edition. Lin
 The country menu lists the editions in this order. `id` is the folder name: lower case, the country's ISO 3166-1
 alpha-2 code where there is one. `name` and `emblem` repeat the manifest's, so the menu can be built without loading
 every manifest.
+
+`home_pictures` is optional. `true` says the edition's folder has two pictures of its own map, which the world map
+shows on the edition's card: `home.jpg` (716 × 208 px) where the card is wide, and `home-small.jpg` (519 × 288 px)
+where two cards sit side by side, on a phone or in a low window. Without it the card is a plain row, and the world
+map asks for no picture. `pipeline/home_pictures.py` makes both files from the running map.
 
 ## edition.json
 
@@ -144,4 +150,12 @@ Where editions differ in what their data means, the data says so, and the code f
 ```sh
 uv run python -m unittest discover -s tests
 uv run --group harness python -m harness record --edition <id>
+```
+
+5. Optionally, give its card on the world map its pictures. Add the edition to `VIEWS` in
+   `pipeline/home_pictures.py` (where the map sits, and which part of the window each picture shows), make the two
+   files, look at them, and set `"home_pictures": true` in `editions.json`:
+
+```sh
+uv run --group harness python -m pipeline.home_pictures <id>
 ```

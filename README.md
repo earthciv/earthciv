@@ -211,6 +211,8 @@ pipeline/
   canada.py   the Canada edition's build, with its canada_*.py helpers → web/data/ca/*.json
   build_world_figures.py, build_world_outlines.py
               the world map's country figures and outlines → web/data/world-*.json
+  home_pictures.py
+              the pictures of each edition's map on its card on the world map → web/data/<id>/home*.jpg
   package.py  the deploy package
 harness/      records every view of every edition in a headless browser, to compare before and after a change
               (docs/HARNESS.md)

@@ -23,6 +23,9 @@ const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css?v=20261126", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
+// Editions with pictures of their own map for their card here: home.jpg and home-small.jpg in the edition's folder,
+// declared by "home_pictures" in editions.json (docs/EDITIONS.md; pipeline/home_pictures.py makes them).
+const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
 
@@ -917,15 +920,23 @@ export function install(app) {
     else if (ui.kind) unmapped = [];
     const editions = allPorts().filter((p) => p.status === "merged" && p.editionId);
     const nMapped = new Set(allPorts().flatMap((p) => p.countries || [])).size;
-    const nCommunity = allPorts().filter((p) => p.status !== "merged").length;
 
+    // An edition's card is one button. Where the edition has pictures (PICTURED) it shows a piece of its own map
+    // above the row that names it: the wide picture, or the squarer one where the cards are narrow. ports.css sizes
+    // the picture on the same media condition as the <source> here; the button's label already names the card.
     const tile = (p) => {
       const iso = (p.countries || [])[0] || "";
       const current = !home && p.editionId === EDITION_ID;
-      return `<button type="button" class="wv-tile" data-play="${esc(p.editionId)}" data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
-        <span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
+      const pic = PICTURED.has(p.editionId) ? esc(new URL(`${p.editionId}/home`, DATA_URL).href) : "";
+      const row = `<span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
         <span class="wv-tile-text"><b>${esc(p.name)}</b><small>${current ? "EarthCiv edition · you came from here" : "EarthCiv edition · hex map from public data"}</small></span>
-        <span class="wv-play">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></span>
+        <span class="wv-play">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></span>`;
+      const body = !pic ? row : `<span class="wv-tile-pic"><picture>
+          <source media="(max-width: 600px), (min-width: 901px) and (max-height: 760px)" srcset="${pic}-small.jpg" width="519" height="288">
+          <img src="${pic}.jpg" alt="" width="716" height="208" decoding="async"></picture></span>
+        <span class="wv-tile-row">${row}</span>`;
+      return `<button type="button" class="wv-tile${pic ? " wv-tile-pictured" : ""}" data-play="${esc(p.editionId)}" data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
+        ${body}
       </button>`;
     };
     const row = (r) => {
@@ -939,11 +950,11 @@ export function install(app) {
 
     return `
       <div class="wv-intro">
-        <h2 class="wv-h">Pick a country</h2>
-        <p class="wv-lede">Open an EarthCiv edition, or pick a country on the map or in the list to see its figures and maps.
-          ${plural(editions.length, "EarthCiv edition")} and ${plural(nCommunity, "community map")} cover ${nMapped} countries so far.</p>
+        <h2 class="wv-h">The real world, mapped like a strategy game</h2>
+        <p class="wv-lede"><span class="wv-lede-what">Real countries as strategy-game maps, built from public data.</span>
+          ${nMapped} mapped so far: pick one on the map, or start here.</p>
       </div>
-      ${editions.length ? `<div class="wv-tiles">${editions.map(tile).join("")}</div>` : ""}
+      ${editions.length ? `<div class="wv-tiles${editions.some((p) => PICTURED.has(p.editionId)) ? " wv-tiles-pictured" : ""}">${editions.map(tile).join("")}</div>` : ""}
       <div class="wv-kinds" role="group" aria-label="Show only">${kindsHtml()}</div>
       ${mapped.length ? `<h3 class="wv-group">With a map <span>${mapped.length}</span></h3><ul class="wv-rows">${mapped.map(row).join("")}</ul>` : ""}
       ${unmapped.length ? `<h3 class="wv-group">No map yet <span>${unmapped.length}</span></h3><ul class="wv-rows wv-rows-none">${unmapped.map(row).join("")}</ul>` : ""}
