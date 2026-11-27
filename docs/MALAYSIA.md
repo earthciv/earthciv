@@ -48,7 +48,7 @@ Built by `pipeline/malaysia_economy.py` (called from three small hooks in `malay
 | **Food, Production, Science, Culture** = workers | DOSM employed persons by industry and state (Labour Force Survey, MSIC 2008), archive.data.gov.my | 2021 | state; districts are estimates |
 | Unemployment | DOSM `lfs_district`, `lfs_state_sex` | 2024 annual | district, state |
 | Income, poverty, Gini, spending | DOSM `hies_district`, `hies_state`, `hh_income` (HIES) | 2024 | district, state, nation |
-| Tree cover, cropland, built-up | Esri Sentinel-2 10 m land cover (the same samples as the terrain) | latest annual | hex |
+| Tree cover, cropland, built-up | Esri Sentinel-2 10 m land cover (the same samples as the terrain), with oil palm moved from trees to cropland (Descals 2019) | latest annual | hex |
 
 **Gold is GDP in constant 2015 ringgit.** DOSM publishes the district series only at constant 2015 prices (2015 to 2020)
 and nominal GDP only for the nation, so "state share × national nominal GDP" would have meant inventing the split. Real
@@ -96,9 +96,9 @@ mean of its members' medians (an approximation); Gini, poverty and mean income a
 city carries no Gini.
 
 **Lenses added** (group Prosperity): Income (median monthly household income), Poverty, Inequality (Gini), Unemployment,
-GDP per resident; (group Land): Tree cover, Cropland, Built-up. The land-cover map counts oil-palm and rubber estates as
-trees, so "Tree cover" is not natural forest (renamed from Canada's "Forest" for that reason) and cropland leaves
-estates out.
+GDP per resident; (group Land): Tree cover, Cropland, Built-up. The land-cover map counts rubber and other tree crops as
+trees (oil palm is moved to cropland: see Resources and land), so "Tree cover" is not natural forest (renamed from
+Canada's "Forest" for that reason).
 
 **counties.json** has one row per district (world.json `counties` order): area, density, GDP, GDP per resident, income,
 spending, poverty, Gini, unemployment, the four worker estimates, the city the district belongs to (`cbsa`) and a
@@ -117,10 +117,19 @@ Built by `pipeline/malaysia_resources.py`. Only data that carries its own positi
 | Power plants | WRI Global Power Plant Database v1.3.0 (the same pinned file as Canada's; WRI records no capacity year for Malaysian plants, so the vintage is the database version) | Every Malaysian plant of 25 MW or more, as listed; the hex is the plant's own, or the nearest land hex when the point falls in the sea. Solar rows come from Wiki-Solar. WRI's owner field reads "Penisular Malaysia Electricity Supply Company" for plants all over Sabah and Sarawak, so owners are shown only when it says something else |
 | Oil, gas and LNG sites | Wikidata (CC0), cached SPARQL result `wikidata_energy_sites.json` | Items whose country is Malaysia and whose class is an oil field, gas field, liquefaction or regasification terminal, with an English label. About a dozen: Tapis, Samarang, Tukau, Baronia, Betty, three Sabah blocks, Bintulu LNG, Melaka and Pengerang terminals. Left out: Ambalat (claimed by Indonesia), *Kilang Abok Berhad* (a company label at an onshore point). **Not an inventory**: no open dataset lists Petronas's producing fields with positions, and none is typed in from memory |
 | Offshore rule | as Canada's Grand Banks | A site on water goes to the nearest land hex of the whole map (reach 250 km; Tapis is ~175 km off Terengganu) and says so in its `detail`. Samarang, off Labuan, lands on Labuan's hex |
+| Oil palm | Descals et al. 2019 global oil palm map (Zenodo 4473715, CC BY 4.0; 10 m, industrial and smallholder; zip cached in `data/raw/malaysia/descals/`) | Tiles are reduced once to 0.009° (~1 km) blocks of oil palm share (`oilpalm_1km.npy`). A district with 20,000+ ha of oil palm carries an `oil_palm` site (hectares = block share × area, summed over blocks whose centre lies in the district). The 2019 map predates later planting |
 | District crops | DOSM `crops_district_area` (data.gov.my; MAFS, DOA; 2017–2024, latest year used) | One site per district whose planted area of **durian** (≥ 1,000 ha), **coconut** (≥ 1,500), **pineapple** (≥ 800) or **sago** (≥ 1,500) passes the floor, on the hex of the district nearest its centre; `value` is hectares. `Selama`, `Kalabakan`, `Kecil Lojing`, Kuala Lumpur and Putrajaya are not in the table |
 | State `energy` | the plants above | MW per type, as Canada: only mapped plants |
 | State `land` | Esri Sentinel-2 cover sampled at 7 points per hex | Mean of the hex shares, as Canada. **Plantations read as trees** (see below) |
 | State `forest_reserve` | `forest_reserve_state` (DOSM, from the Forestry Department; 2024) | Hectares of permanent reserved forest, an extra key; it is not a land-cover share |
+
+**Land cover and oil palm.** The Esri map counts plantations as trees. Right after it is sampled, every sample point
+that lies on a 1 km block at least half oil palm (Descals 2019) and is classed trees, shrub or grass becomes cropland;
+water, built-up land and flooded vegetation are left alone. This feeds the terrain, the Tree cover and Cropland lenses
+and the states' `land`. Before → after (state mean of hex shares, forest / crop): Johor 80% / 4% → 44% / 43%; Pahang
+90% / 2% → 73% / 21%; Perak 83% / 7% → 69% / 22%; Sabah 92% / 2% → 77% / 19%; Sarawak 94% / 2% → 87% / 10%. Rubber and
+other tree crops still read as trees, and oil palm planted since 2019 is missed, so Tree cover remains an overestimate
+of natural forest (the lens name and note say so).
 
 **Known double counts.** WRI lists Tanjung Bin (Johor) as two coal rows at one site (3,244 and 2,100 MW) and Kapar
 (Selangor) as a coal row and a gas row of the same company (1,600 and 2,420 MW). They are kept as published and
@@ -130,8 +139,8 @@ flagged in the text pack; Johor and Selangor capacity may be overstated.
 
 * **Mines** (tin, bauxite, gold, iron, silica…): `mineral_extraction` gives output by state and commodity (2016–2021),
   with no positions. A point per state would be invented.
-* **Oil palm, rubber, paddy:** `crops_district_area` holds no oil palm, rubber or paddy. Paddy is in `crops_state`
-  (by state only); oil palm exists as MPOB's 2015 area by state (a data.gov.my archive spreadsheet); no open rubber area
-  was found.
+* **Rubber and paddy:** `crops_district_area` holds no oil palm, rubber or paddy. Paddy is in `crops_state` (by state
+  only); no open rubber area was found. (Oil palm comes from the Descals map above; MPOB's 2015 state totals, a
+  data.gov.my archive spreadsheet, are a cross-check: Johor 740k ha, Pahang 725k, Sabah 1.54M, Sarawak 1.44M.)
 * **Large Sarawak hydro** (Bakun, Murum) is missing from the WRI database and is not added by hand.
 * Forest reserves have state totals only.

@@ -314,8 +314,8 @@ class ResourcesTest(unittest.TestCase):
             self.assertEqual(set(s["energy"]["by_type"]), mw)
 
     def test_only_positioned_data_is_mapped(self):
-        # Mines (state totals only), oil palm, rubber and paddy have no positions in open data: none is invented.
-        self.assertFalse({"tin", "bauxite", "gold", "oil_palm", "rubber", "paddy"} & set(self.types))
+        # Mines (state totals only), rubber and paddy have no positions in open data: none is invented.
+        self.assertFalse({"tin", "bauxite", "gold", "rubber", "paddy"} & set(self.types))
         self.assertTrue({t["category"] for t in self.types.values()} <= {"energy", "agri"})
 
     def test_district_crop_sites_carry_hectares(self):
@@ -332,6 +332,16 @@ class ResourcesTest(unittest.TestCase):
         for s in self.states:
             self.assertIsNotNone(s["land"], s["abbr"])
             self.assertLessEqual(sum(v for v in s["land"].values() if v is not None), 1.01, s["abbr"])
+
+    def test_oil_palm_is_cropland_not_forest(self):
+        # Descals 2019 moves oil palm out of "trees": Johor (about 0.8 Mha of palm) must not read as 80% forest.
+        land = {s["abbr"]: s["land"] for s in self.states}
+        self.assertLess(land["JHR"]["forest"], 0.6)
+        self.assertGreater(land["JHR"]["crop"], 0.25)
+        palm = [i for i in self.res["items"] if i["type"] == "oil_palm"]
+        self.assertTrue(palm)
+        self.assertEqual(self.types["oil_palm"]["source"], "descals_oil_palm")
+        self.assertIn("descals_oil_palm", {x["id"] for x in load("sources")})
 
     def test_manifest_lists_resources(self):
         # The app requests only the files edition.json lists: without "resources" the map shows no resource layer.

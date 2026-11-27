@@ -16,13 +16,16 @@ state totals only) nothing is placed: docs/MALAYSIA.md says so, and so does the 
 from __future__ import annotations
 
 import csv
+import io
 import json
 import math
 import re
+import zipfile
 from collections import Counter, defaultdict
 from urllib.parse import quote
 
 import numpy as np
+from PIL import Image
 
 # Offshore fields are shown on the nearest coast hex of the nearest state, within this reach (Tapis lies ~175 km off
 # Terengganu). Canada does the same in rings (OFFSHORE_RINGS); here it is a distance because the hexes are 6 km.
@@ -47,6 +50,16 @@ WIKIDATA_SKIP = {
     "Kilang Abok Berhad",  # a company's label (kilang = mill or refinery) typed as an oil field, at an onshore point
 }
 WIKIDATA_FILE = "wikidata_energy_sites.json"
+
+# Descals et al. 2019 global oil palm map (10 m; 1 industrial, 2 smallholder, 3 other), in 634 GeoTIFF tiles.
+PALM_ZIP = "descals/oilpalm2019.zip"
+PALM_URL = "https://zenodo.org/api/records/4473715/files/High_resolution_global_industrial_and_smallholder_oil_palm_map_for_2019.zip/content"
+PALM_CACHE = "descals/oilpalm_1km.npy"  # derived: palm share of each 0.009° block, rebuilt if missing
+PALM_BLOCK = 100  # pixels (about 1 km) per block side
+PALM_STEP = 0.009  # degrees per block of the derived grid
+PALM_PLANTATION = 0.5  # a sample point on a block that is at least this oil palm is counted as cropland
+PALM_SITE_HA = 20_000  # a district with at least this much oil palm carries an oil palm site
+WINDOW = (98.2, -0.6, 120.7, 8.8)  # lon/lat of the hex grid, as pipeline/malaysia.py BBOX
 
 FUELS = {  # WRI primary_fuel -> (type id, name, colour, icon, emoji)
     "Hydro": ("hydro", "Hydro power plant", "#3fa7d6", "r-hydro", "💧"),
@@ -80,6 +93,8 @@ CROPS = {
 CROP_NOTE = ("Planted area of the crop in the district in {year} (DOSM, with MAFS and the Department of "
              "Agriculture), in hectares; districts with at least {floor:,} ha. Oil palm, rubber and paddy are not in the "
              "district table: see the text pack.")
+PALM_NOTE = ("Oil palm (industrial and smallholder) in the district in 2019 from the Descals et al. 10 m map, in hectares, "
+             "for districts with at least 20,000 ha. Rubber and paddy have no district figures in open data.")
 
 
 def register_inputs(source):
@@ -99,6 +114,12 @@ def register_inputs(source):
            "https://data.gov.my/data-catalogue/crops_district_area", "CC BY 4.0", "2024", ["Crop resources"],
            "Planted area (ha) of fruit, vegetable, spice, herb, cash and industrial crops by district (annual, 2017–2024). "
            "It has no oil palm, rubber or paddy.", {"crops_district_area.csv": CROPS_AREA_URL})
+    source("descals_oil_palm", "Global industrial and smallholder oil palm map, 2019", "Descals, Szantoi, Meijaard et al.",
+           "https://zenodo.org/records/4473715", "CC BY 4.0", "2019",
+           ["Plantations counted as cropland, not forest", "Oil palm sites"],
+           "A 10 m map of industrial and smallholder oil palm made from Sentinel-1 and Sentinel-2 imagery. It replaces "
+           "'trees' with 'cropland' under oil palm in the land-cover samples and gives each district's oil palm area. "
+           "Rubber and other tree crops are not in it.", {PALM_ZIP: PALM_URL})
     source("dosm_forest_reserve", "Permanent reserved forest by state", "DOSM, from the Forestry Department (Perhutanan), via data.gov.my",
            "https://data.gov.my/data-catalogue/forest_reserve_state", "CC BY 4.0", "2024", ["Forest reserve area of states"],
            "Area (ha) of gazetted permanent reserved forest by state, annual.", {"forest_reserve_state.csv": FOREST_RESERVE_URL})
@@ -198,9 +219,9 @@ def summarize(items, types, note):
     return {"note": note, "national": national, "states": dict(sorted(states.items()))}
 
 
-def resources_doc(source_dir, grid, xy, owners, states, county, props, places):
+def resources_doc(source_dir, grid, xy, owners, states, county, props, places, palm_ha):
     """resources.json. `states` are world.json's states (abbr), `county` the district index of each hex, `props` the
-    boundary districts' properties, `places` the cities (for each site's `cbsa`)."""
+    boundary districts' properties, `places` the cities (for each site's `cbsa`), `palm_ha` the hectares of oil palm in each district."""
     land = Land(grid, owners, states)
     types, items = {}, []
     offshore = []
@@ -241,6 +262,11 @@ def resources_doc(source_dir, grid, xy, owners, states, county, props, places):
             continue  # a district too small for its own hex (e.g. Putrajaya's neighbours)
         centre = np.array([sum(v) / len(cells) for v in zip(*(grid.center(*grid.col_row(c)) for c in cells))])
         cell = min(cells, key=lambda c: math.dist(grid.center(*grid.col_row(c)), centre))
+        if palm_ha[k] >= PALM_SITE_HA:
+            add_type("oil_palm", "Oil palm", "#c8872e", "r-oil_palm", "🌴", PALM_NOTE, "descals_oil_palm", "agri", "ha")
+            x, y = grid.center(*grid.col_row(cell))
+            add("oil_palm", f"{p['district']} ({p['state']})", round(x, 1), round(y, 1), cell, round(palm_ha[k], -2),
+                "Industrial and smallholder oil palm, 2019")
         for crop, (key, name, colour, emoji, floor) in CROPS.items():
             if species.get(crop, 0) >= floor:
                 add_type(key, name, colour, f"r-{key}", emoji, CROP_NOTE.format(year=year, floor=floor), "dosm_crops",
@@ -291,3 +317,64 @@ def state_fields(state_data, states, owners, pct, cover, resources, source_dir):
                         for k in LAND_SHARES} if sampled else None)
         ha, year = reserves.get(states[i]["name"], (None, None))
         row["forest_reserve"] = {"ha": ha, "year": year, "source": "dosm_forest_reserve"} if ha is not None else None
+
+
+def palm_grid(source_dir):
+    """Oil palm share (0..1) of each PALM_STEP° block of WINDOW, from the Descals tiles; cached as a .npy file."""
+    cache = source_dir / PALM_CACHE
+    if cache.exists():
+        return np.load(cache)
+    west, south, east, north = WINDOW
+    rows, cols = round((north - south) / PALM_STEP), round((east - west) / PALM_STEP)
+    grid = np.zeros((rows, cols), np.float32)
+    Image.MAX_IMAGE_PIXELS = None
+    with zipfile.ZipFile(source_dir / PALM_ZIP) as outer, zipfile.ZipFile(io.BytesIO(outer.read("oil_palm_map.zip"))) as z:
+        for name in z.namelist():
+            image = Image.open(io.BytesIO(z.read(name)))
+            x0, y0 = image.tag_v2[33922][3:5]  # tie point: lon, lat of the top-left corner
+            step = image.tag_v2[33550][0]
+            lon1, lat1 = x0 + image.width * step, y0 - image.height * step
+            if lon1 < west or x0 > east or y0 < south or lat1 > north:
+                continue
+            data = np.asarray(image) < 3
+            h, w = data.shape[0] // PALM_BLOCK, data.shape[1] // PALM_BLOCK
+            share = data[:h * PALM_BLOCK, :w * PALM_BLOCK].reshape(h, PALM_BLOCK, w, PALM_BLOCK).mean(axis=(1, 3))
+            lons = x0 + (np.arange(w) + 0.5) * PALM_BLOCK * step
+            lats = y0 - (np.arange(h) + 0.5) * PALM_BLOCK * step
+            cc = np.floor((lons - west) / PALM_STEP).astype(int)
+            rr = np.floor((north - lats) / PALM_STEP).astype(int)
+            ok_c, ok_r = (cc >= 0) & (cc < cols), (rr >= 0) & (rr < rows)
+            sub = share[np.ix_(ok_r, ok_c)]
+            target = np.ix_(rr[ok_r], cc[ok_c])
+            grid[target] = np.maximum(grid[target], sub)
+    np.save(cache, grid)
+    return grid
+
+
+def plantation_cover(cover, lon, lat, source_dir):
+    """The land-cover samples with oil palm turned from trees (or shrub, grass) into cropland (cover 7): the Sentinel-2
+    map counts plantations as trees. Water (12), built-up (9), flooded vegetation (8), snow and bare ground are left alone."""
+    palm = palm_grid(source_dir)
+    west, south, east, north = WINDOW
+    cc = np.floor((np.asarray(lon) - west) / PALM_STEP).astype(int)
+    rr = np.floor((north - np.asarray(lat)) / PALM_STEP).astype(int)
+    ok = (cc >= 0) & (cc < palm.shape[1]) & (rr >= 0) & (rr < palm.shape[0])
+    share = np.zeros(len(cover), np.float32)
+    share[ok] = palm[rr[ok], cc[ok]]
+    out = cover.copy()
+    out[(share >= PALM_PLANTATION) & np.isin(cover, (2, 4, 5))] = 7
+    return out
+
+
+def district_palm_ha(source_dir, district_of, count):
+    """Hectares of oil palm in each of `count` districts: the share in every block times its area, summed by the
+    district `district_of(lon, lat)` returns for the block's centre."""
+    palm = palm_grid(source_dir)
+    west, south, east, north = WINDOW
+    rr, cc = np.nonzero(palm > 0)
+    lon, lat = west + (cc + 0.5) * PALM_STEP, north - (rr + 0.5) * PALM_STEP
+    ha = palm[rr, cc] * (PALM_STEP * 111.32) ** 2 * np.cos(np.radians(lat)) * 100
+    totals = np.zeros(count)
+    where = district_of(lon, lat)
+    np.add.at(totals, where[where >= 0], ha[where >= 0])
+    return totals

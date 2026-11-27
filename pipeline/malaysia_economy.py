@@ -572,10 +572,10 @@ def lenses(econ, spread, pct, owners, year, domain):
     ]
     lands = [("forest", "forest", "Tree cover", "l-forest", "🌴",
               ("Share of the hex's land samples in trees (Sentinel-2 10 m land cover, 7 samples per hex). The map counts "
-               "oil-palm and rubber estates as trees, so this is not natural forest.")),
+               "rubber and other tree crops as trees (oil palm is moved to cropland), so this is not natural forest.")),
              ("farmland", "crop", "Cropland", "l-farmland", "🚜",
               ("Share of the hex's land samples in cropland such as paddy and vegetables (Sentinel-2 10 m land cover, 7 "
-               "samples per hex). Oil-palm and rubber estates are counted as trees, not here.")),
+               "samples per hex). Oil palm is counted here (Descals 2019 map); rubber estates are counted as trees.")),
              ("developed", "developed", "Built-up", "l-developed", "🏙️",
               "Share of the hex's land samples in built-up land (Sentinel-2 10 m land cover, 7 samples per hex).")]
     for id, key, name, icon, emoji, text in lands:

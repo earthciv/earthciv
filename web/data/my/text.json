@@ -19,7 +19,7 @@
     "dosm_population",
     "dosm_districts"
   ],
-  "almanac.resources_intro": "<p>Resource markers show power plants of 25 MW or more as the World Resources Institute listed them (database v1.3.0, no capacity year recorded), named oil, gas and LNG sites that Wikidata places in Malaysia, and the districts where durian, coconut, pineapple or sago cover at least 800–1,500 ha (DOSM, 2024). Oil and gas fields at sea are shown on the nearest coast hex. <b>Not on the map:</b> mines (open data gives output by state, not positions), and oil palm, rubber and paddy (published by state, not by district). Press <b>R</b> to show or hide them.</p>",
+  "almanac.resources_intro": "<p>Resource markers show power plants of 25 MW or more as the World Resources Institute listed them (database v1.3.0, no capacity year recorded), named oil, gas and LNG sites that Wikidata places in Malaysia, the districts with 20,000+ ha of oil palm (Descals et al., 2019), and where durian, coconut, pineapple or sago cover at least 800–1,500 ha (DOSM, 2024). Oil and gas fields at sea are shown on the nearest coast hex. <b>Not on the map:</b> mines (open data gives output by state, not positions), and rubber and paddy (no district figures in open data). Press <b>R</b> to show or hide them.</p>",
   "advisor.energy.caveats": [
     "Power plants are those of 25 MW or more in WRI's Global Power Plant Database v1.3.0, which records no capacity year for Malaysian plants: plants built or closed since are not reflected, and Sarawak's large hydro stations (Bakun, Murum) are missing from it.",
     "Some stations may be listed twice in the database (Tanjung Bin appears as two coal rows at one site; Kapar's coal and its gas row are the same company), so a state's mapped capacity can overstate it.",
@@ -32,11 +32,12 @@
   ],
   "advisor.land.caveats": [
     "Land cover is the Sentinel-2 10 m map sampled at 7 points per hex, so small features blur into their surroundings.",
-    "That map classes oil palm and rubber plantations as trees, so forest is overstated and crops understated, most in Johor, Pahang, Perak, Sabah and Sarawak. Oil palm (MPOB) and rubber area are published by state, not by district, and rubber not at all in open data.",
+    "That map classes plantations as trees. Oil palm is moved to cropland using the Descals et al. 2019 map (10 m; a sample point on a 1 km block that is at least half oil palm), but rubber and other tree crops, and oil palm planted since 2019, still read as forest, so tree cover is still overstated, most in Johor, Perak, Kedah and Kelantan.",
     "Forest reserve area is the state's gazetted permanent reserved forest (Forestry Department): it is not a land-cover share."
   ],
   "advisor.land.sources": [
     "esri_cover",
+    "descals_oil_palm",
     "dosm_districts",
     "dosm_crops",
     "dosm_forest_reserve"
