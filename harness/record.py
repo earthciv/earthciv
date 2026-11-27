@@ -28,6 +28,10 @@ VIEW_TIMEOUT_S = 90
 
 
 class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    # Windows' registry often maps .js to text/plain, which browsers refuse for module scripts.
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,  # noqa: RUF012
+                      ".js": "text/javascript", ".mjs": "text/javascript"}
+
     def log_message(self, *args):
         pass
 
