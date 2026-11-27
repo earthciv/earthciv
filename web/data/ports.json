@@ -37,8 +37,8 @@
       "languages": ["en"],
       "license": "MIT",
       "repo": "earthciv/earthciv",
-      "author": "EarthCiv",
-      "author_url": "https://x.com/manpreetsgarha",
+      "author": "manpreetsgarha",
+      "author_github": "manpreetsgarha",
       "author_twitter": "manpreetsgarha",
       "url": null,
       "embed": true,
@@ -60,6 +60,7 @@
       "license": "MIT",
       "repo": "earthciv/earthciv",
       "author": "MyCiv",
+      "author_github": "pengkodam",
       "url": null,
       "embed": true,
       "description": "Malaysia from DOSM open data: 13 states and 3 federal territories, 160 districts, 47 cities and conurbations, City View and advisors."
