@@ -120,14 +120,14 @@ class WorldHomeTest(unittest.TestCase):
         self.assertIn('data-home="world"', html)
         # The default edition stays declared: old links without ?country= (/#city=…) still open it.
         self.assertIn('data-default-country="us"', html)
-        self.assertIn('<script type="module" src="js/boot.js"></script>', html)
+        self.assertRegex(html, r'<script type="module" src="js/boot\.js(?:\?[^"]+)?"></script>')
         self.assertNotIn('src="js/main.js"', html)
 
     def test_boot_loads_either_the_world_map_or_an_edition(self):
         boot = self.read("js", "boot.js")
         self.assertRegex(boot, r'import \{ OPENS_ON_WORLD\b[^}]*\} from "\./app/home\.js"')
-        self.assertIn('import("./ext/ports/home.js")', boot)
-        self.assertIn('import("./main.js")', boot)
+        self.assertRegex(boot, r'import\("\./ext/ports/home\.js(?:\?[^"]+)?"\)')
+        self.assertRegex(boot, r'import\("\./main\.js(?:\?[^"]+)?"\)')
         # The world map must not pull in an edition's code: boot.js imports main.js only on the edition path.
         self.assertNotIn('from "./main.js"', boot)
 

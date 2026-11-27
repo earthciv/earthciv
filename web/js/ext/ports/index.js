@@ -17,7 +17,7 @@
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
 import { editionIcon, fitMenu, flagEmoji, mapIcon, menuLabel } from "../../ui/mapPicker.js";
-import { preventIosInputZoom } from "../../ui/mobile.js";
+import { preventIosInputZoom } from "../../ui/mobile.js?v=20261127";
 import { DEFAULT_EDITION, EDITIONS } from "../../app/edition-index.js";
 import { editionUrl } from "../../app/home.js";
 // The map script and the stylesheet are versioned (as ./home.js versions this file) so that a browser holding copies
@@ -27,7 +27,7 @@ import { createRatings } from "./ratings.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261126", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)

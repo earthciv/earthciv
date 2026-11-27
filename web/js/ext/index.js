@@ -4,7 +4,7 @@
 // as an error and does not stop the others. Modules are fetched in parallel and installed in list order.
 // layers/: static map layers (roads, rail, ports, forts, wonders, trade routes) and their toggles.
 // ports/: All Ports & World Atlas (merged editions + live unmerged community ports in one view).
-const MODULES = ["./cityView/index.js", "./advisors/index.js", "./layers/index.js", "./ports/index.js"];
+const MODULES = ["./cityView/index.js", "./advisors/index.js", "./layers/index.js", "./ports/index.js?v=20261127"];
 
 export async function installExtensions(app, list = MODULES) {
   const loads = list.map((spec) => import(spec).then((m) => ({ m }), (err) => ({ err })));
