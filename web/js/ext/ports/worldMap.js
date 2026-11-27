@@ -199,6 +199,9 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
   let listHoverCountry = null; // a row hovered in the host's list
   let hoveredPortId = null;
   let highlightPortId = null; // hovered or picked card in the host's panel
+  // World Rankings' lens: {fills: Map(iso → colour), noData: colour}. While it is on, countries take its colours and
+  // the maps' pins are neither drawn nor hit.
+  let lens = null;
   let raf = 0;
   let anim = null; // {from, to, t0, ms}
   let homed = false;
@@ -418,9 +421,18 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
       return bx >= -m && ax <= cssW + m && by >= -m && ay <= cssH + m;
     };
 
-    // Country fills & borders
+    // Country fills & borders: by each country's best map, or under a lens by its figure.
     for (const c of countries) {
       if (!onScreen(c.box, 2)) continue;
+      if (lens) {
+        traceCountry(c);
+        ctx.fillStyle = lens.fills.get(c.id) || lens.noData;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(6, 14, 24, 0.6)";
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+        continue;
+      }
       const status = countryBest.get(c.id) || "none";
       const isHot = c.id === hoveredCountry || c.id === listHoverCountry || c.id === selectedCountry || !!highlightSet?.has(c.id);
       traceCountry(c);
@@ -436,10 +448,18 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     if (highlightSet) for (const id of highlightSet) emphasisIds.add(id);
     if (hoveredCountry) emphasisIds.add(hoveredCountry);
     if (listHoverCountry) emphasisIds.add(listHoverCountry);
+    // Under a lens a dark edge goes under the gold, which a pale colour would otherwise swallow.
+    const casing = () => {
+      if (!lens) return;
+      ctx.strokeStyle = "rgba(6, 14, 24, 0.92)";
+      ctx.lineWidth = 3.6;
+      ctx.stroke();
+    };
     for (const id of emphasisIds) {
       const c = countryById.get(id);
       if (!c || id === selectedCountry) continue;
       traceCountry(c);
+      casing();
       ctx.strokeStyle = "#ecd08e";
       ctx.lineWidth = 1.5;
       ctx.stroke();
@@ -447,6 +467,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     const sel = selectedCountry ? countryById.get(selectedCountry) : null;
     if (sel) {
       traceCountry(sel);
+      casing();
       ctx.save();
       ctx.shadowColor = "rgba(255, 228, 150, 0.85)";
       ctx.shadowBlur = 12;
@@ -457,15 +478,15 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     }
 
     // Tiny countries (a few pixels across at this zoom) get a dot so they can be seen and clicked. Countries with a
-    // map already carry a pin.
+    // map already carry a pin, except under a lens, which has no pins: there every tiny country's dot has its colour.
     for (const c of countries) {
-      if (c.size * s >= 6 || countryPorts.has(c.id)) continue;
+      if (c.size * s >= 6 || (!lens && countryPorts.has(c.id))) continue;
       const [sx, sy] = worldToScreen(c.cx, c.cy);
       if (sx < -6 || sx > cssW + 6 || sy < -6 || sy > cssH + 6) continue;
       const hot = c.id === hoveredCountry || c.id === listHoverCountry || c.id === selectedCountry;
       ctx.beginPath();
-      ctx.arc(sx, sy, hot ? 3.6 : 2.3, 0, Math.PI * 2);
-      ctx.fillStyle = hot ? "#ecd08e" : "rgba(150, 182, 212, 0.55)";
+      ctx.arc(sx, sy, hot ? 3.6 : lens ? 2.9 : 2.3, 0, Math.PI * 2);
+      ctx.fillStyle = hot ? "#ecd08e" : lens ? lens.fills.get(c.id) || lens.noData : "rgba(150, 182, 212, 0.55)";
       ctx.fill();
       ctx.strokeStyle = "rgba(6, 16, 28, 0.85)";
       ctx.lineWidth = 1;
@@ -475,7 +496,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     // Pins: screen positions first, so labels can keep clear of them.
     const pinScale = Math.min(1.35, 0.92 + (cam.zoom - 1) * 0.1);
     const pins = [];
-    for (const item of pinCoords) {
+    for (const item of lens ? [] : pinCoords) {
       const [sx, sy] = worldToScreen(item.x, item.y);
       if (sx < -20 || sx > cssW + 20 || sy < -20 || sy > cssH + 20) continue;
       const isActive = item.port.id === hoveredPortId || item.port.id === highlightPortId;
@@ -544,7 +565,8 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
         if (c.size * s < 22) break; // sorted by size: nothing smaller fits either
         continue;
       }
-      const px = countryBest.has(c.id) ? 12 : 11;
+      const strong = lens ? lens.fills.has(c.id) : countryBest.has(c.id); // has a map, or under a lens a figure
+      const px = strong ? 12 : 11;
       const tw = measure(c.label, px);
       if (tw > wScreen * 0.92) continue;
       const [lx, ly] = worldToScreen(c.cx, c.cy);
@@ -559,7 +581,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
         ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(7, 18, 30, 0.82)";
         ctx.strokeText(c.label, lx, ly + dy);
-        ctx.fillStyle = countryBest.has(c.id) ? "rgba(255, 243, 209, 0.95)" : "rgba(196, 214, 232, 0.62)";
+        ctx.fillStyle = strong ? "rgba(255, 243, 209, 0.95)" : "rgba(196, 214, 232, 0.62)";
         ctx.fillText(c.label, lx, ly + dy);
         break;
       }
@@ -609,7 +631,7 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     const foreignR2 = (touch ? 8 : 5.5) ** 2;
     let bestPin = null;
     let bestD2 = sameR2;
-    for (let i = pinCoords.length - 1; i >= 0; i--) {
+    for (let i = lens ? -1 : pinCoords.length - 1; i >= 0; i--) {
       const item = pinCoords[i];
       const [px, py] = worldToScreen(item.x, item.y);
       const d2 = (sx - px) ** 2 + (sy - py) ** 2;
@@ -869,6 +891,15 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
   }
 
   return {
+    /**
+     * Colour every country by a figure (World Rankings): {fills: Map(iso → css colour), noData: css colour}, or null
+     * for the map's own colours. While it is on, the maps' pins are neither drawn nor hit.
+     */
+    setLens(next) {
+      lens = next && next.fills instanceof Map ? { fills: next.fills, noData: next.noData || "#41464e" } : null;
+      hoveredPortId = null;
+      requestDraw();
+    },
     setPorts(allPorts, filtered = allPorts) {
       ports = allPorts || [];
       visiblePorts = filtered || ports;

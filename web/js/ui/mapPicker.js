@@ -12,9 +12,10 @@ export function flagEmoji(iso) {
 const EMOJI = /\p{Emoji_Presentation}|️/u;
 
 // Whether this system draws flags. Windows has no flag emoji, so its browsers draw the two letters instead (Firefox
-// brings its own flags). A flag has colours; the letters come out in the text colour alone.
+// brings its own flags). A flag has colours; the letters come out in the text colour alone. The world view's lists of
+// countries (World Rankings) ask it too.
 let flagsDrawn = null;
-function drawsFlags() {
+export function drawsFlags() {
   if (flagsDrawn !== null) return flagsDrawn;
   flagsDrawn = true; // where it cannot be tested (no canvas), a flag is assumed
   try {

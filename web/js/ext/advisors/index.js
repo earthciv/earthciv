@@ -12,22 +12,25 @@ defaults({ "advisor.council.note": "All figures are public data. Each dashboard 
 import { buildData } from "./core/data.js";
 import { createLinker, createBubbles, createMapTip } from "./core/link.js";
 import { emblem } from "./core/emblems.js";
+import { ROSTER } from "./core/roster.js";
 import { frameNation } from "./core/frame.js";
 import { esc, el } from "./core/util.js";
 import { icon } from "../../ui/icon.js";
 
-export const ADVISORS = [
-  { id: "energy", name: "Energy & Resources", role: "Minister of Power", color: "#d98a2b", dark: "#3a1f08", blurb: "Where the power comes from, and what lies underground.", load: () => import("./views/energy.js") },
-  { id: "economy", name: "Economy", role: "Treasurer", color: "#c9a43a", dark: "#3a2c08", blurb: "Who makes what: GDP by industry and the metros that lead it.", load: () => import("./views/economy.js") },
-  { id: "people", name: "People", role: "Keeper of the Census", color: "#c46a4f", dark: "#3a140c", blurb: "Where people live, where they are moving, how old and how new.", load: () => import("./views/people.js") },
-  { id: "prosperity", name: "Prosperity & Housing", role: "Steward of the Hearth", color: "#3f9c82", dark: "#082a22", blurb: "Incomes, home prices, rents and who is being left behind.", load: () => import("./views/prosperity.js") },
-  { id: "knowledge", name: "Knowledge", role: "Royal Scholar", color: "#4a86d6", dark: "#0a1c3a", blurb: "Degrees, broadband and the science workforce.", load: () => import("./views/knowledge.js") },
-  { id: "land", name: "Land", role: "Surveyor General", color: "#6e9a3c", dark: "#18280a", blurb: "Forest, farmland, desert and city: what covers the country.", load: () => import("./views/land.js") },
-  { id: "military", name: "Military", role: "General", color: "#8796ab", dark: "#141b26", blurb: "Bases and ranges, troops and defense dollars by state, and where veterans live.", load: () => import("./views/military.js") },
-  { id: "commerce", name: "Commerce", role: "Master of Trade", color: "#2fa4b8", dark: "#062630", blurb: "The great freight routes between metros, and the busiest ports and airports.", load: () => import("./views/commerce.js") },
-  { id: "culture", name: "Culture", role: "Keeper of Wonders", color: "#c25b9a", dark: "#2e0c22", blurb: "Wonders of the land, faith and wellbeing, and the disasters places endure.", load: () => import("./views/culture.js") },
-  { id: "explorer", name: "Explorer", role: "Cartographer", color: "#9a7bc9", dark: "#1e1236", blurb: "Slice and dice every number: any level, any columns, any chart.", load: () => import("./views/explorer.js") },
-];
+// Each advisor's view, loaded when it is first opened. Who the advisors are is in ./core/roster.js.
+const VIEWS = {
+  energy: () => import("./views/energy.js"),
+  economy: () => import("./views/economy.js"),
+  people: () => import("./views/people.js"),
+  prosperity: () => import("./views/prosperity.js"),
+  knowledge: () => import("./views/knowledge.js"),
+  land: () => import("./views/land.js"),
+  military: () => import("./views/military.js"),
+  commerce: () => import("./views/commerce.js"),
+  culture: () => import("./views/culture.js"),
+  explorer: () => import("./views/explorer.js"),
+};
+export const ADVISORS = ROSTER.map((a) => ({ ...a, load: VIEWS[a.id] }));
 // An edition's text pack can reword a blurb so it only promises what its data has ("advisor.<id>.blurb"; Canada: no
 // broadband or wellbeing figures, no defence spending by province, freight routes between provinces).
 const availableAdvisors = ADVISORS.map((a) => (hasText(`advisor.${a.id}.blurb`) ? { ...a, blurb: txt(`advisor.${a.id}.blurb`) } : a));

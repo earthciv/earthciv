@@ -41,7 +41,7 @@ test("an emblem that is not an emoji gives way to the country's flag", () => {
 test("every edition is listed with an icon", () => {
   assert.deepEqual(
     EDITIONS.map((e) => menuLabel(editionIcon(e), e.name)),
-    ["🇺🇸 United States", "🍁 Canada"],
+    ["🇺🇸 United States", "🍁 Canada", "🌺 Malaysia"],
   );
   for (const e of EDITIONS) assert.ok(isEmoji(editionIcon(e)), `${e.id} has no icon in the menu`);
 });

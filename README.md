@@ -16,6 +16,9 @@ and more, with every number traced to its source. It is a visualizer, not a game
   [United States](#the-united-states-edition) and [Canada](#canada-edition).
 - **Every map names the person who made it,** with their picture: on its card, on the button that opens it and
   above the map while it is open. [Map makers](https://earthciv.org/#makers=all) lists everyone who made one.
+- **[World Rankings](https://earthciv.org/#rankings=overall) compares every country,** after a strategy game's
+  rankings screen: ten World Bank measures in five tabs, each under one of the advisors, with the visitor's own
+  country marked.
 
 EarthCiv and the community maps it showcases grew out of Andrej Karpathy's original U.S. map,
 [usaciv](https://karpathy.ai/usaciv)
@@ -216,7 +219,7 @@ To rebuild the data from the original publishers:
 ```bash
 uv run python -m pipeline all                    # U.S.: download (cached) → process → build web/data/us/ → check
 uv run --group build python -m pipeline.canada   # Canada: download (cached) → build web/data/ca/
-uv run python -m pipeline.build_world_figures    # the world map's country figures → web/data/world-figures.json
+uv run python -m pipeline.build_world_rankings   # the world map's figures (World Rankings) → web/data/world-rankings.json
 ```
 
 The first full run downloads about 500 MB for the United States and about 300 MB for Canada into `data/raw/` (not
@@ -234,8 +237,8 @@ pipeline/
   build/      builders that put the U.S. sources onto the hex map → web/data/us/*.json
   check.py    validates web/data/us against docs/DATA_CONTRACTS.md and prints a data-quality report
   canada.py   the Canada edition's build, with its canada_*.py helpers → web/data/ca/*.json
-  build_world_figures.py, build_world_outlines.py
-              the world map's country figures and outlines → web/data/world-*.json
+  build_world_outlines.py, build_world_rankings.py
+              the world map's country outlines, and its figures for World Rankings → web/data/world-*.json
   home_pictures.py
               the pictures of each edition's map on its card on the world map → web/data/<id>/home*.jpg
   package.py  the deploy package
@@ -252,7 +255,7 @@ web/
               world map)
   data/       the JSON the browser loads: editions.json, a folder per edition (us/, ca/) with its data files,
               manifest and text pack, and the world map's files (ports.json, the list of maps; world-outlines.json;
-              world-figures.json; ratings.json, which stands in where no ratings are kept)
+              world-rankings.json; ratings.json, which stands in where no ratings are kept)
   dev/        dev pages, not part of the deployed site: the art gallery, the trailer maker, the harness's views
 docs/         DATA_CONTRACTS.md (the shape of every data file, shared by pipeline and browser), EDITIONS.md (what an
               edition is and how to add one), CANADA.md (Canada's sources and methods), HARNESS.md, DEPLOY.md,
@@ -310,7 +313,7 @@ uv run python -m pipeline build --force               # rebuild everything
 uv run python -m pipeline check                       # validate web/data/us + data-quality report (exit 1 on FAIL)
 uv run python -m pipeline all [--offline]             # fetch + process + build + check
 uv run --group build python -m pipeline.canada        # rebuild web/data/ca (--force refreshes its downloads)
-uv run python -m pipeline.build_world_figures         # rebuild web/data/world-figures.json (--refresh downloads again)
+uv run python -m pipeline.build_world_rankings        # rebuild web/data/world-rankings.json (--refresh downloads again)
 uv run python -m pipeline serve [--port 8765]         # serve web/
 uv run --group harness python -m pipeline package     # usaciv.zip: the site to upload, with the source inside
 uv run python -m unittest discover -s tests           # tests
@@ -371,11 +374,34 @@ top bar) lists the exact files, URLs, checksums and caveats.
 
 The world map (the home page, and the **World** button inside an edition) shows every EarthCiv edition and community
 map listed in `web/data/ports.json`. Every country can be clicked, on the map, in the list beside it or through its
-search box: its card has a button that opens its map, and its population, GDP per person and life expectancy from the World
-Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
-is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
-rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures). The country outlines are Natural
-Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
+search box: its card has a button that opens its map, and its **Demographics**, after a strategy game's demographics
+screen: where the country stands on the ten measures of World Rankings (below), from the World Bank's
+[World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0), beside the
+highest, the average and the lowest of the countries ranked on the same year. Each figure is labelled with its year; a
+figure from another year than the ranked one shows that year and no rank. A measure's name opens its tab in World
+Rankings with the country's row in view, and a figure opens the World Bank's own chart of it. The country outlines are
+Natural Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
+
+**World Rankings** ([earthciv.org/#rankings=overall](https://earthciv.org/#rankings=overall), and the button at the top
+right of the world map) compares every country on ten measures from the same World Development Indicators, in five
+tabs: Economy (GDP and GDP per person), People (population and life expectancy), Knowledge (science and engineering
+articles and Internet users), Land (land area and the cereal harvest) and Commerce (goods exports and imports). The
+Overall tab shows who leads each tab's first measure. A visitor can pick their own country, and its row is marked
+wherever it is ranked. A row opens that country's card, and the card's back link returns to the same tab. Each tab
+has its own address, such as `#rankings=gdp`. While a tab is open the map becomes its lens, as a strategy game's map
+does when its religion or culture rankings are open: every ranked country takes the tab's colours, the maps' pins
+step aside, and the tab's key takes the map key's place. Hovering a country shows its figure, year and rank.
+
+Each measure is ranked on one year only: the newest year for which at least 80% of the countries with a figure since
+2015 have one, and for which every G20 country has one. A country whose figure is from another year is listed after
+the ranked ones, with that year, and is not ranked, so figures from different years are never ranked together. Equal
+figures share a rank. `uv run python -m pipeline.build_world_rankings` rebuilds `web/data/world-rankings.json`, and
+stops rather than rank a year that leaves out a G20 country. The World Bank has these figures from the UN (population,
+life expectancy), national accounts (GDP), the U.S. National Science Foundation (articles), the International
+Telecommunication Union (Internet users), the Food and Agriculture Organization (land, cereals) and the World Trade
+Organization (goods trade); each tab names its source. Military spending is left out because the World Bank publishes
+it under SIPRI's own terms rather than CC BY 4.0, and tourism and the size of armed forces because their series stop
+in 2020.
 
 Every map is shown with the name and picture of the person who made it, and **Map makers**
 ([earthciv.org/#makers=all](https://earthciv.org/#makers=all)) lists them all, each with their maps. It starts with
@@ -403,6 +429,9 @@ The map is drawn to be fun, but the numbers are real, so it is worth knowing whe
   inside the data files and shown in the app.
 - **Every lens states its caveat.** For example, the Religion Census counts congregations' adherents, not what
   residents believe, and covers about half the population.
+- **World Rankings' colours can be on a log scale.** Measures that span several orders of magnitude (GDP,
+  population, articles, land, the harvest, trade) are coloured on a log scale, as the map's key says; the bars in a
+  tab are each figure's share of the highest. A country in grey has no figure for the ranked year, not a low one.
 
 ### Credits and terms
 
@@ -411,8 +440,9 @@ Almanac states the licence of every source. Most of the U.S. data comes from fed
 domain. Most of Canada's comes from Statistics Canada and other federal departments, under the
 [Statistics Canada Open Licence](https://www.statcan.gc.ca/en/terms-conditions/open-licence) or the
 [Open Government Licence – Canada](https://open.canada.ca/en/open-government-licence-canada). The world map's country
-figures are the World Bank's, under CC BY 4.0. Natural Earth is public domain. The faith lenses
-are figures derived from the 2020 U.S. Religion Census (© 2022 ASARB). They are used under the ARDA usage terms,
+figures (World Rankings and each country's Demographics) are the World Bank's, under CC BY 4.0. Natural Earth is
+public domain. The faith lenses are figures derived from the 2020 U.S. Religion Census (© 2022 ASARB). They are used
+under the ARDA usage terms,
 which ask for credit to the Association of Statisticians of American Religious Bodies and the Association of
 Religion Data Archives. Please keep that credit if you reuse them.
 
@@ -436,7 +466,8 @@ earthciv.org has no sign-in and no ads, and its code sets no cookies. What it le
 - **A rating is kept under a key made from the visitor's network address,** never the address itself
   ([docs/RATINGS.md](docs/RATINGS.md#what-is-stored)).
 - **A few settings stay in the browser** (`localStorage`): the lenses used last, panel settings, the stars the
-  visitor gave and the links to maps they added for themselves. They are not sent anywhere.
+  visitor gave, the links to maps they added for themselves and the country they picked as theirs in World Rankings.
+  They are not sent anywhere.
 - **A community map is its author's own site,** shown in a frame or opened in a new tab. That site sees the visit
   as it would any other.
 - **The pictures of the maps' authors come from GitHub** (`avatars.githubusercontent.com`), for each author who
