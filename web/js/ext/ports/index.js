@@ -460,7 +460,8 @@ export function install(app) {
   }
 
   function featuredCreatorHtml(makers) {
-    const maker = makers.find((entry) => entry.ports.some((port) => port.featured_creator === true));
+    const maker = makers.find((entry) => entry.ports.some((port) => port.featured_creator === true))
+      || makers.find((entry) => !entry.original && !entry.house && entry.ports.some((port) => port.status === "live" && port.url));
     if (!maker) return "";
     return `<section class="featured-creator" aria-label="Featured creator">
       <div class="featured-creator-heading">${avatarHtml(maker, "mk-av-lg")}<div>
@@ -1387,8 +1388,7 @@ export function install(app) {
           live on their maker's own site. EarthCiv lists them and links to them.</p>
         <ol class="mk-list">${makers.map(row).join("")}</ol>
         <div class="wv-foot">
-          <p>Makers whose maps have ${MIN_RATINGS} or more ratings are listed by their rating. The others take turns: their order moves
-            one place every day.</p>
+          <p>Makers with ${MIN_RATINGS} or more visitor ratings are ordered by their weighted rating. GitHub stars help order makers with equal scores, including those awaiting enough ratings. Remaining ties rotate daily.</p>
           <p>Make one of these maps? <a href="${MAP_FORM_URL}&amp;request=Correct%20my%20map%27s%20listing" target="_blank" rel="noopener noreferrer">Add or update your Twitter / X</a></p>
           <p>Built a map in this style? <a href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Add it to the list</a></p>
         </div>

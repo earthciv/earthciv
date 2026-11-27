@@ -306,3 +306,18 @@ test("Twitter handles stay separate from GitHub and survive grouping multiple ma
   const makers = listMakers([live("y", "Someone", "someone/y"), map]);
   assert.equal(makers[0].twitter, "their_x");
 });
+
+test("repository stars rank unrated makers and count each repository once", () => {
+  const first = live("a", "Ada", "ada/map", { github_stars: 12 });
+  const duplicate = live("b", "Ada", "ADA/MAP", { github_stars: 12 });
+  const second = live("c", "Bea", "bea/map", { github_stars: 20 });
+  const makers = listMakers([first, duplicate, second]);
+  const ranked = rankMakers(makers, { day: 0 });
+  assert.deepEqual(keys(ranked), ["bea", "ada"]);
+  assert.equal(ranked[1].githubStars, 12);
+  assert.equal(ranked[0].n, 0);
+  assert.equal(ranked[0].average, null);
+  const rated = rankMakers(makers, { ratingOf: (id) => id === "a" ? { n: 3, sum: 15 } : id === "c" ? { n: 3, sum: 3 } : { n: 0, sum: 0 } });
+  assert.deepEqual(keys(rated), ["ada", "bea"]);
+  assert.equal(rated[0].average, 5);
+});
