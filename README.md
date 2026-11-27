@@ -380,8 +380,8 @@ Every map is shown with the name and picture of the person who made it, and **Ma
 ([earthciv.org/#makers=all](https://earthciv.org/#makers=all)) lists them all, each with their maps. It starts with
 Andrej Karpathy, whose usaciv the others began with, and ends with EarthCiv's own edition. In between, makers
 with a map that opens come before those with source code only. Those whose maps have three or more ratings are
-placed by their rating, and the others take turns: their order moves one place every day, so that nobody is first
-for being first in the list (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
+placed by their weighted visitor rating. GitHub stars from distinct repositories break ties after rating scores
+and vote counts, including makers awaiting enough ratings. Remaining ties rotate daily (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
 as **Today's map**, with its maker's name and picture: every community map with a site takes a day in turn.
 
 Visitors can rate each map that opens, from one to five stars, and its card shows the average. Ratings are anonymous
