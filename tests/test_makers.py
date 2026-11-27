@@ -63,6 +63,24 @@ class MakerFieldsTest(unittest.TestCase):
                 self.assertRegex(p["author_url"], r"^https://[^\s/]+", f"{p['id']}: author_url is an https address")
             if "original" in p:
                 self.assertIs(p["original"], True, f"{p['id']}: \"original\" is true or left out")
+            if "author_twitter" in p:
+                self.assertRegex(p["author_twitter"], r"^[A-Za-z0-9_]{1,15}$", f"{p['id']}: author_twitter is a handle without @")
+            if "author_twitter_source" in p:
+                self.assertRegex(p["author_twitter_source"], r"^https://[^\s/]+", f"{p['id']}: author_twitter_source is an https address")
+            if "github_stars" in p:
+                self.assertIs(type(p["github_stars"]), int, f"{p['id']}: github_stars is a non-negative integer")
+                self.assertGreaterEqual(p["github_stars"], 0, f"{p['id']}: github_stars is negative")
+                self.assertRegex(p.get("github_stars_checked") or "", r"^\d{4}-\d{2}-\d{2}$", f"{p['id']}: github_stars_checked is YYYY-MM-DD")
+            if "featured_creator" in p:
+                self.assertIs(p["featured_creator"], True, f"{p['id']}: featured_creator is true or left out")
+
+    def test_at_most_one_featured_creator(self):
+        featured_makers = set()
+        for p in self.ports:
+            if p.get("featured_creator") is True:
+                owner = p.get("author_github") if "author_github" in p else (p.get("repo") or "").split("/")[0]
+                featured_makers.add((owner or p["author"]).lower())
+        self.assertLessEqual(len(featured_makers), 1)
 
     def test_a_repository_owner_is_an_account_name(self):
         # The owner of "repo" is where a maker's picture and profile link come from.
@@ -76,7 +94,7 @@ class MakerFieldsTest(unittest.TestCase):
 
     def test_readme_describes_the_author_fields(self):
         readme = read("README.md")
-        for field in ("`author_github`", "`author_url`"):
+        for field in ("`author_github`", "`author_url`", "`author_twitter`", "`github_stars`", "`featured_creator: true`"):
             self.assertIn(field, readme)
 
 

@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, rankMakers } from "../../web/js/ext/ports/makers.js";
+import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankMakers } from "../../web/js/ext/ports/makers.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const PORTS = JSON.parse(readFileSync(new URL("web/data/ports.json", ROOT), "utf8")).ports;
@@ -305,4 +305,24 @@ test("Twitter handles stay separate from GitHub and survive grouping multiple ma
   }
   const makers = listMakers([live("y", "Someone", "someone/y"), map]);
   assert.equal(makers[0].twitter, "their_x");
+});
+
+test("repository stars rank unrated makers, count each repository once, and ignore third-party repos", () => {
+  const first = live("a", "Ada", "ada/map", { github_stars: 12 });
+  const duplicate = live("b", "Ada", "ADA/MAP", { github_stars: 12 });
+  const thirdParty = live("x", "Ada", "other/mirror", { author_github: "ada", github_stars: 500 });
+  const second = live("c", "Bea", "bea/map", { github_stars: 20 });
+  assert.equal(ownRepoStars(first), 12);
+  assert.equal(ownRepoStars(thirdParty), null);
+  assert.equal(ownRepoStars(live("z", "Zed", "zed/z", { github_stars: 0 })), 0);
+  assert.equal(ownRepoStars(live("bad", "Bad", "bad/map", { github_stars: -1 })), null);
+  const makers = listMakers([first, duplicate, thirdParty, second]);
+  const ranked = rankMakers(makers, { day: 0 });
+  assert.deepEqual(keys(ranked), ["bea", "ada"]);
+  assert.equal(ranked[1].githubStars, 12);
+  assert.equal(ranked[0].n, 0);
+  assert.equal(ranked[0].average, null);
+  const rated = rankMakers(makers, { ratingOf: (id) => id === "a" ? { n: 3, sum: 15 } : id === "c" ? { n: 3, sum: 3 } : { n: 0, sum: 0 } });
+  assert.deepEqual(keys(rated), ["ada", "bea"]);
+  assert.equal(rated[0].average, 5);
 });

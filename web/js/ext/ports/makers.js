@@ -9,8 +9,8 @@
 //   * Maps with the same account, or with the same name where there is no account, are one maker's.
 //   * The list starts with the maker of the map that the others began with ("original": true in ports.json) and
 //     ends with this site's own editions. In between, makers with a map that can be opened come before those with
-//     source code only; makers whose maps have enough ratings come by rating, and the others take turns: their order
-//     moves one place every day, so nobody is first for being first in the catalog.
+//     source code only; makers whose maps have enough ratings come by rating. GitHub stars break rating ties,
+//     counting each repository once. Remaining ties rotate one place each day.
 //   * One community map a day is "today's map" on the country list: every map that can be opened takes a day in
 //     turn, so each maker is on the first screen in their turn.
 //
@@ -29,8 +29,17 @@ const PRIOR_RATINGS = 3;
 const DAY_MS = 86_400_000;
 
 const login = (value) => (typeof value === "string" && LOGIN.test(value) ? value : null);
+const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 /** A map that can be opened: an EarthCiv edition, or a community map with a site (as ./ratings.js rateable()). */
 const opens = (port) => port.status === "merged" || (port.status === "live" && !!port.url);
+
+/** A map's repository star count when its repository belongs to the credited maker, or null otherwise. */
+export function ownRepoStars(port) {
+  if (!port?.repo || !REPO.test(port.repo) || !Number.isSafeInteger(port.github_stars) || port.github_stars < 0) return null;
+  const owner = port.repo.split("/")[0].toLowerCase();
+  if ("author_github" in port && (!port.author_github || String(port.author_github).toLowerCase() !== owner)) return null;
+  return port.github_stars;
+}
 
 function webAddress(value) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -130,7 +139,8 @@ export function featuredPort(ports, { day = 0 } = {}) {
  *   3. the makers with source code only, by turns (source code cannot be rated);
  *   4. this site's own editions.
  *
- * Turns: makers the ratings do not tell apart stay in the catalog's order, moved round by one place for every day.
+ * GitHub stars break ties after rating scores and vote counts. Each repository counts once per maker.
+ * Remaining ties use the catalog order, moved round by one place for every day.
  *
  * @param {object[]} makers            from listMakers()
  * @param {(id: string) => {n: number, sum: number}} ratingOf  a map's number of ratings and the sum of their stars
@@ -140,12 +150,19 @@ export function rankMakers(makers, { ratingOf = () => ({ n: 0, sum: 0 }), day = 
   const rows = (makers || []).map((maker, index) => {
     let n = 0;
     let sum = 0;
+    const repositories = new Map();
     for (const port of maker.ports) {
       const r = ratingOf(port.id) || {};
+      const stars = ownRepoStars(port);
+      if (stars !== null) {
+        const repo = port.repo.toLowerCase();
+        repositories.set(repo, Math.max(repositories.get(repo) || 0, stars));
+      }
       n += r.n || 0;
       sum += r.sum || 0;
     }
-    return { ...maker, n, sum, average: n ? sum / n : null, ranked: n >= MIN_RATINGS, index };
+    const githubStars = [...repositories.values()].reduce((total, stars) => total + stars, 0);
+    return { ...maker, n, sum, githubStars, average: n ? sum / n : null, ranked: n >= MIN_RATINGS, index };
   });
   const all = rows.reduce((t, r) => ({ n: t.n + r.n, sum: t.sum + r.sum }), { n: 0, sum: 0 });
   const mean = all.n ? all.sum / all.n : 0;
@@ -156,8 +173,8 @@ export function rankMakers(makers, { ratingOf = () => ({ n: 0, sum: 0 }), day = 
     r.turn = (r.index - shift + count) % count;
   }
   const group = (r) => (r.original ? 0 : r.house ? 3 : r.ports.some(opens) ? 1 : 2);
-  // Two makers with the same rating: the one more people rated comes first.
+  // Equal rating scores use vote count, then GitHub stars from distinct repositories, then daily rotation.
   const byRatings = (a, b) => (a.ranked && b.ranked ? b.n - a.n : 0);
-  rows.sort((a, b) => group(a) - group(b) || b.score - a.score || byRatings(a, b) || a.turn - b.turn);
+  rows.sort((a, b) => group(a) - group(b) || b.score - a.score || byRatings(a, b) || b.githubStars - a.githubStars || a.turn - b.turn);
   return rows.map(({ index, turn, ...row }) => row);
 }

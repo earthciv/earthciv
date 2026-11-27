@@ -93,6 +93,9 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
   organization's), and `author_url`, an `https` page of your own for your name to link to instead of the
   profile. With `"author_github": null` you are credited by name alone, with no picture and no profile link.
 - `author_twitter` is your optional Twitter / X handle, without `@`. It appears beside your creator credit and on Today’s map when featured. Use the map submission form to add or update it for an existing listing.
+- `author_twitter_source` records the public profile or personal site that confirms a discovered handle.
+- `github_stars` and `github_stars_checked` hold the repository’s star count and the UTC date it was checked with GitHub’s repository API. Positive star counts on a maker’s own repository appear beside visitor ratings and link to its GitHub stargazers. Stars from distinct repositories break ties in creator ranking after visitor rating scores and vote counts. A featured creator is selected from that order when no map has an explicit feature.
+- `featured_creator: true` puts that map’s maker and their maps in the home panel’s featured creator section.
 - `based_on` optionally names another catalog entry whose original work this map builds on. Its creator is credited on the map card.
 - `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
 
@@ -377,8 +380,8 @@ Every map is shown with the name and picture of the person who made it, and **Ma
 ([earthciv.org/#makers=all](https://earthciv.org/#makers=all)) lists them all, each with their maps. It starts with
 Andrej Karpathy, whose usaciv the others began with, and ends with EarthCiv's own edition. In between, makers
 with a map that opens come before those with source code only. Those whose maps have three or more ratings are
-placed by their rating, and the others take turns: their order moves one place every day, so that nobody is first
-for being first in the list (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
+placed by their weighted visitor rating. GitHub stars from distinct repositories break ties after rating scores
+and vote counts, including makers awaiting enough ratings. Remaining ties rotate daily (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
 as **Today's map**, with its maker's name and picture: every community map with a site takes a day in turn.
 
 Visitors can rate each map that opens, from one to five stars, and its card shows the average. Ratings are anonymous

@@ -20,7 +20,9 @@
       "author_twitter": "karpathy",
       "url": null,
       "embed": true,
-      "description": "Andrej Karpathy's usaciv as an EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data."
+      "description": "Andrej Karpathy's usaciv as an EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data.",
+      "github_stars": 3,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "ca",
@@ -41,7 +43,9 @@
       "based_on": "usaciv-original",
       "url": null,
       "embed": true,
-      "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors."
+      "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors.",
+      "github_stars": 3,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "europeciv",
@@ -62,7 +66,11 @@
       "author": "Mathieu Astruc",
       "url": "https://mathieuastruc.com/europeciv/",
       "embed": true,
-      "description": "37 European countries on one hex map (EU-27, EFTA & Western Balkans) from Eurostat, Copernicus and UNESCO."
+      "description": "37 European countries on one hex map (EU-27, EFTA & Western Balkans) from Eurostat, Copernicus and UNESCO.",
+      "author_twitter": "matheusnpu",
+      "author_twitter_source": "https://github.com/lmveprog",
+      "github_stars": 9,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "eu-civ",
@@ -83,7 +91,9 @@
       "author": "kalfasyan",
       "url": "https://kalfasyan.github.io/eu-civ/",
       "embed": true,
-      "description": "EU-27 plus UK, EFTA, Türkiye and Balkan Eurostat regions: 325 cities and 1,499 NUTS 3 regions."
+      "description": "EU-27 plus UK, EFTA, Türkiye and Balkan Eurostat regions: 325 cities and 1,499 NUTS 3 regions.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "eurociv",
@@ -104,7 +114,9 @@
       "author": "inoichi1009207",
       "url": "https://inoichi1009207.github.io/eurociv/",
       "embed": true,
-      "description": "37 European countries and 1,330 NUTS 3 regions on one hex map from Eurostat and other open data, with about 500 cities. In Chinese."
+      "description": "37 European countries and 1,330 NUTS 3 regions on one hex map from Eurostat and other open data, with about 500 cities. In Chinese.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "deciv",
@@ -121,7 +133,11 @@
       "author": "wdenk",
       "url": "https://wdenk.github.io/deciv/",
       "embed": true,
-      "description": "Germany as a hex strategy map built from German and European public statistics."
+      "description": "Germany as a hex strategy map built from German and European public statistics.",
+      "author_twitter": "TheJol",
+      "author_twitter_source": "https://github.com/wdenk",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "franceciv-astruc",
@@ -139,7 +155,10 @@
       "author_github": "lmveprog",
       "url": "https://mathieuastruc.com/franceciv/",
       "embed": true,
-      "description": "France drawn as a 4X strategy map using INSEE, CORINE land cover and public French datasets."
+      "description": "France drawn as a 4X strategy map using INSEE, CORINE land cover and public French datasets.",
+      "author_twitter": "matheusnpu",
+      "author_twitter_source": "https://github.com/lmveprog",
+      "featured_creator": true
     },
     {
       "id": "frciv-wu",
@@ -156,7 +175,9 @@
       "author": "DocteurWu",
       "url": "https://frciv.24dw24.duckdns.org/",
       "embed": true,
-      "description": "France on a 25 km hexagonal grid built from INSEE, IGN and CORINE open data."
+      "description": "France on a 25 km hexagonal grid built from INSEE, IGN and CORINE open data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "franceciv-pham",
@@ -173,7 +194,9 @@
       "author": "arthurpham",
       "url": "https://www.arthurpham.com/franceciv/",
       "embed": true,
-      "description": "France rendered as a strategy-game map from real public data, adapted from usaciv."
+      "description": "France rendered as a strategy-game map from real public data, adapted from usaciv.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "france2027",
@@ -190,7 +213,9 @@
       "author": "nicobonsi",
       "url": "https://nicobonsi.github.io/france2027/",
       "embed": true,
-      "description": "Metropolitan & overseas France by department with public socio-economic indicators ahead of 2027."
+      "description": "Metropolitan & overseas France by department with public socio-economic indicators ahead of 2027.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "spainciv-djinn",
@@ -207,7 +232,9 @@
       "author": "DjinnFoundry",
       "url": "https://spainciv.djinnfoundry.com/",
       "embed": true,
-      "description": "Interactive hex map of Spain built from public Spanish statistics, based on usaciv."
+      "description": "Interactive hex map of Spain built from public Spanish statistics, based on usaciv.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "espana-map",
@@ -224,7 +251,9 @@
       "author": "jdt77",
       "url": "https://jdt77.github.io/espana-strategy-map/",
       "embed": true,
-      "description": "Spain as a 4X strategy-game map with hex terrain, cities with yields, lenses and resources."
+      "description": "Spain as a 4X strategy-game map with hex terrain, cities with yields, lenses and resources.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "spainciv-jokin",
@@ -241,7 +270,9 @@
       "author": "jokin",
       "url": "https://jokin.github.io/spainciv/",
       "embed": true,
-      "description": "Spain as a 4X strategy map powered by official Spanish INE open data."
+      "description": "Spain as a 4X strategy map powered by official Spanish INE open data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "galiciaciv",
@@ -258,7 +289,9 @@
       "author": "miguelferre",
       "url": "https://miguelferre.github.io/galiciaciv/",
       "embed": true,
-      "description": "High-resolution regional port of Galicia (NW Spain) in hexagons from real public datasets."
+      "description": "High-resolution regional port of Galicia (NW Spain) in hexagons from real public datasets.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "spain-trains-live",
@@ -275,7 +308,9 @@
       "author": "jdt77",
       "url": "https://jdt77.github.io/spain-trains-live/",
       "embed": true,
-      "description": "Every Renfe train that reports its position, moving in real time on a hex strategy map of Spain, from Renfe open data."
+      "description": "Every Renfe train that reports its position, moving in real time on a hex strategy map of Spain, from Renfe open data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "spain-grid-live",
@@ -292,7 +327,9 @@
       "author": "jdt77",
       "url": "https://jdt77.github.io/spain-grid-live/",
       "embed": true,
-      "description": "Spain's electricity grid live from Red Eléctrica's REData: demand, prices, power plants and exchanges drawn as a power-plant strategy game."
+      "description": "Spain's electricity grid live from Red Eléctrica's REData: demand, prices, power plants and exchanges drawn as a power-plant strategy game.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "italyciv",
@@ -309,7 +346,9 @@
       "author": "linker81",
       "url": "https://linker81.github.io/italyciv/",
       "embed": true,
-      "description": "Italy as a 4X strategy map adapted from usaciv using Italian public statistics."
+      "description": "Italy as a 4X strategy map adapted from usaciv using Italian public statistics.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "italyciv-ko",
@@ -326,7 +365,9 @@
       "author": "sigco3111",
       "url": "https://sigco3111.github.io/italyciv-ko/",
       "embed": true,
-      "description": "A Korean translation of linker81's italyciv: Italy from ISTAT and other public data, with Italian and English one click away."
+      "description": "A Korean translation of linker81's italyciv: Italy from ISTAT and other public data, with Italian and English one click away.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "pol-civ",
@@ -343,7 +384,11 @@
       "author": "jarektkaczyk",
       "url": "https://softonsofa.com/pol-civ/",
       "embed": true,
-      "description": "Poland with 2,479 gminas, 204 towns, voivodeships, resources, City View and Commonwealth advisors."
+      "description": "Poland with 2,479 gminas, 204 towns, voivodeships, resources, City View and Commonwealth advisors.",
+      "author_twitter": "softonsofa",
+      "author_twitter_source": "https://softonsofa.com",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "dkciv",
@@ -360,7 +405,9 @@
       "author": "mutwil",
       "url": "https://mutwil.github.io/dkciv/",
       "embed": true,
-      "description": "Denmark as a Civilization-style 4X hex-grid strategy map from Danish & international public data."
+      "description": "Denmark as a Civilization-style 4X hex-grid strategy map from Danish & international public data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "swissciv",
@@ -377,7 +424,9 @@
       "author": "rotwurstesser",
       "url": "https://rotwurstesser.github.io/swissciv/",
       "embed": true,
-      "description": "Switzerland rendered as a strategy-game map from Swiss open data."
+      "description": "Switzerland rendered as a strategy-game map from Swiss open data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "magyarciv",
@@ -394,7 +443,11 @@
       "author": "tamasPetki",
       "url": "https://magyarciv.vercel.app",
       "embed": true,
-      "description": "Hungary as a strategy-game map built from real public data."
+      "description": "Hungary as a strategy-game map built from real public data.",
+      "author_twitter": "krip_tom",
+      "author_twitter_source": "https://github.com/tamasPetki",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "serbiaciv",
@@ -411,7 +464,9 @@
       "author": "acailic",
       "url": "https://acailic.github.io/serbiaciv/",
       "embed": true,
-      "description": "An early preview of Serbia as a strategy map, in Serbian (Latin and Cyrillic): its outline and main cities, with terrain and statistics still to come."
+      "description": "An early preview of Serbia as a strategy map, in Serbian (Latin and Cyrillic): its outline and main cities, with terrain and statistics still to come.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "cg-civ",
@@ -428,7 +483,9 @@
       "author": "radovansusic / Schule",
       "url": "https://radovansusic.github.io/cg-civ/",
       "embed": true,
-      "description": "Montenegro's 25 municipalities on 1,850 hexes, from MONSTAT, the 2023 Census, the employment agency, OpenStreetMap and Wikidata."
+      "description": "Montenegro's 25 municipalities on 1,850 hexes, from MONSTAT, the 2023 Census, the employment agency, OpenStreetMap and Wikidata.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "etifeddiaeth",
@@ -445,7 +502,9 @@
       "author": "monkeymoves",
       "url": "https://etifeddiaeth.web.app/",
       "embed": true,
-      "description": "Wales's 22 local authorities with 21 real measures as lenses, and a game that governs Wales from 2026 to 2050. In Welsh and English."
+      "description": "Wales's 22 local authorities with 21 real measures as lenses, and a game that governs Wales from 2026 to 2050. In Welsh and English.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "turco-land",
@@ -462,7 +521,9 @@
       "author": "MaiStudioCO",
       "url": "https://turco-land.vercel.app",
       "embed": true,
-      "description": "Türkiye explored as a Civilization-style strategy map built from Turkish public datasets."
+      "description": "Türkiye explored as a Civilization-style strategy map built from Turkish public datasets.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "iran-civ",
@@ -479,7 +540,9 @@
       "author": "kianodd",
       "url": "https://kianodd.github.io/iran-civ/",
       "embed": true,
-      "description": "Iran as a Civilization-style map covering 31 provinces, lenses and cities from public data."
+      "description": "Iran as a Civilization-style map covering 31 provinces, lenses and cities from public data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "great-steppe",
@@ -496,7 +559,9 @@
       "author": "dkarbayev",
       "url": "https://dkarbayev.github.io/civ/",
       "embed": true,
-      "description": "Kazakhstan's 17 regions and 3 largest cities as a 3D hex strategy map, from the Bureau of National Statistics' 2024–2025 data."
+      "description": "Kazakhstan's 17 regions and 3 largest cities as a 3D hex strategy map, from the Bureau of National Statistics' 2024–2025 data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "india-civ",
@@ -513,7 +578,11 @@
       "author": "0xAnto",
       "url": "https://0xanto.github.io/india-civ/",
       "embed": true,
-      "description": "Data-driven, Civilization-style hex atlas of India built from public data."
+      "description": "Data-driven, Civilization-style hex atlas of India built from public data.",
+      "author_twitter": "0xAnto",
+      "author_twitter_source": "https://github.com/0xAnto",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "civmap",
@@ -530,7 +599,9 @@
       "author": "Liuzkai",
       "url": "https://liuzkai.github.io/civmap/",
       "embed": true,
-      "description": "Zero-dependency 4X strategy map atlas covering both China and the United States."
+      "description": "Zero-dependency 4X strategy map atlas covering both China and the United States.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "jiuzhou-civ",
@@ -547,7 +618,9 @@
       "author": "keshaoqin",
       "url": "https://keshaoqin.github.io/jiuzhou-civ/",
       "embed": true,
-      "description": "China Civilization-style strategy map built from real public data."
+      "description": "China Civilization-style strategy map built from real public data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "chinacivmap",
@@ -564,7 +637,9 @@
       "author": "wanghao2025100-oss",
       "url": null,
       "embed": false,
-      "description": "Mainland China on about 20,000 hexes 25 km apart, with city screens, province views and six yields from public statistics and satellite data (source only)."
+      "description": "Mainland China on about 20,000 hexes 25 km apart, with city screens, province views and six yields from public statistics and satellite data (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "chinaciv-wan",
@@ -581,7 +656,9 @@
       "author": "MengtingWan",
       "url": "https://mengtingwan.github.io/chinaciv/",
       "embed": true,
-      "description": "China on 25 km hexes with lenses, a City View and an Almanac of sources, in English with Chinese names alongside."
+      "description": "China on 25 km hexes with lenses, a City View and an Almanac of sources, in English with Chinese names alongside.",
+      "github_stars": 1,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "taiwanciv",
@@ -598,7 +675,9 @@
       "author": "i-am-alvin",
       "url": "https://i-am-alvin.github.io/taiwanciv/",
       "embed": true,
-      "description": "Taiwan as a strategy-game hex map from Taiwan open government data, OSM, WorldCover and SRTM."
+      "description": "Taiwan as a strategy-game hex map from Taiwan open government data, OSM, WorldCover and SRTM.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "twciv",
@@ -615,7 +694,9 @@
       "author": "chuanyuj",
       "url": "https://twciv.jeffjhuang.com/",
       "embed": true,
-      "description": "Interactive strategy map of Taiwan's 22 counties/cities and 368 townships."
+      "description": "Interactive strategy map of Taiwan's 22 counties/cities and 368 townships.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "koreahexmap",
@@ -632,7 +713,9 @@
       "author": "JungKHyun",
       "url": "https://koreahexmap.vercel.app/",
       "embed": true,
-      "description": "South Korea's 256 districts and 161 cities on 3 km hexes, with 52 lenses from KOSIS, public-data APIs and OpenStreetMap."
+      "description": "South Korea's 256 districts and 161 cities on 3 km hexes, with 52 lenses from KOSIS, public-data APIs and OpenStreetMap.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "koreaciv",
@@ -649,7 +732,9 @@
       "author": "JAE-HUN-CHO",
       "url": "https://jae-hun-cho.github.io/KoreaCiv/",
       "embed": true,
-      "description": "South Korea on a 5 km hex grid with land-cover, GRDP, population and other lenses, advisors and an explorer, from public statistics."
+      "description": "South Korea on a 5 km hex grid with land-cover, GRDP, population and other lenses, advisors and an explorer, from public statistics.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "thaiciv",
@@ -666,7 +751,11 @@
       "author": "anusornc",
       "url": "https://anusornc.github.io/thaiciv/",
       "embed": true,
-      "description": "Bilingual (EN/TH) 4X strategy map of Thailand built from 13 public data sources."
+      "description": "Bilingual (EN/TH) 4X strategy map of Thailand built from 13 public data sources.",
+      "author_twitter": "xxonnn",
+      "author_twitter_source": "https://github.com/anusornc",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "rpciv",
@@ -683,7 +772,9 @@
       "author": "IntuitionMachine",
       "url": "https://deeplearningplaybook.com/rpciv/",
       "embed": true,
-      "description": "The Philippine archipelago with PSA GDP & jobs, power plants, typhoons, earthquakes, City View and advisors."
+      "description": "The Philippine archipelago with PSA GDP & jobs, power plants, typhoons, earthquakes, City View and advisors.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "sgciv-mutwil",
@@ -700,7 +791,9 @@
       "author": "mutwil",
       "url": "https://mutwil.github.io/sgciv/",
       "embed": true,
-      "description": "Singapore as a 4X strategy map from SingStat, URA, HDB, SPF, NEA and OpenAlex data."
+      "description": "Singapore as a 4X strategy map from SingStat, URA, HDB, SPF, NEA and OpenAlex data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "sgciv-bitvct",
@@ -717,7 +810,9 @@
       "author": "bitvct",
       "url": "https://bitvct.github.io/sgciv/",
       "embed": true,
-      "description": "Bilingual (EN/中文) Civilization-style hex map of Singapore built from public data."
+      "description": "Bilingual (EN/中文) Civilization-style hex map of Singapore built from public data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "terra-a-vista",
@@ -734,7 +829,9 @@
       "author": "ciro-maciel",
       "url": "https://ciro-maciel.github.io/terra-a-vista/",
       "embed": true,
-      "description": "Brazil as a strategy map from IBGE, ANEEL, ANP, ANTAQ, ANAC and UNESCO data."
+      "description": "Brazil as a strategy map from IBGE, ANEEL, ANP, ANTAQ, ANAC and UNESCO data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "terra-brasilis",
@@ -751,7 +848,11 @@
       "author": "letsdata",
       "url": "https://letsdata.github.io/terra-brasilis/",
       "embed": true,
-      "description": "Brazil across 15,790 hexagons and 5,571 municipalities from IBGE, MapBiomas and ANEEL."
+      "description": "Brazil across 15,790 hexagons and 5,571 municipalities from IBGE, MapBiomas and ANEEL.",
+      "author_twitter": "letsdataAI",
+      "author_twitter_source": "https://github.com/letsdata",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "argenciv",
@@ -768,7 +869,9 @@
       "author": "hernaezTlon",
       "url": "https://argenciv.atlas-carry.com/",
       "embed": false,
-      "description": "Argentina as a strategy map adapted from usaciv (opens in a new tab; host blocks iframe embedding)."
+      "description": "Argentina as a strategy map adapted from usaciv (opens in a new tab; host blocks iframe embedding).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "peruciv",
@@ -785,7 +888,9 @@
       "author": "carlosbalarezo-spec",
       "url": "https://carlosbalarezo-spec.github.io/peruciv/",
       "embed": true,
-      "description": "Peru's 25 regions and 196 provinces on 12 km hexes, with 48 cities, a City View, lenses and advisors from INEI and other official open data."
+      "description": "Peru's 25 regions and 196 provinces on 12 km hexes, with 48 cities, a City View, lenses and advisors from INEI and other official open data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "chileciv",
@@ -802,7 +907,9 @@
       "author": "RodrigoBotello1",
       "url": "https://rodrigobotello1.github.io/chileciv/",
       "embed": true,
-      "description": "Continental Chile from Arica to Magallanes: 343 comunas on 5 km hexes, from the 2024 Census, SII, DEMRE and the Central Bank."
+      "description": "Continental Chile from Arica to Magallanes: 343 comunas on 5 km hexes, from the 2024 Census, SII, DEMRE and the Central Bank.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "hermosillo-mapa-vivo",
@@ -819,7 +926,11 @@
       "author": "jmsalcido",
       "url": "https://hermosillo-mapa-vivo.vinc-fdb.workers.dev/",
       "embed": true,
-      "description": "Hermosillo, Sonora, neighbourhood by neighbourhood: people, wellbeing, heat, greenery, wildlife, jobs and water from INEGI, CONEVAL and other open data."
+      "description": "Hermosillo, Sonora, neighbourhood by neighbourhood: people, wellbeing, heat, greenery, wildlife, jobs and water from INEGI, CONEVAL and other open data.",
+      "author_twitter": "jmsalcido",
+      "author_twitter_source": "https://github.com/jmsalcido",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "canciv",
@@ -836,7 +947,9 @@
       "author": "suhailkhalid",
       "url": "https://icy-water-0ee972b0f.5.azurestaticapps.net",
       "embed": true,
-      "description": "Independent community Canadian port of usaciv built from real public data."
+      "description": "Independent community Canadian port of usaciv built from real public data.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "usaciv-original",
@@ -873,7 +986,9 @@
       "author": "poro",
       "url": "https://usaciv.mark-ollila.workers.dev/",
       "embed": true,
-      "description": "US hex strategy map fork adding interactive game modes on top of usaciv."
+      "description": "US hex strategy map fork adding interactive game modes on top of usaciv.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "chinaciv",
@@ -890,7 +1005,11 @@
       "author": "threeaus",
       "url": null,
       "embed": false,
-      "description": "Full China port with prefecture cities, railways, highways, ports, power plants and wonders (run locally from source)."
+      "description": "Full China port with prefecture cities, railways, highways, ports, power plants and wonders (run locally from source).",
+      "author_twitter": "threeaus",
+      "author_twitter_source": "https://github.com/threeaus",
+      "github_stars": 45,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "cnciv",
@@ -907,7 +1026,11 @@
       "author": "losingle",
       "url": null,
       "embed": false,
-      "description": "Zero-dependency Song-painting styled China atlas covering 2,875 counties and 26 lenses (source only)."
+      "description": "Zero-dependency Song-painting styled China atlas covering 2,875 counties and 26 lenses (source only).",
+      "author_twitter": "losingle",
+      "author_twitter_source": "https://github.com/losingle",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "eastciv",
@@ -924,7 +1047,9 @@
       "author": "ayggdrasil",
       "url": null,
       "embed": false,
-      "description": "Northeast Asia port covering Korea, Japan, China, Russia and Mongolia on one hex map (source only)."
+      "description": "Northeast Asia port covering Korea, Japan, China, Russia and Mongolia on one hex map (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "frciv-dgirard",
@@ -941,7 +1066,9 @@
       "author": "dgirard",
       "url": null,
       "embed": false,
-      "description": "France on 6,600 10 km hexes with 5 overseas insets, 699 cities and 80+ lenses from ~60 datasets (source only)."
+      "description": "France on 6,600 10 km hexes with 5 overseas insets, 699 cities and 80+ lenses from ~60 datasets (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "gotham",
@@ -958,7 +1085,9 @@
       "author": "Keugene11",
       "url": null,
       "embed": false,
-      "description": "New York City as a strategy game built from 15+ municipal public datasets (source only)."
+      "description": "New York City as a strategy game built from 15+ municipal public datasets (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "iranciv-zanganeh",
@@ -975,7 +1104,9 @@
       "author": "zanganeh",
       "url": null,
       "embed": false,
-      "description": "Iran provinces, shahrestans, power plants, mines and wonders on a usaciv-compatible pipeline (source only)."
+      "description": "Iran provinces, shahrestans, power plants, mines and wonders on a usaciv-compatible pipeline (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "usaciv-terra",
@@ -992,7 +1123,9 @@
       "author": "kenshin-ai-101",
       "url": null,
       "embed": false,
-      "description": "US 4X strategy sandbox & interactive data workbench built from 31 official datasets (source only)."
+      "description": "US 4X strategy sandbox & interactive data workbench built from 31 official datasets (source only).",
+      "github_stars": 1,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "usaciv-cn",
@@ -1009,7 +1142,9 @@
       "author": "JerryYangAI",
       "url": null,
       "embed": false,
-      "description": "Chinese-localized edition of usaciv (source only)."
+      "description": "Chinese-localized edition of usaciv (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "nipponciv",
@@ -1026,7 +1161,9 @@
       "author": "datashowme-me",
       "url": null,
       "embed": false,
-      "description": "Japan's 47 prefectures as a hex strategy map with population, GDP, Shinkansen, industry and culture data (source only)."
+      "description": "Japan's 47 prefectures as a hex strategy map with population, GDP, Shinkansen, industry and culture data (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "indiaciv-kairon",
@@ -1043,7 +1180,11 @@
       "author": "kairon007",
       "url": null,
       "embed": false,
-      "description": "India's 36 states and union territories and 640 districts as a strategy map from public data (source only)."
+      "description": "India's 36 states and union territories and 640 districts as a strategy map from public data (source only).",
+      "author_twitter": "kairon007",
+      "author_twitter_source": "https://github.com/kairon007",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "bharat-hex-atlas",
@@ -1060,7 +1201,9 @@
       "author": "amishra95",
       "url": null,
       "embed": false,
-      "description": "India on one 25 km hex grid from the newest sources, such as GHS-POP 2025, NFHS-6 and PLFS 2025, with no Census 2011 (source only)."
+      "description": "India on one 25 km hex grid from the newest sources, such as GHS-POP 2025, NFHS-6 and PLFS 2025, with no Census 2011 (source only).",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     },
     {
       "id": "canada-civ",
@@ -1077,7 +1220,11 @@
       "author": "shawnpang",
       "url": null,
       "embed": false,
-      "description": "All 13 provinces and territories in English and French, with 109 towns, lenses and an Almanac of official sources (source only)."
+      "description": "All 13 provinces and territories in English and French, with 109 towns, lenses and an Almanac of official sources (source only).",
+      "author_twitter": "0xshawnpang",
+      "author_twitter_source": "https://github.com/shawnpang",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
     }
   ]
 }

@@ -28,11 +28,11 @@ import { editionUrl } from "../../app/home.js";
 // from before this rewrite fetches new ones; see ./home.js.
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
-import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, rankMakers } from "./makers.js";
+import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankMakers } from "./makers.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127b", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
@@ -450,6 +450,44 @@ export function install(app) {
     return `<a class="mk-name" href="${esc(maker.url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(maker.name)}</a> ${makerTwitterHtml(maker)}`;
   }
 
+  function repoStarsHtml(port) {
+    const stars = ownRepoStars(port);
+    if (!stars) return "";
+    const count = stars.toLocaleString("en-US");
+    const checked = port.github_stars_checked ? ` · checked ${port.github_stars_checked}` : "";
+    return `<a class="repo-stars" href="https://github.com/${esc(port.repo)}/stargazers" target="_blank" rel="noopener noreferrer"
+      title="${esc(`${port.repo} · ${count} GitHub ${stars === 1 ? "star" : "stars"}${checked}`)}">☆ ${count} GitHub ${stars === 1 ? "star" : "stars"}</a>`;
+  }
+
+  function makerMapLineHtml(p) {
+    const k = portKind(p);
+    const a = actionOf(p);
+    const r = ratings.of(p.id);
+    const rated = ratingWords(r.n, r.sum);
+    const iso = (p.countries || []).length === 1 ? p.countries[0] : "";
+    const note = rated ? `<span class="mk-map-note mk-stars" title="${esc(rated.title)}">${rated.average}/5</span>`
+      : k === "repo" ? `<span class="mk-map-note">source code</span>`
+        : k === "merged" ? `<span class="mk-map-note">EarthCiv edition</span>` : "";
+    const inner = `<span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span>
+        <span class="mk-map-name">${esc(p.name)}</span>${note}
+        <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
+    const stars = repoStarsHtml(p);
+    return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}${stars ? `<div class="mk-map-stars">${stars}</div>` : ""}</li>`;
+  }
+
+  function featuredCreatorHtml(makers) {
+    const maker = makers.find((entry) => entry.ports.some((port) => port.featured_creator === true))
+      || makers.find((entry) => !entry.original && !entry.house && entry.ports.some((port) => port.status === "live" && port.url));
+    if (!maker) return "";
+    return `<section class="featured-creator" aria-label="Featured creator">
+      <div class="featured-creator-heading">${avatarHtml(maker, "mk-av-lg")}<div>
+        <span class="featured-creator-label">Featured creator</span>
+        <div class="mk-line">${makerNameHtml(maker)}</div>
+      </div></div>
+      <ul class="featured-creator-maps">${maker.ports.map(makerMapLineHtml).join("")}</ul>
+    </section>`;
+  }
+
   function sourceCreditHtml(port) {
     const source = basePorts.find((entry) => entry.id === port.based_on);
     const maker = makerOf(source);
@@ -815,7 +853,7 @@ export function install(app) {
   }
 
   function onOverlayClick(e) {
-    const el = e.target.closest("button, a, [data-select], [data-open-port], .rt, .port-card");
+    const el = e.target.closest("button, a, [data-select], [data-open-port], .rt, .pc-repo-stars, .port-card");
     if (!el || !overlay.contains(el)) return;
     const d = el.dataset;
     if (el.tagName === "A") {
@@ -827,7 +865,7 @@ export function install(app) {
       }
       return;
     }
-    if (el.classList.contains("rt")) return; // a click that just misses a star must not open the card's map
+    if (el.classList.contains("rt") || el.classList.contains("pc-repo-stars")) return; // a click beside stars must not open the card's map
     // A star: the second click of a double-click is not a second choice (it would take the rating straight back).
     if (d.rate) return e.detail > 1 ? undefined : ratePort(d.rate, Number(d.stars));
     const act = d.act;
@@ -1130,7 +1168,7 @@ export function install(app) {
   // The makers' order and numbers follow the ratings. When those arrive or change, the faces on the country list and
   // the list of makers are drawn again, but only if they would come out differently.
   let makersDrawn = "";
-  const makersSignature = (makers) => makers.map((m) => `${m.key}:${m.n}:${m.sum}`).join("|");
+  const makersSignature = (makers) => makers.map((m) => `${m.key}:${m.n}:${m.sum}:${m.ports.map((p) => { const r = ratings.of(p.id); return `${r.n}/${r.sum}`; }).join(",")}`).join("|");
   function syncMakers() {
     if (!map || !sideEl || ui.selected) return;
     const makers = rankedMakers();
@@ -1289,6 +1327,7 @@ export function install(app) {
     if (!makers.length) return "";
     const faces = makers.filter((m) => !m.house).slice(0, FACES);
     return `<div class="wv-credit">
+        ${featuredCreatorHtml(makers)}
         ${todayHtml(featuredPort(basePorts, { day: dayNumber() }))}
         <button type="button" class="wv-makers" data-act="makers" aria-label="Map makers: the ${makers.length} makers of these maps">
           <span class="wv-makers-faces">${faces.map((m) => avatarHtml(m)).join("")}</span>
@@ -1312,27 +1351,13 @@ export function install(app) {
           <small>by ${esc(maker.name)}${where ? ` · ${esc(where)}` : ""}</small></span>
         <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
     return `<div>${openerHtml(p, "wv-today", inner, `data-port-id="${esc(p.id)}"${n === 1 ? ` data-hover="${esc(p.countries[0])}"` : ""} title="${esc(a.title)}"`)}
-      <div class="wv-today-connect">${makerNameHtml(maker)}</div></div>`;
+      <div class="wv-today-connect">${makerNameHtml(maker)} ${repoStarsHtml(p)}</div></div>`;
   }
 
   // Everyone who made a map, each with their maps. A map's line opens it, as its card's button would.
   function makersHtml() {
     const makers = rankedMakers();
     makersDrawn = makersSignature(makers);
-    const mapLine = (p) => {
-      const k = portKind(p);
-      const a = actionOf(p);
-      const r = ratings.of(p.id);
-      const rated = ratingWords(r.n, r.sum);
-      const iso = (p.countries || []).length === 1 ? p.countries[0] : "";
-      const note = rated ? `<span class="mk-map-note mk-stars" title="${esc(rated.title)}">${rated.average}</span>`
-        : k === "repo" ? `<span class="mk-map-note">source code</span>`
-          : k === "merged" ? `<span class="mk-map-note">EarthCiv edition</span>` : "";
-      const inner = `<span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span>
-          <span class="mk-map-name">${esc(p.name)}</span>${note}
-          <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
-      return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}</li>`;
-    };
     const row = (m) => {
       const rated = ratingWords(m.n, m.sum);
       const tag = m.original ? "Where it began" : m.house ? "This site" : "";
@@ -1341,7 +1366,7 @@ export function install(app) {
       const sub = [
         m.original ? "usaciv, the map the others began with" : "",
         m.ports.length > 1 ? plural(m.ports.length, "map") : "",
-        m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}</span> <small>(${m.n})</small>` : "",
+        m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}/5</span> <small>(${m.n})</small>` : "",
       ].filter(Boolean);
       // The account's name, where the maker is credited under another one.
       const handle = m.github && m.github.toLowerCase() !== m.name.toLowerCase() && !m.house ? `<span class="mk-handle">${esc(m.github)}</span>` : "";
@@ -1351,7 +1376,7 @@ export function install(app) {
             <div class="mk-line">${makerNameHtml(m)}${handle}${tag ? `<span class="mk-tag">${tag}</span>` : ""}</div>
             ${sub.length ? `<div class="mk-sub">${sub.join(" · ")}</div>` : ""}
           </div>
-          <ul class="mk-maps">${m.ports.map(mapLine).join("")}</ul>
+          <ul class="mk-maps">${m.ports.map(makerMapLineHtml).join("")}</ul>
         </li>`;
     };
     return `
@@ -1362,8 +1387,7 @@ export function install(app) {
           live on their maker's own site. EarthCiv lists them and links to them.</p>
         <ol class="mk-list">${makers.map(row).join("")}</ol>
         <div class="wv-foot">
-          <p>Makers whose maps have ${MIN_RATINGS} or more ratings are listed by their rating. The others take turns: their order moves
-            one place every day.</p>
+          <p>Makers with ${MIN_RATINGS} or more visitor ratings are ordered by their weighted rating. GitHub stars help order makers with equal scores, including those awaiting enough ratings. Remaining ties rotate daily.</p>
           <p>Make one of these maps? <a href="${MAP_FORM_URL}&amp;request=Correct%20my%20map%27s%20listing" target="_blank" rel="noopener noreferrer">Add or update your Twitter / X</a></p>
           <p>Built a map in this style? <a href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Add it to the list</a></p>
         </div>
@@ -1480,6 +1504,7 @@ export function install(app) {
     if (k === "custom") {
       actions += `<button type="button" class="ports-btn ports-btn-ghost ports-rm" data-remove-custom="${esc(p.id)}" title="Remove this link" aria-label="Remove ${esc(p.name)}">✕</button>`;
     }
+    const stars = repoStarsHtml(p);
     return `
       <article class="port-card ${KIND[k].cls}${picked ? " is-picked" : ""}" data-port-id="${esc(p.id)}" title="${esc(a.title)}">
         <div class="pc-top">
@@ -1501,6 +1526,7 @@ export function install(app) {
         ${p.description ? `<p class="pc-desc">${esc(p.description)}</p>` : ""}
         <div class="pc-actions">${actions}</div>
         <div class="rt" data-rating-of="${esc(p.id)}" hidden></div>
+        ${stars ? `<div class="pc-repo-stars">${stars}</div>` : ""}
       </article>`;
   }
 
