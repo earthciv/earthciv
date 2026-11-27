@@ -450,6 +450,30 @@ export function install(app) {
     return `<a class="mk-name" href="${esc(maker.url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(maker.name)}</a> ${makerTwitterHtml(maker)}`;
   }
 
+  function repoStarsHtml(port) {
+    if (!port.repo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(port.repo)
+        || !Number.isSafeInteger(port.github_stars) || port.github_stars < 0) return "";
+    const count = port.github_stars.toLocaleString("en-US");
+    const checked = port.github_stars_checked ? ` · checked ${port.github_stars_checked}` : "";
+    return `<a class="repo-stars" href="https://github.com/${esc(port.repo)}/stargazers" target="_blank" rel="noopener noreferrer"
+      title="${esc(port.repo + checked)}">☆ ${count} GitHub ${port.github_stars === 1 ? "star" : "stars"}</a>`;
+  }
+
+  function featuredCreatorHtml(makers) {
+    const maker = makers.find((entry) => entry.ports.some((port) => port.featured_creator === true));
+    if (!maker) return "";
+    return `<section class="featured-creator" aria-label="Featured creator">
+      <div class="featured-creator-heading">${avatarHtml(maker, "mk-av-lg")}<div>
+        <span class="featured-creator-label">Featured creator</span>
+        <div class="mk-line">${makerNameHtml(maker)}</div>
+      </div></div>
+      <ul class="featured-creator-maps">${maker.ports.map((port) => `<li>
+        ${openerHtml(port, "mk-map", `<span class="mk-map-name">${esc(port.name)}</span><span aria-hidden="true">›</span>`, `data-port-id="${esc(port.id)}"`)}
+        ${repoStarsHtml(port)}
+      </li>`).join("")}</ul>
+    </section>`;
+  }
+
   function sourceCreditHtml(port) {
     const source = basePorts.find((entry) => entry.id === port.based_on);
     const maker = makerOf(source);
@@ -1289,6 +1313,7 @@ export function install(app) {
     if (!makers.length) return "";
     const faces = makers.filter((m) => !m.house).slice(0, FACES);
     return `<div class="wv-credit">
+        ${featuredCreatorHtml(makers)}
         ${todayHtml(featuredPort(basePorts, { day: dayNumber() }))}
         <button type="button" class="wv-makers" data-act="makers" aria-label="Map makers: the ${makers.length} makers of these maps">
           <span class="wv-makers-faces">${faces.map((m) => avatarHtml(m)).join("")}</span>
@@ -1312,7 +1337,7 @@ export function install(app) {
           <small>by ${esc(maker.name)}${where ? ` · ${esc(where)}` : ""}</small></span>
         <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
     return `<div>${openerHtml(p, "wv-today", inner, `data-port-id="${esc(p.id)}"${n === 1 ? ` data-hover="${esc(p.countries[0])}"` : ""} title="${esc(a.title)}"`)}
-      <div class="wv-today-connect">${makerNameHtml(maker)}</div></div>`;
+      <div class="wv-today-connect">${makerNameHtml(maker)} ${repoStarsHtml(p)}</div></div>`;
   }
 
   // Everyone who made a map, each with their maps. A map's line opens it, as its card's button would.
@@ -1325,13 +1350,13 @@ export function install(app) {
       const r = ratings.of(p.id);
       const rated = ratingWords(r.n, r.sum);
       const iso = (p.countries || []).length === 1 ? p.countries[0] : "";
-      const note = rated ? `<span class="mk-map-note mk-stars" title="${esc(rated.title)}">${rated.average}</span>`
+      const note = rated ? `<span class="mk-map-note mk-stars" title="${esc(rated.title)}">${rated.average}/5 visitors</span>`
         : k === "repo" ? `<span class="mk-map-note">source code</span>`
           : k === "merged" ? `<span class="mk-map-note">EarthCiv edition</span>` : "";
       const inner = `<span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span>
           <span class="mk-map-name">${esc(p.name)}</span>${note}
           <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
-      return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}</li>`;
+      return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}${repoStarsHtml(p)}</li>`;
     };
     const row = (m) => {
       const rated = ratingWords(m.n, m.sum);
@@ -1341,7 +1366,7 @@ export function install(app) {
       const sub = [
         m.original ? "usaciv, the map the others began with" : "",
         m.ports.length > 1 ? plural(m.ports.length, "map") : "",
-        m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}</span> <small>(${m.n})</small>` : "",
+        m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}/5 visitors</span> <small>(${m.n})</small>` : "",
       ].filter(Boolean);
       // The account's name, where the maker is credited under another one.
       const handle = m.github && m.github.toLowerCase() !== m.name.toLowerCase() && !m.house ? `<span class="mk-handle">${esc(m.github)}</span>` : "";
@@ -1500,7 +1525,7 @@ export function install(app) {
         </div>
         ${p.description ? `<p class="pc-desc">${esc(p.description)}</p>` : ""}
         <div class="pc-actions">${actions}</div>
-        <div class="rt" data-rating-of="${esc(p.id)}" hidden></div>
+        <div class="pc-feedback"><div class="rt" data-rating-of="${esc(p.id)}" hidden></div>${repoStarsHtml(p)}</div>
       </article>`;
   }
 

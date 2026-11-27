@@ -704,3 +704,11 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .mk-twitter:hover { text-decoration: underline; }
 .mk-twitter span { color: var(--ink-dim); }
 .wv-today-connect { padding: 6px 10px 9px; font-size: 12px; border-bottom: 1px solid rgba(201, 164, 92, .22); }
+
+.repo-stars { display: inline-block; color: var(--gold-bright); font: 500 11px/1.5 var(--sans); text-decoration: none; padding: 3px 0; }
+.repo-stars:hover { text-decoration: underline; }
+.pc-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; }
+.featured-creator { padding: 12px 10px; border-bottom: 1px solid rgba(201, 164, 92, .3); background: rgba(201, 164, 92, .08); }
+.featured-creator-heading { display: flex; gap: 10px; align-items: center; }
+.featured-creator-label { display: block; margin-bottom: 4px; font: 600 10px/1.4 var(--sans); color: var(--gold); text-transform: uppercase; letter-spacing: .08em; }
+.featured-creator-maps { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 5px; }
