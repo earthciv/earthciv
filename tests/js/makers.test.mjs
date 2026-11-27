@@ -295,3 +295,14 @@ test("the same person's maps are listed together", () => {
   assert.deepEqual(astruc.ports.map((p) => p.id), ["europeciv", "franceciv-astruc"]);
   assert.equal(astruc.name, "Mathieu Astruc");
 });
+
+test("Twitter handles stay separate from GitHub and survive grouping multiple maps", () => {
+  const map = live("x", "Someone", "someone/x", { author_twitter: "their_x" });
+  assert.equal(makerOf(map).twitter, "their_x");
+  assert.equal(makerOf(map).url, "https://github.com/someone");
+  for (const handle of ["https://x.com/person", "../person", "<script>", "a".repeat(16), null]) {
+    assert.equal(makerOf({ ...map, author_twitter: handle }).twitter, undefined);
+  }
+  const makers = listMakers([live("y", "Someone", "someone/y"), map]);
+  assert.equal(makers[0].twitter, "their_x");
+});
