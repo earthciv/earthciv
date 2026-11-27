@@ -980,7 +980,8 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .ports-legend.is-lens { display: block; width: 280px; padding: 9px 12px 8px; }
 .lg-rk-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .lg-rk-head b { flex: none; font: normal 15px var(--serif); color: var(--gold-bright); }
-.lg-rk-head small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: var(--ink-dim); }
+.lg-rk-head svg { flex: none; }
+.lg-rk-head small { min-width: 0; font-size: 10.5px; color: var(--ink-dim); }
 .lg-rk-ramp { height: 10px; margin-top: 8px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
 .lg-rk-ticks {
   display: flex; justify-content: space-between; gap: 4px; margin-top: 3px;
