@@ -15,10 +15,11 @@
       "languages": ["en"],
       "license": "MIT",
       "repo": "earthciv/earthciv",
-      "author": "Andrej Karpathy / earthciv",
+      "author": "Andrej Karpathy",
+      "author_github": "karpathy",
       "url": null,
       "embed": true,
-      "description": "Built-in EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data."
+      "description": "Andrej Karpathy's usaciv as an EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data."
     },
     {
       "id": "ca",
@@ -33,7 +34,7 @@
       "languages": ["en"],
       "license": "MIT",
       "repo": "earthciv/earthciv",
-      "author": "earthciv",
+      "author": "EarthCiv",
       "url": null,
       "embed": true,
       "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors."
@@ -54,7 +55,7 @@
       "languages": ["en"],
       "license": "MIT",
       "repo": "lmveprog/Europe-Civilization",
-      "author": "lmveprog",
+      "author": "Mathieu Astruc",
       "url": "https://mathieuastruc.com/europeciv/",
       "embed": true,
       "description": "37 European countries on one hex map (EU-27, EFTA & Western Balkans) from Eurostat, Copernicus and UNESCO."
@@ -131,6 +132,7 @@
       "license": null,
       "repo": null,
       "author": "Mathieu Astruc",
+      "author_github": "lmveprog",
       "url": "https://mathieuastruc.com/franceciv/",
       "embed": true,
       "description": "France drawn as a 4X strategy map using INSEE, CORINE land cover and public French datasets."
@@ -845,9 +847,11 @@
       "license": "MIT",
       "repo": null,
       "author": "Andrej Karpathy",
+      "author_github": "karpathy",
+      "original": true,
       "url": "https://karpathy.ai/usaciv/",
       "embed": true,
-      "description": "Andrej Karpathy's original usaciv that inspired the entire ecosystem of country ports."
+      "description": "Andrej Karpathy's original usaciv: the map of the United States that inspired the others listed here."
     },
     {
       "id": "usaciv-poro",

@@ -11,7 +11,11 @@
 //     community map shown inside EarthCiv, or one on its own site) and every other map of it. A country nobody has
 //     mapped yet says so and links to how EarthCiv is built.
 //   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js).
-//   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), and #country=<ISO code>.
+//   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
+//     and in the bar and the note of a community map that is open here. "Map makers" lists everyone who made one
+//     (./makers.js).
+//   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>, and
+//     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view).
 //   * Loads web/data/ports.json, world-outlines.json, world-figures.json and ratings.json only when first opened.
 
 import { esc } from "../../app/escape.js";
@@ -24,6 +28,7 @@ import { editionUrl } from "../../app/home.js";
 // from before this rewrite fetches new ones; see ./home.js.
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
+import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, rankMakers } from "./makers.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
@@ -36,6 +41,10 @@ const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no m
 const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
+// The account this site's own editions are credited to (the catalog's "repo" of an EarthCiv edition).
+const HOUSE = new URL(REPO_URL).pathname.split("/")[1].toLowerCase();
+const AVATAR_PX = 80; // the makers' pictures are asked for at one size, twice the largest they are drawn at
+const FACES = 7; // how many makers' faces the country list shows on the way to the list of makers
 // The form a map's author fills in to have it listed here for everyone (.github/ISSUE_TEMPLATE/add-your-map.yml).
 // "Add its link" below only saves a link in the visitor's own browser.
 const MAP_FORM_URL = `${REPO_URL}/issues/new?template=add-your-map.yml`;
@@ -184,7 +193,10 @@ export function install(app) {
   // ratings.sync() fills and keeps up to date; a slot of a map that cannot be rated stays hidden.
   const ratings = createRatings({
     url: new URL("ratings.json", DATA_URL),
-    onChange: () => ratings.sync(overlay, portById),
+    onChange: () => {
+      ratings.sync(overlay, portById);
+      syncMakers(); // the makers' order follows the ratings
+    },
   });
   let map = null;
   let worldUnseen = false; // the world map was built while a community map covered it (see closeViewer)
@@ -195,12 +207,13 @@ export function install(app) {
   let countryIndex = []; // [{id, name, continent, folded, words, aliases}], A–Z
   const ready = []; // callbacks waiting for the catalog and the map
   // A map or a country the URL named before the world loaded: kept in the URL meanwhile.
-  const pending = { port: null, country: null };
+  const pending = { port: null, country: null, makers: null };
   const savedTitle = document.title;
 
   const ui = {
     activePortId: null, // a map open in the viewer
     selected: null, // the picked country (ISO code)
+    makers: null, // the list of makers is showing: "all", or the key of the one maker to bring into view
     pickedPortId: null, // the map whose pin was clicked: first in the country's card
     kind: null, // map key filter: merged | live | external | repo | none (null = everything)
     sheet: "peek", // phones: mini | peek | full
@@ -382,7 +395,7 @@ export function install(app) {
         copy.unshift({
           id: ed.id, name: ed.name, emblem: ed.emblem, status: "merged", editionId: ed.id, scope: "country", region: "Other",
           countries: /^[a-z]{2}$/i.test(ed.id) ? [ed.id.toUpperCase()] : [], center: null, languages: ["en"],
-          license: "MIT", repo: "earthciv/earthciv", author: "earthciv", url: null, embed: true,
+          license: "MIT", repo: "earthciv/earthciv", author: "EarthCiv", url: null, embed: true,
           description: "Built-in EarthCiv edition.",
         });
       }
@@ -398,6 +411,47 @@ export function install(app) {
     return allPorts().find((p) => p.id === id) || null;
   }
   const countryName = (iso) => map?.getCountryName(iso) || iso;
+
+  // --- the makers ------------------------------------------------------------------------------------------------
+  // Who made each map (./makers.js). A map names its maker wherever it is shown. This site's own editions are
+  // credited to EarthCiv in words only: they keep their emblem where another map shows its maker's picture.
+  const isHouse = (maker) => maker.key === HOUSE;
+  /** The maker to name beside a map: null for a visitor's own link, and for this site's own editions. */
+  const creditOf = (p) => {
+    const maker = makerOf(p);
+    return maker && !isHouse(maker) ? maker : null;
+  };
+
+  /** Everyone who made a map, in the order the list of makers shows them, with their ratings. */
+  function rankedMakers() {
+    return rankMakers(listMakers(basePorts, { house: HOUSE }), { ratingOf: (id) => ratings.of(id), day: dayNumber() });
+  }
+
+  // A maker's picture: the one on their GitHub account, drawn over their initials, which stay where there is no
+  // account or the picture does not load (bindOverlayEvents). The browser asks GitHub for it without naming this
+  // page (referrerpolicy), and only once the picture is about to be seen (loading="lazy").
+  function avatarHtml(maker, cls = "") {
+    const more = cls ? ` ${cls}` : "";
+    if (isHouse(maker)) return `<span class="mk-av mk-av-house${more}" aria-hidden="true">${GLOBE_SVG}</span>`;
+    const src = avatarUrl(maker.github, AVATAR_PX);
+    return `<span class="mk-av${more}" style="--mk-hue:${hueOf(maker.key)}" aria-hidden="true"><span class="mk-ini">${esc(initials(maker.name))}</span>${
+      src ? `<img class="mk-pic" src="${esc(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : ""}</span>`;
+  }
+
+  // A maker's name: a link to their GitHub profile, or to the page of theirs that the catalog names.
+  function makerNameHtml(maker) {
+    if (!maker.url) return `<span class="mk-name">${esc(maker.name)}</span>`;
+    const onGitHub = !!maker.github && maker.url === `https://github.com/${maker.github}`;
+    const title = onGitHub ? `${maker.name} on GitHub` : `${maker.name}'s own page`;
+    return `<a class="mk-name" href="${esc(maker.url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(maker.name)}</a>`;
+  }
+
+  /** "4.6" and "Rated 4.6 out of 5 by 12 people" for a number of ratings and the sum of their stars; null unrated. */
+  function ratingWords(n, sum) {
+    if (!n) return null;
+    const average = (sum / n).toFixed(1);
+    return { average, title: `Rated ${average} out of 5 by ${plural(n, "person", "people")}` };
+  }
 
   // The maps shown, after the map key filter.
   function filteredPorts() {
@@ -488,17 +542,28 @@ export function install(app) {
   // What the big button says for a map, and where it goes when that is another site.
   function actionOf(p) {
     const k = portKind(p);
-    const by = p.author ? ` by ${p.author}` : "";
+    const maker = creditOf(p);
+    const by = maker ? `by ${maker.name} · ` : "";
     if (k === "merged") {
       if (!home && p.editionId === EDITION_ID) return { title: `Back to ${p.name}`, sub: "the EarthCiv map you came from" };
-      return { title: `Play ${p.name}`, sub: "EarthCiv edition · opens here" };
+      return { title: `Play ${p.name}`, sub: `${by}EarthCiv edition · opens here` };
     }
     if ((k === "live" || k === "custom") && p.embed && p.url) {
-      return { title: `Open ${p.name}`, sub: `${k === "custom" ? "your link" : `community map${by}`} · opens here` };
+      return { title: `Open ${p.name}`, sub: `${k === "custom" ? "your link" : `${by}community map`} · opens here` };
     }
-    if (p.url) return { title: `Open ${p.name}`, sub: `community map${by} · opens in a new tab`, href: p.url };
-    if (p.repo) return { title: `${p.name}: source code`, sub: `on GitHub${by} · no live site yet`, href: `https://github.com/${encodeURI(p.repo)}` };
+    if (p.url) return { title: `Open ${p.name}`, sub: `${by}community map · opens in a new tab`, href: p.url };
+    if (p.repo) return { title: `${p.name}: source code`, sub: `${by}on GitHub · no live site yet`, href: `https://github.com/${encodeURI(p.repo)}` };
     return { title: p.name, sub: "" };
+  }
+
+  // The control that opens a map, around `inner`: a link to an edition or to a map's own site, so that it can be
+  // opened in a new tab, and a button for a map that opens here.
+  function openerHtml(p, cls, inner, attrs = "") {
+    const a = actionOf(p);
+    const more = attrs ? ` ${attrs}` : "";
+    if (a.href) return `<a class="${cls}" href="${esc(a.href)}" target="_blank" rel="noopener noreferrer"${more}>${inner}</a>`;
+    if (portKind(p) === "merged" && p.editionId) return `<a class="${cls}" ${editionLink(p.editionId)}${more}>${inner}</a>`;
+    return `<button type="button" class="${cls}" data-open-port="${esc(p.id)}"${more}>${inner}</button>`;
   }
 
   // --- overlay DOM -------------------------------------------------------------------------------------------------
@@ -582,12 +647,14 @@ export function install(app) {
             <button type="button" class="ports-launch" data-act="back-atlas">${LAUNCH_HTML}</button>
           </div>
           <span class="pc-badge ports-vkind" id="ports-vkind"></span>
+          <span class="ports-vby" id="ports-vby" hidden></span>
           <div class="ports-vactions" id="ports-vactions"></div>
         </div>
         <div class="ports-vstage">
           <div class="ports-vloading" id="ports-vloading" hidden>
             <div class="ports-spinner" aria-hidden="true"></div>
             <div class="ports-vloading-text" id="ports-vloading-text">Surveying…</div>
+            <div class="ports-vloading-by" id="ports-vloading-by" hidden></div>
             <a class="ports-btn" id="ports-vloading-ext" target="_blank" rel="noopener noreferrer">Open it in a new tab ${EXT_SVG}</a>
           </div>
           <div class="ports-vnotice" id="ports-vnotice" hidden></div>
@@ -664,12 +731,17 @@ export function install(app) {
     });
 
     overlay.addEventListener("click", onOverlayClick);
+    // A maker's picture that does not load leaves their initials in its place. (An image's error does not bubble,
+    // so it is caught on its way down.)
+    overlay.addEventListener("error", (e) => {
+      if (e.target instanceof HTMLImageElement && e.target.classList.contains("mk-pic")) e.target.remove();
+    }, true);
 
     // Hovering a row or a card highlights its country, or its map's countries, on the world map.
     sideEl.addEventListener("pointerover", (e) => {
       const row = e.target.closest("[data-hover]");
       map?.setListHover(row?.dataset.hover || null);
-      const card = e.target.closest(".port-card");
+      const card = e.target.closest("[data-port-id]"); // a map's card, or its line in the list of makers
       map?.setHighlightPort(card?.dataset.portId || ui.pickedPortId || null);
     });
     sideEl.addEventListener("pointerleave", () => {
@@ -758,8 +830,11 @@ export function install(app) {
       // The brand, like a site's logo, goes back to the start: the whole world and the list of every country.
       closeResults(true);
       deselect();
+      closeMakers();
       return map?.resetView();
     }
+    if (act === "makers") return openMakers("all", { focus: true });
+    if (act === "makers-close") return closeMakers({ focus: true });
     if (act === "retry") return app.setMode(MODE, { id: null });
     if (act === "deselect") return deselect({ focusRow: true });
     if (act === "toggle-add") return setAddFormOpen(!ui.addFormOpen, d.iso || ui.selected);
@@ -893,13 +968,19 @@ export function install(app) {
         const p = r.port;
         const n = (p.countries || []).length;
         const where = n > 2 ? plural(n, "country", "countries") : (p.countries || []).map(countryName).join(" · ");
+        const k = portKind(p);
+        const maker = creditOf(p);
+        // Its maker first; then what the name beside it does not already say.
+        const meta = maker
+          ? `by ${maker.name} · ${k === "merged" ? KIND[k].label : k === "repo" ? "source code" : where}`
+          : `${KIND[k].label}${where ? ` · ${where}` : ""}`;
         // An edition's suggestion is its link, out of the tab order like every suggestion (the arrow keys pick one).
         const [tag, opens] = portKind(p) === "merged" && p.editionId
           ? ["a", `${editionLink(p.editionId)} tabindex="-1"`]
           : ["div", `data-open-port="${esc(p.id)}"`];
         return `<${tag} class="wv-opt" role="option" id="wv-opt-${i}" aria-selected="false" ${opens}>
           <span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span><span class="wv-opt-name">${esc(p.name)}</span>
-          <span class="wv-opt-meta">${esc(KIND[portKind(p)].label)}${where ? ` · ${esc(where)}` : ""}</span></${tag}>`;
+          <span class="wv-opt-meta">${esc(meta)}</span></${tag}>`;
       }).join("");
     }
     resultsEl.hidden = false;
@@ -961,8 +1042,9 @@ export function install(app) {
   function selectCountry(iso, { fly = false, focus = false, port = null, write = true } = {}) {
     if (!map || !map.getCountry(iso)) return;
     const scroller = overlay.querySelector("#wv-side-scroll");
-    if (!ui.selected) ui.listScroll = scroller.scrollTop;
+    if (!ui.selected && !ui.makers) ui.listScroll = scroller.scrollTop;
     const same = ui.selected === iso && ui.pickedPortId === (port?.id || null);
+    ui.makers = null;
     ui.selected = iso;
     ui.pickedPortId = port?.id || null;
     map.setSelectedCountry(iso);
@@ -998,6 +1080,60 @@ export function install(app) {
   function openPrimary() {
     const list = portsFor(ui.selected);
     activatePort((ui.pickedPortId && list.find((x) => x.id === ui.pickedPortId)) || list[0]);
+  }
+
+  // --- the list of makers ------------------------------------------------------------------------------------------
+  // It takes the country list's place in the panel. `key` is "all", or one maker's key: that maker's entry is marked
+  // and brought into view (#makers=<key>, a link a maker can share).
+  function openMakers(key = "all", { write = true, focus = false } = {}) {
+    if (!map) return;
+    const wanted = String(key || "all").toLowerCase();
+    if (ui.makers === wanted && !ui.selected) return; // already showing (Back from a map opened here): stay in place
+    const scroller = overlay.querySelector("#wv-side-scroll");
+    if (!ui.selected && !ui.makers) ui.listScroll = scroller.scrollTop;
+    ui.makers = wanted;
+    ui.selected = null;
+    ui.pickedPortId = null;
+    map.setSelectedCountry(null);
+    map.setHighlightPort(null);
+    renderSide();
+    scroller.scrollTop = 0;
+    if (isSheetLayout()) setSheet("full"); // a phone's half-open sheet would show the heading and little else
+    overlay.querySelector(".mk-row.is-focus")?.scrollIntoView({ block: "start" });
+    announce(`Map makers: ${plural(overlay.querySelectorAll(".mk-row").length, "maker")}`);
+    syncTitle();
+    if (write) app.hash.soon();
+    if (focus) overlay.querySelector("#wv-makers-title")?.focus({ preventScroll: true });
+  }
+
+  function closeMakers({ write = true, focus = false } = {}) {
+    if (!ui.makers) return;
+    ui.makers = null;
+    renderSide();
+    overlay.querySelector("#wv-side-scroll").scrollTop = ui.listScroll || 0;
+    if (isSheetLayout() && ui.sheet === "full") setSheet("peek");
+    syncTitle();
+    if (write) app.hash.soon();
+    if (focus) overlay.querySelector(".wv-makers")?.focus({ preventScroll: true });
+  }
+
+  // The makers' order and numbers follow the ratings. When those arrive or change, the faces on the country list and
+  // the list of makers are drawn again, but only if they would come out differently.
+  let makersDrawn = "";
+  const makersSignature = (makers) => makers.map((m) => `${m.key}:${m.n}:${m.sum}`).join("|");
+  function syncMakers() {
+    if (!map || !sideEl || ui.selected) return;
+    const makers = rankedMakers();
+    if (makersSignature(makers) === makersDrawn) return;
+    if (ui.makers) {
+      const scroller = overlay.querySelector("#wv-side-scroll");
+      const at = scroller.scrollTop;
+      renderSide();
+      scroller.scrollTop = at;
+    } else {
+      const strip = overlay.querySelector(".wv-credit");
+      if (strip) strip.outerHTML = makersStripHtml(makers);
+    }
   }
 
   // A click on one of a map's five stars gives that rating, or takes it back when it already is the visitor's.
@@ -1051,7 +1187,9 @@ export function install(app) {
     map.setPorts(allPorts(), filteredPorts());
     overlay.querySelector("#wv-legend").innerHTML = kindsHtml();
     const mapped = new Set(allPorts().flatMap((p) => p.countries || []));
-    overlay.querySelector("#wv-coverage").innerHTML = `<b>${mapped.size}</b> countries mapped · <b>${allPorts().length}</b> maps`;
+    const nMakers = listMakers(basePorts).length;
+    overlay.querySelector("#wv-coverage").innerHTML = `<b>${mapped.size}</b> countries mapped · <b>${allPorts().length}</b> maps`
+      + (nMakers ? ` by <button type="button" class="wv-coverage-makers" data-act="makers" title="Everyone who made a map"><b>${nMakers}</b> makers</button>` : "");
     renderSide();
   }
 
@@ -1063,9 +1201,10 @@ export function install(app) {
 
   function renderSide() {
     if (!map) return;
-    sideEl.dataset.view = ui.selected ? "detail" : "list";
-    sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : "Countries");
-    overlay.querySelector("#wv-side-content").innerHTML = ui.selected ? detailHtml(ui.selected) : listHtml();
+    const view = ui.selected ? "detail" : ui.makers ? "makers" : "list";
+    sideEl.dataset.view = view;
+    sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : ui.makers ? "Map makers" : "Countries");
+    overlay.querySelector("#wv-side-content").innerHTML = view === "detail" ? detailHtml(ui.selected) : view === "makers" ? makersHtml() : listHtml();
     ratings.sync(sideEl, portById);
   }
 
@@ -1089,14 +1228,19 @@ export function install(app) {
       const iso = (p.countries || [])[0] || "";
       const current = !home && p.editionId === EDITION_ID;
       const pic = PICTURED.has(p.editionId) ? esc(new URL(`${p.editionId}/home`, DATA_URL).href) : "";
+      // An edition that began as somebody's own map says whose: on its picture, or in its line where it has none.
+      // (The card is one link to the edition, so the name here is not a link of its own.)
+      const maker = creditOf(p);
+      const what = current ? "you came from here" : maker && !pic ? `by ${maker.name}` : "hex map from public data";
       const row = `<span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
-        <span class="wv-tile-text"><b>${esc(p.name)}</b><small>${current ? "EarthCiv edition · you came from here" : "EarthCiv edition · hex map from public data"}</small></span>
+        <span class="wv-tile-text"><b>${esc(p.name)}</b><small>EarthCiv edition · ${esc(what)}</small></span>
         <span class="wv-play">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></span>`;
       const body = !pic ? row : `<span class="wv-tile-pic"><picture>
           <source media="(max-width: 600px), (min-width: 901px) and (max-height: 760px)" srcset="${pic}-small.jpg" width="519" height="288">
-          <img src="${pic}.jpg" alt="" width="716" height="208" decoding="async"></picture></span>
+          <img src="${pic}.jpg" alt="" width="716" height="208" decoding="async"></picture>
+          ${maker ? `<span class="wv-tile-by">${avatarHtml(maker)}<span>by ${esc(maker.name)}</span></span>` : ""}</span>
         <span class="wv-tile-row">${row}</span>`;
-      return `<a class="wv-tile${pic ? " wv-tile-pictured" : ""}" ${editionLink(p.editionId)} data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
+      return `<a class="wv-tile${pic ? " wv-tile-pictured" : ""}" ${editionLink(p.editionId)} data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}${maker ? `, by ${esc(maker.name)}` : ""}">
         ${body}
       </a>`;
     };
@@ -1116,6 +1260,7 @@ export function install(app) {
           ${nMapped} mapped so far: pick one on the map, or start here.</p>
       </div>
       ${editions.length ? `<div class="wv-tiles${editions.some((p) => PICTURED.has(p.editionId)) ? " wv-tiles-pictured" : ""}">${editions.map(tile).join("")}</div>` : ""}
+      ${makersStripHtml(rankedMakers())}
       <div class="wv-kinds" role="group" aria-label="Show only">${kindsHtml()}</div>
       ${mapped.length ? `<h3 class="wv-group">With a map <span>${mapped.length}</span></h3><ul class="wv-rows">${mapped.map(row).join("")}</ul>` : ""}
       ${unmapped.length ? `<h3 class="wv-group">No map yet <span>${unmapped.length}</span></h3><ul class="wv-rows wv-rows-none">${unmapped.map(row).join("")}</ul>` : ""}
@@ -1123,6 +1268,93 @@ export function install(app) {
         <p>Know a map that is missing? <button type="button" class="wv-linkbtn" data-act="toggle-add">Add its link</button></p>
         <p>EarthCiv is <a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">open source</a> and grew out of
           Andrej Karpathy's <a href="${ORIGINAL_URL}" target="_blank" rel="noopener noreferrer">usaciv</a>.</p>
+      </div>`;
+  }
+
+  // The makers' place on the country list, under the editions: today's map, which is a different maker's every day
+  // (./makers.js featuredPort), and the way to the list of makers, with the first few makers' faces and how many
+  // there are.
+  function makersStripHtml(makers) {
+    makersDrawn = makersSignature(makers);
+    if (!makers.length) return "";
+    const faces = makers.filter((m) => !m.house).slice(0, FACES);
+    return `<div class="wv-credit">
+        ${todayHtml(featuredPort(basePorts, { day: dayNumber() }))}
+        <button type="button" class="wv-makers" data-act="makers" aria-label="Map makers: the ${makers.length} makers of these maps">
+          <span class="wv-makers-faces">${faces.map((m) => avatarHtml(m)).join("")}</span>
+          <span class="wv-makers-text"><b>${plural(makers.length, "maker")}</b><small>built these maps · meet them</small></span>
+          <span class="wv-chev" aria-hidden="true">›</span>
+        </button>
+      </div>`;
+  }
+
+  // Today's map: its maker's picture, its name and whose it is. All of it opens the map, as its card's button would
+  // (so the maker's name here is not a link of its own).
+  function todayHtml(p) {
+    const maker = p ? creditOf(p) : null;
+    if (!maker) return "";
+    const k = portKind(p);
+    const a = actionOf(p);
+    const n = (p.countries || []).length;
+    const where = n > 2 ? plural(n, "country", "countries") : (p.countries || []).map(countryName).join(" · ");
+    const inner = `${avatarHtml(maker, "mk-av-lg")}
+        <span class="wv-today-text"><small class="wv-today-lbl">Today's map</small><b>${esc(p.name)}</b>
+          <small>by ${esc(maker.name)}${where ? ` · ${esc(where)}` : ""}</small></span>
+        <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
+    return openerHtml(p, "wv-today", inner, `data-port-id="${esc(p.id)}"${n === 1 ? ` data-hover="${esc(p.countries[0])}"` : ""} title="${esc(a.title)}"`);
+  }
+
+  // Everyone who made a map, each with their maps. A map's line opens it, as its card's button would.
+  function makersHtml() {
+    const makers = rankedMakers();
+    makersDrawn = makersSignature(makers);
+    const mapLine = (p) => {
+      const k = portKind(p);
+      const a = actionOf(p);
+      const r = ratings.of(p.id);
+      const rated = ratingWords(r.n, r.sum);
+      const iso = (p.countries || []).length === 1 ? p.countries[0] : "";
+      const note = rated ? `<span class="mk-map-note mk-stars" title="${esc(rated.title)}">${rated.average}</span>`
+        : k === "repo" ? `<span class="mk-map-note">source code</span>`
+          : k === "merged" ? `<span class="mk-map-note">EarthCiv edition</span>` : "";
+      const inner = `<span class="wv-flag" aria-hidden="true">${esc(iconOf(p) || "🗺️")}</span>
+          <span class="mk-map-name">${esc(p.name)}</span>${note}
+          <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
+      return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}</li>`;
+    };
+    const row = (m) => {
+      const rated = ratingWords(m.n, m.sum);
+      const tag = m.original ? "Where it began" : m.house ? "This site" : "";
+      // Under the name: what the original map is to the others, and for someone with several maps how many, with
+      // their rating taken together. (One map's rating is on its line.)
+      const sub = [
+        m.original ? "usaciv, the map the others began with" : "",
+        m.ports.length > 1 ? plural(m.ports.length, "map") : "",
+        m.ports.length > 1 && rated ? `<span class="mk-stars" title="${esc(rated.title)}">${rated.average}</span> <small>(${m.n})</small>` : "",
+      ].filter(Boolean);
+      // The account's name, where the maker is credited under another one.
+      const handle = m.github && m.github.toLowerCase() !== m.name.toLowerCase() && !m.house ? `<span class="mk-handle">${esc(m.github)}</span>` : "";
+      return `<li class="mk-row${m.key === ui.makers ? " is-focus" : ""}${m.original ? " is-original" : ""}" data-maker="${esc(m.key)}">
+          ${avatarHtml(m, "mk-av-lg")}
+          <div class="mk-id">
+            <div class="mk-line">${makerNameHtml(m)}${handle}${tag ? `<span class="mk-tag">${tag}</span>` : ""}</div>
+            ${sub.length ? `<div class="mk-sub">${sub.join(" · ")}</div>` : ""}
+          </div>
+          <ul class="mk-maps">${m.ports.map(mapLine).join("")}</ul>
+        </li>`;
+    };
+    return `
+      <div class="wv-detail wv-makers-view">
+        <button type="button" class="wv-backlink" data-act="makers-close">‹ All countries</button>
+        <h2 class="wv-h" id="wv-makers-title" tabindex="-1">Map makers</h2>
+        <p class="wv-lede">${plural(basePorts.length, "map")} by ${plural(makers.length, "maker")}. Each map is its maker's own work, and most of them
+          live on their maker's own site. EarthCiv lists them and links to them.</p>
+        <ol class="mk-list">${makers.map(row).join("")}</ol>
+        <div class="wv-foot">
+          <p>Makers whose maps have ${MIN_RATINGS} or more ratings are listed by their rating. The others take turns: their order moves
+            one place every day.</p>
+          <p>Built a map in this style? <a href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Add it to the list</a></p>
+        </div>
       </div>`;
   }
 
@@ -1154,13 +1386,10 @@ export function install(app) {
 
   function primaryHtml(p) {
     const a = actionOf(p);
-    const k = portKind(p);
-    const cls = KIND[k].cls;
+    const cls = KIND[portKind(p)].cls;
     const inner = `<span class="wv-primary-ic" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>
       <span class="wv-primary-text"><b>${esc(a.title)}</b><small>${esc(a.sub)}</small></span>`;
-    if (a.href) return `<a class="wv-primary ${cls}" href="${esc(a.href)}" target="_blank" rel="noopener noreferrer">${inner}</a>`;
-    if (k === "merged" && p.editionId) return `<a class="wv-primary ${cls}" ${editionLink(p.editionId)}>${inner}</a>`;
-    return `<button type="button" class="wv-primary ${cls}" data-open-port="${esc(p.id)}">${inner}</button>`;
+    return openerHtml(p, `wv-primary ${cls}`, inner);
   }
 
   function emptyHtml(c) {
@@ -1216,6 +1445,10 @@ export function install(app) {
     }
     const langs = (p.languages || []).length ? p.languages.join("/").toUpperCase() : "";
     const repoUrl = p.repo ? `https://github.com/${encodeURI(p.repo)}` : null;
+    // The maker's picture takes the emblem's place (in a country's card every map has the same flag), and their name
+    // has a line of its own under the map's.
+    const maker = makerOf(p);
+    const face = maker && !isHouse(maker) ? avatarHtml(maker, "pc-face") : `<span class="pc-emblem" aria-hidden="true">${esc(iconOf(p) || "🌍")}</span>`;
 
     let actions = "";
     if (k === "merged") {
@@ -1238,15 +1471,15 @@ export function install(app) {
     return `
       <article class="port-card ${KIND[k].cls}${picked ? " is-picked" : ""}" data-port-id="${esc(p.id)}" title="${esc(a.title)}">
         <div class="pc-top">
-          <span class="pc-emblem" aria-hidden="true">${esc(iconOf(p) || "🌍")}</span>
+          ${face}
           <div class="pc-head">
             <div class="pc-title-row">
               <h3>${esc(p.name)}</h3>
               <span class="pc-badge ${KIND[k].cls}">${esc(KIND[k].label)}</span>
             </div>
+            ${maker ? `<div class="pc-by">by ${makerNameHtml(maker)}</div>` : ""}
             <div class="pc-meta">
               ${scope ? `<span>${esc(scope)}</span>` : ""}
-              ${p.author ? `<span>by ${esc(p.author)}</span>` : ""}
               ${p.license ? `<span>${esc(p.license)}</span>` : ""}
               ${langs ? `<span>${esc(langs)}</span>` : ""}
             </div>
@@ -1271,7 +1504,8 @@ export function install(app) {
     if (info.port) {
       const k = portKind(info.port);
       lines.push(`<div class="pt-head"><span>${esc(iconOf(info.port) || "🌍")}</span><b>${esc(info.port.name)}</b></div>`);
-      lines.push(`<div class="pt-sub">${esc(KIND[k].label)}${info.port.author ? ` · by ${esc(info.port.author)}` : ""}</div>`);
+      const maker = creditOf(info.port);
+      lines.push(`<div class="pt-sub">${esc(KIND[k].label)}${maker ? ` · by ${esc(maker.name)}` : ""}</div>`);
     } else {
       lines.push(`<div class="pt-head"><span>${flagEmoji(iso)}</span><b>${esc(info.country.name)}</b></div>`);
       const k = bestKind(list);
@@ -1331,11 +1565,17 @@ export function install(app) {
         <a class="ports-btn ports-btn-primary" href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer">Open it in a new tab ${EXT_SVG}</a>`;
       return;
     }
+    const maker = creditOf(port);
     loadingTxt.textContent = `Surveying ${port.name}…`;
+    const loadingBy = overlay.querySelector("#ports-vloading-by");
+    loadingBy.hidden = !maker;
+    loadingBy.innerHTML = maker ? `${avatarHtml(maker)}<span>a map by <b>${esc(maker.name)}</b></span>` : "";
     loadingExt.href = parsed.href;
     loading.hidden = false;
     notice.hidden = false;
-    notice.innerHTML = `<span>A community map from <b>${esc(parsed.host)}</b>, shown inside EarthCiv. It is not part of EarthCiv.</span>
+    notice.innerHTML = `${maker
+      ? `<span class="ports-vnotice-by">${avatarHtml(maker)}<span><b>${esc(port.name)}</b> is a map by ${makerNameHtml(maker)}, shown here from <b>${esc(parsed.host)}</b>. It is their work, not EarthCiv's.</span></span>`
+      : `<span>A map from <b>${esc(parsed.host)}</b>, shown inside EarthCiv. It is not part of EarthCiv.</span>`}
       <div class="ports-vnotice-actions">
         <a class="ports-btn" href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer">Open it in a new tab ${EXT_SVG}</a>
         <button type="button" class="ports-btn ports-btn-ghost" data-act="dismiss-notice" aria-label="Dismiss notice">✕</button>
@@ -1355,6 +1595,10 @@ export function install(app) {
     const kind = overlay.querySelector("#ports-vkind");
     kind.className = `pc-badge ports-vkind ${KIND[k].cls}`;
     kind.textContent = KIND[k].label;
+    const maker = creditOf(port);
+    const by = overlay.querySelector("#ports-vby");
+    by.hidden = !maker;
+    by.innerHTML = maker ? `<span class="ports-vby-lbl">by</span>${avatarHtml(maker)}${makerNameHtml(maker)}` : "";
     const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
     overlay.querySelector("#ports-vactions").innerHTML = `
       <div class="rt rt-bar" data-rating-of="${esc(port.id)}" hidden></div>
@@ -1423,7 +1667,9 @@ export function install(app) {
   function syncTitle() {
     if (app.mode !== MODE) return;
     const port = ui.activePortId ? portById(ui.activePortId) : null;
-    const name = port?.name || (ui.selected ? countryName(ui.selected) : null);
+    const maker = port ? creditOf(port) : null;
+    const name = (port ? `${port.name}${maker ? ` by ${maker.name}` : ""}` : null)
+      || (ui.selected ? countryName(ui.selected) : ui.makers ? "Map makers" : null);
     // The home page keeps the site's own title until something is picked.
     document.title = name ? `${name} · EarthCiv world map` : home ? savedTitle : "EarthCiv — world map";
   }
@@ -1547,6 +1793,10 @@ export function install(app) {
         deselect({ focusRow: true });
         return true;
       }
+      if (ui.makers) {
+        closeMakers({ focus: true });
+        return true;
+      }
       return home;
     },
   });
@@ -1603,10 +1853,29 @@ export function install(app) {
     },
   });
 
+  // The list of makers: #makers=all, or #makers=<a maker's key> to bring that maker into view.
+  app.hash.register("makers", {
+    get() {
+      if (app.mode !== MODE) return null;
+      return ui.makers || (!map && pending.makers) || null;
+    },
+    set(v) {
+      if (!home && app.mode !== MODE) return;
+      const key = v ? String(v).slice(0, 80) : null;
+      if (!map) pending.makers = key;
+      whenReady(() => {
+        pending.makers = null;
+        if (key) openMakers(key, { write: false });
+        else closeMakers({ write: false });
+      });
+    },
+  });
+
   app.portsAtlas = {
     open: (id = null) => app.setMode(MODE, { id }),
     close: () => !home && app.mode === MODE && app.setMode(null),
     selectCountry: (iso) => whenReady(() => selectCountry(String(iso).toUpperCase(), { fly: true })),
+    showMakers: (key = "all") => whenReady(() => openMakers(key)),
     loadCatalog,
     get map() {
       return map;

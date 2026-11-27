@@ -12,8 +12,9 @@ import { EDITIONS } from "./edition-index.js";
 const html = typeof document !== "undefined" ? document.documentElement : null;
 export const WORLD_HOME = html?.dataset?.home === "world";
 
-// Hash keys the world view owns (ext/ports): the open map ("all" or a map's id) and the picked country.
-export const WORLD_HASH_KEYS = ["ports", "country"];
+// Hash keys the world view owns (ext/ports): the open map ("all" or a map's id), the picked country, and the list of
+// makers.
+export const WORLD_HASH_KEYS = ["ports", "country", "makers"];
 
 function decide() {
   if (!WORLD_HOME || typeof location === "undefined") return { world: false, pick: null };

@@ -14,6 +14,8 @@ and more, with every number traced to its source. It is a visualizer, not a game
   site open inside EarthCiv.
 - **Two countries are EarthCiv editions,** drawn by the map engine in this repository: the
   [United States](#the-united-states-edition) and [Canada](#canada-edition).
+- **Every map names the person who made it,** with their picture: on its card, on the button that opens it and
+  above the map while it is open. [Map makers](https://earthciv.org/#makers=all) lists everyone who made one.
 
 EarthCiv grew out of [usaciv](https://karpathy.ai/usaciv) by Andrej Karpathy
 ([announcement](https://x.com/karpathy/status/2125779541952246039),
@@ -83,6 +85,13 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
 - `languages` holds the codes of the languages the map's text is in, such as `pt` or `zh-TW`.
 - `repo` is `owner/name` on GitHub, or `null` for a live map whose code is not there. `license` is the licence the
   map's repository states, or `null`.
+- `author` is the name your map is credited to. The world map shows it wherever it shows the map, with your
+  picture and a link to your GitHub profile, both taken from the account that owns `repo`, and lists your maps
+  together under [Map makers](https://earthciv.org/#makers=all). `https://earthciv.org/#makers=` followed by that
+  account's name opens the list at your entry. Two more fields are for when that account is not yours, and are
+  left out otherwise: `author_github`, your GitHub account (for a map with no repository, or one kept in an
+  organization's), and `author_url`, an `https` page of your own for your name to link to instead of the
+  profile. With `"author_github": null` you are credited by name alone, with no picture and no profile link.
 - `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
 
 </details>
@@ -362,6 +371,14 @@ is the newest the World Bank has for that country, labelled with its year. `uv r
 rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures). The country outlines are Natural
 Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
 
+Every map is shown with the name and picture of the person who made it, and **Map makers**
+([earthciv.org/#makers=all](https://earthciv.org/#makers=all)) lists them all, each with their maps. It starts with
+Andrej Karpathy, whose usaciv the others began with, and ends with EarthCiv's own edition. In between, makers
+with a map that opens come before those with source code only. Those whose maps have three or more ratings are
+placed by their rating, and the others take turns: their order moves one place every day, so that nobody is first
+for being first in the list (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
+as **Today's map**, with its maker's name and picture: every community map with a site takes a day in turn.
+
 Visitors can rate each map that opens, from one to five stars, and its card shows the average. Ratings are anonymous
 and need a small database on the host; a copy of the site without one simply shows no stars
 ([docs/RATINGS.md](docs/RATINGS.md)).
@@ -395,7 +412,8 @@ Religion Data Archives. Please keep that credit if you reuse them.
 
 The community maps on the world map belong to their authors. Each keeps its own licence, which
 `web/data/ports.json` records where the map's repository states one. EarthCiv links to those maps and copies none of
-their code or data.
+their code or data. An author's picture is the one on their GitHub account, shown from GitHub and not copied
+here.
 
 The look is inspired by turn-based 4X strategy games, but every glyph, icon and texture here is original and drawn
 in code. This project is not affiliated with or endorsed by any game publisher.
@@ -415,12 +433,18 @@ earthciv.org has no sign-in and no ads, and its code sets no cookies. What it le
   visitor gave and the links to maps they added for themselves. They are not sent anywhere.
 - **A community map is its author's own site,** shown in a frame or opened in a new tab. That site sees the visit
   as it would any other.
+- **The pictures of the maps' authors come from GitHub** (`avatars.githubusercontent.com`), for each author who
+  has an account there. The browser fetches a picture when it is about to be shown. GitHub's server receives that
+  request with the visitor's IP address, as any server would, but is not told which page the picture is for (the
+  request carries no referrer).
 - **Cloudflare hosts the site,** so it receives every request, with its IP address, as any host does
   ([its privacy policy](https://www.cloudflare.com/privacypolicy/)).
 
 The visit count is a setting of earthciv.org's host, not code in this repository: Cloudflare adds its script
 (`static.cloudflareinsights.com/beacon.min.js`) to the pages it serves. A copy of this project hosted elsewhere has
 no such script. A content blocker that stops the script stops the count, and the site works the same without it.
+Apart from a community map in its frame, the authors' pictures are the one thing the pages load from another site;
+where a picture does not load, the author's initials stand in.
 
 ## Ideas
 

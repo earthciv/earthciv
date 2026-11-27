@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and, where its code is on GitHub, a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
+        Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and picture and, where its code is on GitHub, a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
 
         Look for your map there first, because it may already be listed. The search box at the top of the world map finds a map by its name, its author or its repository's name (`owner/name`, not the full address). The world map's own "Add its link" saves a link in your browser only: this form is what lists a map for everyone.
 
@@ -81,4 +81,7 @@ body:
     id: notes
     attributes:
       label: Anything else
-      description: For a correction, say what is wrong. This is also the place to give the name to credit if it is not your GitHub name.
+      description: >-
+        For a correction, say what is wrong. EarthCiv credits you by your GitHub name, with your profile picture and
+        a link to your profile. This is the place to ask for another name, for a link to a page of your own, or for
+        your name alone without the picture.
