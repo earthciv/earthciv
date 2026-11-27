@@ -7,8 +7,9 @@
 //     shows the country's World Bank figures, one big button that opens its best map (an EarthCiv edition, a
 //     community map shown inside EarthCiv, or one on its own site) and every other map of it. A country nobody has
 //     mapped yet says so and links to how EarthCiv is built.
+//   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js).
 //   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), and #country=<ISO code>.
-//   * Loads web/data/ports.json, world-outlines.json and world-figures.json only when first opened.
+//   * Loads web/data/ports.json, world-outlines.json, world-figures.json and ratings.json only when first opened.
 
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
@@ -17,6 +18,7 @@ import { editionUrl } from "../../app/home.js";
 // The map script and the stylesheet are versioned (as ./home.js versions this file) so that a browser holding copies
 // from before this rewrite fetches new ones; see ./home.js.
 import { createWorldMap, portKind } from "./worldMap.js?v=20261126";
+import { createRatings } from "./ratings.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
@@ -167,6 +169,12 @@ export function install(app) {
   let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
   let customPorts = loadCustomPorts();
   let overlay = null;
+  // The maps' star ratings. Every element with data-rating-of="<map id>" (a card, the viewer's bar) is a slot that
+  // ratings.sync() fills and keeps up to date; a slot of a map that cannot be rated stays hidden.
+  const ratings = createRatings({
+    url: new URL("ratings.json", DATA_URL),
+    onChange: () => ratings.sync(overlay, portById),
+  });
   let map = null;
   let tipEl = null;
   let searchInput = null;
@@ -271,6 +279,7 @@ export function install(app) {
       });
       catalogP.catch(() => (catalogP = null)); // a failed load is retried the next time
     }
+    ratings.load(); // not waited for: the stars appear when they arrive, and the world view works without them
     return catalogP;
   }
 
@@ -606,10 +615,13 @@ export function install(app) {
   }
 
   function onOverlayClick(e) {
-    const el = e.target.closest("button, a, [data-select], [data-open-port], .port-card");
+    const el = e.target.closest("button, a, [data-select], [data-open-port], .rt, .port-card");
     if (!el || !overlay.contains(el)) return;
     if (el.tagName === "A") return; // links open themselves (and a link on a card does not also open the card)
+    if (el.classList.contains("rt")) return; // a click that just misses a star must not open the card's map
     const d = el.dataset;
+    // A star: the second click of a double-click is not a second choice (it would take the rating straight back).
+    if (d.rate) return e.detail > 1 ? undefined : ratePort(d.rate, Number(d.stars));
     const act = d.act;
     if (act === "close") return app.setMode(null);
     if (act === "back-atlas") return closeViewer();
@@ -859,6 +871,27 @@ export function install(app) {
     activatePort((ui.pickedPortId && list.find((x) => x.id === ui.pickedPortId)) || list[0]);
   }
 
+  // A click on one of a map's five stars gives that rating, or takes it back when it already is the visitor's.
+  async function ratePort(id, picked) {
+    const port = portById(id);
+    if (!port) return;
+    const res = await ratings.choose(id, picked);
+    if (res.ok) {
+      app.ui.toast?.(
+        res.stars ? `You rated ${port.name} ${plural(res.stars, "star")}`
+          : res.changed ? `Your rating of ${port.name} was removed`
+            // Ratings count per network: one given from another network cannot be taken back from this one.
+            : `No rating of ${port.name} from this network to remove`,
+      );
+    } else if (res.error !== "ignored") {
+      app.ui.toast?.(
+        res.error === "too_many_changes" ? "That rating was changed too often today. Try again tomorrow."
+          : res.error === "closed" ? "Ratings are closed at the moment."
+            : "Your rating could not be saved. Please try again.",
+      );
+    }
+  }
+
   function setKind(kind) {
     ui.kind = kind;
     renderAll();
@@ -903,6 +936,7 @@ export function install(app) {
     sideEl.dataset.view = ui.selected ? "detail" : "list";
     sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : "Countries");
     overlay.querySelector("#wv-side-content").innerHTML = ui.selected ? detailHtml(ui.selected) : listHtml();
+    ratings.sync(sideEl, portById);
   }
 
   function listHtml() {
@@ -1076,6 +1110,7 @@ export function install(app) {
         </div>
         ${p.description ? `<p class="pc-desc">${esc(p.description)}</p>` : ""}
         <div class="pc-actions">${actions}</div>
+        <div class="rt" data-rating-of="${esc(p.id)}" hidden></div>
       </article>`;
   }
 
@@ -1173,10 +1208,12 @@ export function install(app) {
       <span class="pc-badge ${KIND[k].cls}">${esc(KIND[k].label)}</span>`;
     const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
     overlay.querySelector("#ports-vactions").innerHTML = `
+      <div class="rt rt-bar" data-rating-of="${esc(port.id)}" hidden></div>
       <button type="button" class="ports-btn ports-btn-ghost" data-act="reload-frame" title="Reload" aria-label="Reload">↻</button>
       ${repoUrl ? `<a class="ports-btn ports-btn-ghost ports-vgh" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer">GitHub ${EXT_SVG}</a>` : ""}
       <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" title="Open in a new browser tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
       ${home ? "" : `<button type="button" class="icon-btn" data-act="close" aria-label="Back to ${esc(editionName)}" title="Back to ${esc(editionName)}">${icon("close", "✕", { size: 12 })}</button>`}`;
+    ratings.sync(overlay.querySelector("#ports-viewer"), portById);
     populateViewerSwitcher(port.id);
     overlay.querySelector(".ports-atlas").hidden = true;
     overlay.querySelector(".wv-bar").hidden = true;
