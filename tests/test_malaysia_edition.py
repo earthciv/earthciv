@@ -411,7 +411,7 @@ class LayersTest(unittest.TestCase):
             owner = self.world["owner"][w["cell"]]
             self.assertGreaterEqual(owner, 0, w["name"])
             self.assertEqual(self.abbrs[owner], w["state"], w["name"])
-        self.assertEqual(len([w for w in self.wonders["wonders"] if w["rule"] == "world_heritage"]), 6)  # 5 properties
+        self.assertEqual(len([w for w in self.wonders["wonders"] if w["rule"] == "world_heritage"]), 7)  # 6 properties, Melaka and George Town drawn twice
 
     def test_no_wonder_is_chosen_by_faith_or_community(self):
         words = ("mosque", "masjid", "temple", "kuil", "church", "gereja", "wat ", "shrine", "cathedral", "surau")
@@ -447,9 +447,16 @@ class LayersTest(unittest.TestCase):
         self.assertIsNone(states["LBN"]["loss_k"][0])  # DOSM published no 2021 figure for Labuan: not zero
         self.assertEqual(states["PNG"]["loss_k"][0], 0)  # "-": not affected
         self.assertGreater(states["SGR"]["loss_k"][0], 3e6)  # the December 2021 floods, RM thousand
-        for i in range(1, len(years)):  # from 2022 the state rows add up to the national row
+        # 2021: DOSM gave agriculture and infrastructure for the nation only, so the states fall short; from 2022 they add up
+        self.assertEqual(floods["states_complete"], [False, True, True, True, True])
+        self.assertIn("nation only", floods["states_note"])
+        for i, complete in enumerate(floods["states_complete"]):
             total = sum(s["loss_k"][i] or 0 for s in states.values())
-            self.assertAlmostEqual(total / floods["national"]["loss_k"][i], 1, delta=0.001)
+            ratio = total / floods["national"]["loss_k"][i]
+            if complete:
+                self.assertAlmostEqual(ratio, 1, delta=0.001)
+            else:
+                self.assertLess(ratio, 0.8)
 
     def test_flood_districts_follow_the_world_and_are_not_state_totals(self):
         counties = self.dis["floods"]["counties"]

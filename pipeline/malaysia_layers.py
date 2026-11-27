@@ -68,7 +68,8 @@ INFRA_RULES = {
 
 # ------------------------------------------------------------------------------------------------- wonders
 # Coordinates were checked against the project geocoder (OpenStreetMap, geocode.datasains.info) and Wikidata on
-# 2026-11-27; a 6 km hex hides errors of a kilometre or two. (id, name, short, kind, lon, lat, metrics, state note)
+# 2026-11-27 (Kinabalu is the summit, Melaka the Stadthuys, UTM its Iskandar Puteri campus; Taman Negara and the
+# other parks are the geocoder's centre points); a 6 km hex hides errors of a kilometre or two. (id, name, short, kind, lon, lat, metrics, state note)
 UNESCO_URL = "https://whc.unesco.org/en/statesparties/my"
 WORLD_HERITAGE = [
     ("unesco-mulu", "Gunung Mulu National Park", "Gunung Mulu", "natural", 114.8125, 4.0425, 2000),
@@ -77,6 +78,8 @@ WORLD_HERITAGE = [
     ("unesco-george-town", "George Town, Historic City of the Straits of Malacca", "George Town", "landmark",
      100.3287, 5.4142, 2008),
     ("unesco-lenggong", "Archaeological Heritage of the Lenggong Valley", "Lenggong Valley", "landmark", 100.972, 5.0679, 2012),
+    ("unesco-frim", "Forest Research Institute Malaysia (FRIM) Selangor Forest Park", "FRIM Forest Park", "natural", 101.6333,
+     3.2333, 2025),
     ("unesco-niah", "Archaeological Heritage of Niah National Park's Caves Complex", "Niah Caves", "landmark",
      113.7814, 3.8139, 2024),
 ]
@@ -93,14 +96,14 @@ LANDMARKS = [  # hand-picked, none a place of worship: (id, name, short, lon, la
     ("landmark-bakun-dam", "Bakun Dam", "Bakun Dam", 114.0550, 2.7622),
     ("landmark-kellies-castle", "Kellie's Castle", "Kellie's Castle", 101.0878, 4.4744),
 ]
-# The five universities the Ministry of Higher Education designated Research Universities (2006–2007), with the
+# The five universities the Ministry of Higher Education designated Research Universities (2006, UTM 2010), with the
 # name `lecturers_uni` uses and the campus the published point stands on (project geocoder).
 RESEARCH_UNIVERSITIES = [
     ("Universiti Malaya (UM)", "Universiti Malaya", "Malaya", 101.6559, 3.1258),
     ("Universiti Kebangsaan Malaysia (UKM)", "Universiti Kebangsaan Malaysia", "Kebangsaan", 101.7812, 2.9241),
     ("Universiti Sains Malaysia (USM)", "Universiti Sains Malaysia", "Sains Malaysia", 100.3036, 5.3574),
     ("Universiti Putra Malaysia (UPM)", "Universiti Putra Malaysia", "Putra", 101.7046, 3.0015),
-    ("Universiti Teknologi Malaysia (UTM)", "Universiti Teknologi Malaysia", "Teknologi Malaysia", 103.6360, 1.5589),
+    ("Universiti Teknologi Malaysia (UTM)", "Universiti Teknologi Malaysia", "Teknologi Malaysia", 103.6399, 1.5585),
 ]
 PER_CITY = {"research_university": 2, "landmark": 1}  # as pipeline/canada.py
 
@@ -126,9 +129,9 @@ def register_inputs(source):
            "Lecturers by public university, citizenship and sex, annual: the measure the research-university wonders "
            "are ranked by.", {"lecturers_uni.csv": LECTURERS_URL})
     source("unesco_whc", "UNESCO World Heritage List: Malaysia", "UNESCO World Heritage Centre", UNESCO_URL, "Public listing",
-           "Inscriptions to 2024", ["World Heritage wonders"],
-           "Malaysia's five inscribed properties (Gunung Mulu, Kinabalu, Melaka and George Town, Lenggong Valley, Niah "
-           "Caves). Positions are hand-checked points from OpenStreetMap and Wikidata; there is no download.", {})
+           "Inscriptions to 2025", ["World Heritage wonders"],
+           "Malaysia's six inscribed properties (Gunung Mulu, Kinabalu, Melaka and George Town, Lenggong Valley, Niah "
+           "Caves, FRIM Selangor Forest Park). Positions are hand-checked points from OpenStreetMap and Wikidata; there is no download.", {})
     source("dosm_floods", "Impact of Floods", "DOSM", "https://open.dosm.gov.my/publications/flood_impact_2025", "CC BY 4.0",
            "2021–2025", ["Flood losses by state and district"],
            "Value of flood losses (RM thousand) to living quarters, vehicles, business premises, manufacturing, "
@@ -364,19 +367,19 @@ def wonders_doc(source_dir, where):
     rank = {r: i for i, r in enumerate(("world_heritage", "national_park", "research_university", "landmark"))}
     return {
         "version": 1,
-        "vintage": {"world_heritage": "UNESCO World Heritage List, inscriptions to 2024", "parks": "Hand-picked",
+        "vintage": {"world_heritage": "UNESCO World Heritage List, inscriptions to 2025", "parks": "Hand-picked",
                      "universities": f"MOHE lecturers in public universities, {year}", "landmarks": "Hand-picked"},
         "sources": ["unesco_whc", "mohe_lecturers"], "national": {},
         "rules": [
-            {"id": "world_heritage", "kind": "landmark", "kinds": ["natural", "landmark"], "year": 2024, "listed": "UNESCO World Heritage Site",
-                 "text": "Every Malaysian property on UNESCO's World Heritage List (five properties; Melaka and George Town "
+            {"id": "world_heritage", "kind": "landmark", "kinds": ["natural", "landmark"], "year": 2025, "listed": "UNESCO World Heritage Site",
+                 "text": "Every Malaysian property on UNESCO's World Heritage List (six properties; Melaka and George Town "
                       "are one property, drawn at both cities). Ordered by name, not ranked."},
             {"id": "national_park", "kind": "natural", "kinds": ["natural"], "curated": True,
                  "text": "National and state parks hand-picked by this project, not UNESCO sites. Malaysia publishes no "
                       "open visitor counts by park to rank them by."},
             {"id": "research_university", "kind": "university", "year": year, "measure": "lecturers", "measure_name": "lecturers",
                  "text": f"The five public universities the Ministry of Higher Education designated Research Universities "
-                      f"(2006–2007), ranked by lecturers in {year} (MOHE, via data.gov.my), at most "
+                      f"(UM, UKM, UPM and USM in 2006, UTM in 2010), ranked by lecturers in {year} (MOHE, via data.gov.my), at most "
                       f"{PER_CITY['research_university']} per city. Malaysia publishes no research spending or doctoral "
                       f"enrolment by university.{note}"},
             {"id": "landmark", "kind": "landmark", "curated": True,
@@ -501,6 +504,8 @@ def disasters_doc(source_dir, states, counties, new_districts):
         state_rows[a] = {"loss_k": [None if by_year_state[a].get(y) is None else round(by_year_state[a][y], 1) for y in years],
                              "by_category": {cid: [None if v.get(y) is None else round(v[y], 1) for y in years]
                                           for cid, v in by_category[a].items()}}
+    complete = [bool(national.get(y)) and abs(sum(state_rows[a]["loss_k"][i] or 0 for a in state_rows) / national[y] - 1) < 0.001
+                for i, y in enumerate(years)]
     print(f"    floods: national RM thousand {national}; {sum(1 for r in rows if any(v for v in r[1:]))} districts with losses")
     return {
         "version": 1, "sources": ["dosm_floods"],
@@ -513,7 +518,11 @@ def disasters_doc(source_dir, states, counties, new_districts):
                   "the 2022 report and 2022 from the 2023 report. These are losses in a year, not a count of events; DOSM "
                   "gives no flood events, dates or deaths. A blank means DOSM published no figure ('n.a'), not zero."),
             "categories": [{"id": cid, "name": label} for label, cid in FLOOD_CATEGORIES],
-            "states": state_rows, "national": {"loss_k": [None if national.get(y) is None else round(national[y], 1) for y in years]},
+            "states": state_rows, "states_complete": complete, "states_note": (
+                "In 2021 DOSM published agriculture and infrastructure losses for the nation only (RM 90.6 million and RM 2.0 "
+                "billion), so that year's state rows cover living quarters, vehicles, business premises and manufacturing, "
+                "and add up to less than the national figure. From 2022 the states add up to the nation."),
+            "national": {"loss_k": [None if national.get(y) is None else round(national[y], 1) for y in years]},
             "counties": {
                 "columns": ["geoid", *[f"loss_district_{y}" for y in years]], "rows": rows,
                 "note": ("DOSM allocates to districts only the losses to living quarters, vehicles, business premises and "

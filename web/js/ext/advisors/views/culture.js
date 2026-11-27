@@ -307,7 +307,11 @@ export async function mount(ctx) {
       dSec.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">Flood losses per year, ${esc(`${F.years[0]}–${F.years[last]}`)}</h4>`);
       dSec.appendChild(columnChart(years, (y) => y.loss, (y) => `${y.year}: ${money(y.loss * 1e3)}`, (v) => money(v * 1e3)));
     }
-    const sum = (a) => (a || []).reduce((t, v) => t + (fin(v) ? v : 0), 0);
+    // Years whose state rows add up to the nation (`states_complete`); a partial year is left out of the sum.
+    const whole = F.years.map((_, i) => F.states_complete ? F.states_complete[i] : true);
+    const firstWhole = F.years[whole.indexOf(true)];
+    const sum = (a) => (a || []).reduce((t, v, i) => t + (fin(v) && whole[i] ? v : 0), 0);
+    if (F.states_note) dSec.insertAdjacentHTML("beforeend", `<p class="adv-note">${esc(F.states_note)}</p>`);
     const sRows = Object.entries(F.states || {}).map(([a, s]) => {
       const row = stLevel.byKey.get(a);
       return { key: a, name: row?.name || a, row, latest: yr(s.loss_k, last), total: sum(s.loss_k) };
@@ -319,7 +323,7 @@ export async function mount(ctx) {
       columns: [
         { key: "name", label: TERMS.region.short, align: "l", width: "minmax(0,1.4fr)", value: (r) => r.name, text: (r) => r.name },
         { key: "latest", label: String(F.years[last]), value: (r) => r.latest, text: (r) => (fin(r.latest) ? money(r.latest * 1e3) : "–"), title: `Flood losses in ${F.years[last]}` },
-        { key: "total", label: "All years", value: (r) => r.total, text: (r) => money(r.total * 1e3), bar: { max: Math.max(...sRows.map((r) => r.total || 0), 1), color: "rgba(47,164,184,.3)" }, title: `Flood losses added up over ${F.years[0]}–${F.years[last]}` },
+        { key: "total", label: `${firstWhole}–${F.years[last]}`, value: (r) => r.total, text: (r) => money(r.total * 1e3), bar: { max: Math.max(...sRows.map((r) => r.total || 0), 1), color: "rgba(47,164,184,.3)" }, title: `Flood losses added up over ${firstWhole}–${F.years[last]}, the years the state figures are complete` },
       ],
       sort: { key: "total", dir: "desc" },
       onHover: (r) => link.hover(r?.row ? rowsHighlight(stLevel, [r.row], { dim: true }) : null),

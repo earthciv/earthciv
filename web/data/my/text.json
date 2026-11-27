@@ -6,7 +6,7 @@
   ],
   "advisor.culture.caveats": [
     "Wonders are chosen by published rules and never by community or faith: UNESCO's World Heritage list, a short hand-picked list of parks and landmarks that are not places of worship, and the five designated Research Universities ranked by lecturers in 2025 (public universities only; at most two per city, so a third Klang Valley university is left out).",
-    "Flood figures are DOSM's estimated value of losses per year in current ringgit, from its Impact of Floods reports for 2021 to 2025, not a count of events: each year comes from the latest report that carries it, a blank is a figure DOSM did not publish, and the December 2021 floods dominate the series. Malaysia has no open disaster database of events, deaths or other hazards, so only floods are shown."
+    "Flood figures are DOSM's estimated value of losses per year in current ringgit, from its Impact of Floods reports for 2021 to 2025, not a count of events: each year comes from the latest report that carries it, a blank is a figure DOSM did not publish, and the December 2021 floods dominate the series. For 2021 the state rows leave out agriculture and infrastructure (published for the nation only), so the state totals add up from 2022. Malaysia has no open disaster database of events, deaths or other hazards, so only floods are shown."
   ],
   "advisor.culture.disaster_sources": [
     "dosm_floods"
@@ -112,5 +112,8 @@
   "advisor.commerce.cargo_note": "Malaysia has no open air-cargo figures by airport, so no airport is ranked by cargo.",
   "advisor.culture.wonders_note": "Hover a wonder to find it on the map; click to fly there. World Heritage Sites are UNESCO's list; parks and landmarks are hand-picked and not ranked; the research universities are the five the Ministry of Higher Education designated, ranked by lecturers.",
   "advisor.culture.disasters_kicker": "Flood losses, DOSM Impact of Floods",
-  "advisor.commerce.blurb": "The busiest airports, and the highways and rail lines that tie the map together."
+  "advisor.commerce.blurb": "The busiest airports, and the highways and rail lines that tie the map together.",
+  "layers.toggle.military": "Not built for Malaysia: no open list of bases or their land was found, so this switch draws nothing",
+  "layers.toggle.trade": "Not built for Malaysia: no open freight flows between states were found, so this switch draws nothing",
+  "advisor.military.blurb": "Bases and defence: not built for Malaysia, as no open list of bases was found."
 }
