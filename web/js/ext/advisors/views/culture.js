@@ -26,7 +26,7 @@ const KIND = {
   university: { label: "Universities", color: "#4a86d6" },
   landmark: { label: "Landmarks", color: "#e0b54c" },
 };
-const RULE_TITLE = { national_park: "National parks", park_unit: "Other park units", research_university: "Research universities", landmark: "Landmarks" };
+const RULE_TITLE = { world_heritage: "World Heritage", national_park: "National parks", park_unit: "Other park units", research_university: "Research universities", landmark: "Landmarks" };
 const DIS_COLOR = { hurricane: "#4f9ad6", flood: "#2fa4b8", fire: "#e8774a", severe_storm: "#9a7bc9", winter: "#c9dcef", other: "#9a9aa8" };
 
 export async function mount(ctx) {
@@ -52,14 +52,17 @@ export async function mount(ctx) {
   const drawTiles = (dis) => {
     // The third tile: the disaster records once they arrive (Canada's event database, or the U.S. billion-dollar events),
     // else faith.
-    const third = dis?.cdd?.national
+    const lastFlood = dis?.floods ? dis.floods.years.length - 1 : -1;
+    const third = dis?.floods?.national
+      ? { label: "Flood losses", value: money((dis.floods.national.loss_k[lastFlood] ?? 0) * 1e3), sub: `${dis.floods.years[lastFlood]}, DOSM Impact of Floods` }
+      : dis?.cdd?.national
       ? { label: "Disasters", value: int(dis.cdd.national.events), sub: `${dis.cdd.years?.join("–") || ""} · ${money(dis.cdd.national.cost_cad)}` }
       : dis?.noaa?.national
         ? { label: "$1B+ disasters", value: int(dis.noaa.national.events), sub: `${dis.noaa.years?.join("–") || ""} · ${money(dis.noaa.national.cost_usd)}` }
         : { label: txt("advisor.culture.faith_tile_label"), value: fin(adherents) ? `${adherents.toFixed(0)} / 100` : "–", sub: txt("advisor.culture.faith_tile_sub") };
     tileEl.innerHTML = tiles([
-      { label: "Wonders", value: int(wonders.length), sub: (() => { const byRule = (...ids) => wonders.filter((w) => ids.includes(w.rule)).length; return `${byRule("national_park", "park_unit")} park units · ${byRule("research_university")} universities · ${byRule("landmark")} landmarks`; })() },
-      { label: "Park visits", value: count3(won?.national?.park_visits), sub: txt("advisor.culture.park_visits_sub", { year: won?.national?.park_visits_year || "" }) },
+      { label: "Wonders", value: int(wonders.length), sub: (() => { const byRule = (...ids) => wonders.filter((w) => ids.includes(w.rule)).length; return `${byRule("national_park", "park_unit")} park units · ${byRule("research_university")} universities · ${byRule("landmark")} landmarks${byRule("world_heritage") ? ` · ${byRule("world_heritage")} World Heritage` : ""}`; })() },
+      ...(won?.national?.park_visits != null ? [{ label: "Park visits", value: count3(won.national.park_visits), sub: txt("advisor.culture.park_visits_sub", { year: won.national.park_visits_year || "" }) }] : []),
       third,
     ]);
   };
@@ -108,10 +111,10 @@ export async function mount(ctx) {
         const host = mk("div");
         wHost.appendChild(host);
         // Canadian universities rank by doctoral students (no research spending by institution is published).
-        const val = (w) => (w.kind === "university" ? w.metrics?.rd_usd ?? w.metrics?.doctoral : w.kind === "natural" ? w.metrics?.visits : w.metrics?.visits ?? null);
+        const val = (w) => (rule.measure_name && fin(w.metrics?.[rule.measure]) ? w.metrics[rule.measure] : w.kind === "university" ? w.metrics?.rd_usd ?? w.metrics?.doctoral : w.kind === "natural" ? w.metrics?.visits : w.metrics?.visits ?? null);
         wonderBars.push(barList(host, {
-          rank: !rule.curated, compact: true, ariaLabel: RULE_TITLE[rule.id] || rule.id,
-          rows: list.map((w) => ({ key: w.key, label: w.short || w.name, full: w.name, sub: w.state, value: val(w), text: metricText(w), color: KIND[w.kind]?.color })),
+          rank: !rule.curated && !rule.listed, compact: true, ariaLabel: RULE_TITLE[rule.id] || rule.id,
+          rows: list.map((w) => ({ key: w.key, label: w.short || w.name, full: w.name, sub: w.state, value: val(w), text: metricText(w, rule), color: KIND[w.kind]?.color })),
           onHover: (r) => {
             const w = r ? wonders.find((x) => x.key === r.key) : null;
             link.hover(w ? { cells: new Set(w.cells && w.cells.length ? w.cells : w.cell != null ? [w.cell] : []), label: w.short || w.name } : null);
@@ -294,9 +297,40 @@ export async function mount(ctx) {
     }
   }
 
+  // Flood losses by state and year (disasters.json `floods`): DOSM's Impact of Floods, in thousands of the edition's currency.
+  function drawFloodLosses(F) {
+    dSec.innerHTML = "";
+    const last = F.years.length - 1, yr = (a, i) => a?.[i] ?? null;
+    dSec.insertAdjacentHTML("beforeend", `<p class="adv-callout adv-caveat">These are the value of losses in each year as DOSM estimates them, not a count of floods.</p><p class="adv-note">${esc(F.rule || "")}</p>`);
+    const years = F.years.map((y, i) => ({ year: y, loss: yr(F.national?.loss_k, i) })).filter((y) => y.loss != null);
+    if (years.length) {
+      dSec.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">Flood losses per year, ${esc(`${F.years[0]}–${F.years[last]}`)}</h4>`);
+      dSec.appendChild(columnChart(years, (y) => y.loss, (y) => `${y.year}: ${money(y.loss * 1e3)}`, (v) => money(v * 1e3)));
+    }
+    const sum = (a) => (a || []).reduce((t, v) => t + (fin(v) ? v : 0), 0);
+    const sRows = Object.entries(F.states || {}).map(([a, s]) => {
+      const row = stLevel.byKey.get(a);
+      return { key: a, name: row?.name || a, row, latest: yr(s.loss_k, last), total: sum(s.loss_k) };
+    });
+    dSec.insertAdjacentHTML("beforeend", `<h4 class="adv-h4">By ${esc(TERMS.region.short.toLowerCase())}</h4>`);
+    dState = createTable(dSec, {
+      caption: "Flood losses by state", rank: true, maxHeight: 240, search: "Search states",
+      rows: sRows,
+      columns: [
+        { key: "name", label: TERMS.region.short, align: "l", width: "minmax(0,1.4fr)", value: (r) => r.name, text: (r) => r.name },
+        { key: "latest", label: String(F.years[last]), value: (r) => r.latest, text: (r) => (fin(r.latest) ? money(r.latest * 1e3) : "–"), title: `Flood losses in ${F.years[last]}` },
+        { key: "total", label: "All years", value: (r) => r.total, text: (r) => money(r.total * 1e3), bar: { max: Math.max(...sRows.map((r) => r.total || 0), 1), color: "rgba(47,164,184,.3)" }, title: `Flood losses added up over ${F.years[0]}–${F.years[last]}` },
+      ],
+      sort: { key: "total", dir: "desc" },
+      onHover: (r) => link.hover(r?.row ? rowsHighlight(stLevel, [r.row], { dim: true }) : null),
+      onClick: (r) => { if (r.row) stLevel.focus(r.row); },
+    });
+  }
+
   function drawDisasters(D) {
     // One national event database by region (Canada's CDD block) or FEMA declarations and NOAA events (the U.S.).
     if (D.cdd) return drawCanadianDisasters(D.cdd);
+    if (D.floods) return drawFloodLosses(D.floods);
     dSec.innerHTML = "";
     const fema = D.fema || {}, noaa = D.noaa || {};
     dSec.insertAdjacentHTML("beforeend", `<p class="adv-callout adv-caveat">A declaration is an administrative act that unlocks federal aid, not a measure of damage.</p><p class="adv-note">${esc(fema.rule || "")}</p>`);
@@ -425,8 +459,10 @@ export async function mount(ctx) {
   function active() { return el.isConnected; }
 }
 
-function metricText(w) {
+function metricText(w, rule) {
   const m = w.metrics || {};
+  if (rule?.measure_name && fin(m[rule.measure])) return `${count3(m[rule.measure])} ${rule.measure_name}`; // wonders.json rules[].measure
+  if (rule?.listed && m.inscribed) return `inscribed ${m.inscribed}`;
   if (w.kind === "university") return fin(m.rd_usd) ? `${money(m.rd_usd)} R&D` : fin(m.doctoral) ? `${count3(m.doctoral)} doctoral students` : "–";
   if (w.kind === "natural") return fin(m.visits) ? `${count3(m.visits)} visits` : "–";
   if (fin(m.visits)) return `${count3(m.visits)} visits`;
@@ -436,7 +472,7 @@ function metricText(w) {
 const titleCase = (s) => String(s || "").toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\b(And|Of|The|In)\b/g, (w) => w.toLowerCase());
 
 /** A small SVG column chart (one column per item). */
-function columnChart(items, val, label) {
+function columnChart(items, val, label, fmt = String) {
   const W = 400, H = 110, m = { l: 4, r: 4, t: 6, b: 18 };
   const max = Math.max(1, ...items.map(val));
   const bw = (W - m.l - m.r) / items.length;
@@ -447,7 +483,7 @@ function columnChart(items, val, label) {
     ${items.map((it, i) => { const h = (val(it) / max) * (H - m.t - m.b); return `<g class="bin"><rect class="hit" x="${(m.l + i * bw).toFixed(2)}" y="${m.t}" width="${bw.toFixed(2)}" height="${H - m.t - m.b}"/><rect class="bar" x="${(m.l + i * bw + 0.4).toFixed(2)}" y="${(H - m.b - h).toFixed(2)}" width="${Math.max(0.5, bw - 0.8).toFixed(2)}" height="${h.toFixed(2)}" fill="#cf6a4a"/><title>${esc(label(it))}</title></g>`; }).join("")}
     <line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b + 0.5}" y2="${H - m.b + 0.5}" class="axis"/>
     <text x="${m.l}" y="${H - 5}" class="tick">${first ?? ""}</text><text x="${W - m.r}" y="${H - 5}" text-anchor="end" class="tick">${last ?? ""}</text>
-    <text x="${m.l + 2}" y="${m.t + 9}" class="tick">${max} max</text>
+    <text x="${m.l + 2}" y="${m.t + 9}" class="tick">${fmt(max)} max</text>
   </svg>`;
   return div;
 }
