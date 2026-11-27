@@ -739,6 +739,13 @@ NOAA events span many states: never add state costs together into a national fig
 helper `disasters.county_declarations(fema_interim, geoids)` gives the per-county counts used by the `disasters` lens,
 the counties.json column and this file, so the three always agree.
 
+Other editions' blocks: the Malaysian edition's `floods` block (`years`, `unit`, `rule`, `categories`, `states`
+`{abbr: {loss_k: [per year], by_category}}`, `national {loss_k}`, `counties {columns, rows, note}` in world.json counties
+order; `null` = no published figure, never 0) is drawn by the Culture advisor when `fema` and `cdd` are absent.
+wonders.json rules may also carry `measure` + `measure_name` (any ranking: the viewer prints "#N by <measure_name>" and
+`metrics[measure]`) or `listed` (a published list such as UNESCO's, with `metrics.inscribed`); a rule with `curated: true`
+or `listed` is not numbered.
+
 ## sources.json
 
 A list of `{id, title, publisher, homepage, license, description, used_for, vintage, files: [{file, url, retrieved, sha256, bytes}]}`.
