@@ -547,7 +547,7 @@
       "id": "chinacivmap",
       "name": "中华文明地图 (chinacivmap)",
       "emblem": "🇨🇳",
-      "status": "live",
+      "status": "repo",
       "scope": "country",
       "region": "Asia",
       "countries": ["CN"],
@@ -556,9 +556,9 @@
       "license": "MIT",
       "repo": "wanghao2025100-oss/chinacivmap",
       "author": "wanghao2025100-oss",
-      "url": "https://chinacivmap.com/",
-      "embed": true,
-      "description": "Mainland China on about 20,000 hexes 25 km apart, with city screens, province views and six yields from public statistics and satellite data."
+      "url": null,
+      "embed": false,
+      "description": "Mainland China on about 20,000 hexes 25 km apart, with city screens, province views and six yields from public statistics and satellite data (source only)."
     },
     {
       "id": "chinaciv-wan",
