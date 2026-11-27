@@ -103,11 +103,13 @@ def build_share_pages(web: Path, out: Path, scripts: str) -> int:
         renderer = f"http://127.0.0.1:{port}/dev/social-cards.html"
         try:
             page.goto(renderer)
+            page.wait_for_function("() => window.socialCards")
             world_jpeg = page.evaluate("() => window.socialCards.then(({render}) => render())")
             (out / "og-world.jpg").write_bytes(base64.b64decode(world_jpeg))
             for edition in editions:
                 id_ = _route_key(edition["id"])
                 page.goto(f"{renderer}?country={id_}")
+                page.wait_for_function("() => window.socialCards")
                 cards = page.evaluate("() => window.socialCards.then(({cards}) => cards)")
                 for card in cards:
                     jpeg = page.evaluate("(card) => window.socialCards.then(({render}) => render(card))", card)
