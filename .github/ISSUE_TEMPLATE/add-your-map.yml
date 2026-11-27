@@ -5,9 +5,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
+        Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and, where its code is on GitHub, a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
 
-        Look for your map there first, because it may already be listed. The search box at the top finds a map by its name, its author or its repository. To correct or remove a listing, fill in the first two fields and whatever should change.
+        Look for your map there first, because it may already be listed. The search box at the top of the world map finds a map by its name, its author or its repository's name (`owner/name`, not the full address). The world map's own "Add its link" saves a link in your browser only: this form is what lists a map for everyone.
+
+        To add a map, give its repository or its live address, and the places it covers. To correct or remove a listing, fill in the first two fields and whatever should change.
 
         If you would rather send a pull request, the list is [`web/data/ports.json`](https://github.com/earthciv/earthciv/blob/main/web/data/ports.json), and the [README](https://github.com/earthciv/earthciv#add-your-map) describes its fields.
   - type: dropdown
@@ -32,13 +34,13 @@ body:
     id: repository
     attributes:
       label: Repository
-      description: Where the map's source code is.
+      description: The map's repository on GitHub, if it has one. The list can link only to GitHub, so a map whose code is elsewhere needs a live address to be listed.
       placeholder: https://github.com/your-name/ptciv
   - type: input
     id: url
     attributes:
       label: Live address
-      description: The public https address where the map runs. Leave this empty if the map runs only from its source code. It is then listed with a link to the repository.
+      description: The public https address where the map runs. Leave this empty if the map runs only from its source code. It is then listed with a link to its GitHub repository.
       placeholder: https://your-name.github.io/ptciv/
   - type: input
     id: places
@@ -68,7 +70,10 @@ body:
     id: embed
     attributes:
       label: May EarthCiv show your map on its own page?
-      description: A map with a live address opens in a frame on earthciv.org, under a bar with the map's name and links to its repository and its own site. Choose the second answer to have your site open in a new tab, or if your host does not allow framing.
+      description: >-
+        A map with a live address opens in a frame on earthciv.org, under a bar that names the map and links to its
+        own site. Choose "No, open my site in a new tab" if you would rather it opened there, or if your host does
+        not allow framing. If you leave this unanswered, the map is shown in a frame, as most listed maps are now.
       options:
         - Yes, show it in a frame
         - No, open my site in a new tab

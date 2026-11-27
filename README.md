@@ -10,30 +10,36 @@ and more, with every number traced to its source. It is a visualizer, not a game
 
 - **It opens on a world map that lists the maps made in this style:** more than 40 maps of more than 50 countries
   and territories. About 40 people built most of them in the day after usaciv was announced. Each of their maps
-  carries its author's name and a link to their repository, and most of those with a live site open inside EarthCiv.
+  carries its author's name and, where its code is on GitHub, a link to the repository. Most of those with a live
+  site open inside EarthCiv.
 - **Two countries are EarthCiv editions,** drawn by the map engine in this repository: the
   [United States](#the-united-states-edition) and [Canada](#canada-edition).
 
 EarthCiv grew out of [usaciv](https://karpathy.ai/usaciv) by Andrej Karpathy
-([announcement](https://x.com/karpathy/status/2125779541952246039)). His map of the United States is the first
+([announcement](https://x.com/karpathy/status/2125779541952246039),
+[original source code](https://karpathy.ai/usaciv/usaciv-source.zip)). His map of the United States is the first
 edition here, and the Canada edition and the world map are built on his code.
 
 ## Add your map
 
 If you built a map of a country, a region or a city in this style, it belongs on the
 [world map](https://earthciv.org/). The first list came from a GitHub search for usaciv on November 26, 2026, so
-your map may already be there. The search box at the top finds a map by its name, its author or its repository.
+your map may already be there. The search box at the top of the world map finds a map by its name, its author or
+its repository's name (`owner/name`, not the full address).
 
 - **Not listed, or listed with a mistake?**
   [Fill in the map form](https://github.com/earthciv/earthciv/issues/new?template=add-your-map.yml). It asks for
   the map's name, its repository, its live address if it has one, and the places it covers. Use the same form to
-  have a map taken off the list.
-- **Prefer a pull request?** Add or edit your entry in [`web/data/ports.json`](web/data/ports.json). Its fields are
-  described below.
+  have a map taken off the list. The world map's own "Add its link" saves a link in your browser only.
+- **Prefer a pull request?** Add or edit your entry in [`web/data/ports.json`](web/data/ports.json); its fields are
+  described below. If the number of entries changes, set `CATALOG_PORT_COUNT` in `web/js/ext/ports/index.js` to
+  the new number. Then run `uv run python -m unittest tests.test_ports`, which checks every entry.
 - **Nobody has mapped your country yet?** Build the map, publish it anywhere, and add it the same way. Most authors
-  started from usaciv's code, which this repository contains: [How it works](#how-it-works) describes the pipeline
-  that turns public data into the files the map draws. [docs/EDITIONS.md](docs/EDITIONS.md) is the format a country
-  follows to run on EarthCiv's own engine, as the United States and Canada do.
+  started from [usaciv's source code](https://karpathy.ai/usaciv/usaciv-source.zip), which maps one country. This
+  repository holds that code reworked to draw several: [How it works](#how-it-works) describes the pipeline that
+  turns public data into the files the map draws, and [Editions](#editions) and
+  [docs/EDITIONS.md](docs/EDITIONS.md) give the format a country follows to run on EarthCiv's own engine, as the
+  United States and Canada do.
 
 EarthCiv only points to your map. Your code and data stay in your repository, under your name and your licence.
 
@@ -62,18 +68,21 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
 
 - `id` is unique: lowercase letters, digits and hyphens.
 - `status` is `"live"` for a map with a public `https` address in `url`, and `"repo"` (with `"url": null`) for a map
-  that has only source code.
+  that has only source code. The two EarthCiv editions' own entries use `"merged"`, with an `editionId`.
 - `embed` says whether EarthCiv may show your site in a frame on its own page. Use `false` to have your site open
   in a new tab instead, or if your host does not allow framing.
 - `scope` is `"country"`, `"multi"` (several countries) or `"region"` (part of a country, such as a region or a
   city).
-- `countries` holds ISO 3166-1 alpha-2 codes, and `center` is `[longitude, latitude]`.
+- `countries` holds the codes of the outlines the world map draws: each country's ISO 3166-1 alpha-2 code, in
+  capitals, and `XK` for Kosovo. The test names any code that has no outline. Such a territory takes its country's
+  code, with `scope` `"region"`.
+- `center` is `[longitude, latitude]`, where the map's pin is drawn. If the country already has a map, place yours
+  a little apart from its pin.
 - `region` is the part of the world the map belongs to, such as `Europe` or `Middle East`.
 - `languages` holds the codes of the languages the map's text is in, such as `pt` or `zh-TW`.
-- `repo` is `owner/name` on GitHub. `license` is the licence that repository states, or `null`.
+- `repo` is `owner/name` on GitHub, or `null` for a live map whose code is not there. `license` is the licence the
+  map's repository states, or `null`.
 - `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
-- For a new entry, also raise `CATALOG_PORT_COUNT` in `web/js/ext/ports/index.js` by one. Then run
-  `uv run python -m unittest tests.test_ports`, which checks every entry.
 
 </details>
 
@@ -389,6 +398,8 @@ The look is inspired by turn-based 4X strategy games, but every glyph, icon and 
 in code. This project is not affiliated with or endorsed by any game publisher.
 
 ## Ideas
+
+For the United States edition:
 
 - A county-level elections lens.
 - Alaska and Hawaii insets, so the whole country is on the map.
