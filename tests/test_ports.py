@@ -97,6 +97,17 @@ class PortsCatalogTest(unittest.TestCase):
         self.assertIsNotNone(m, "CATALOG_PORT_COUNT not found in web/js/ext/ports/index.js")
         self.assertEqual(int(m.group(1)), len(self.ports_doc["ports"]))
 
+    def test_world_map_links_to_the_form_that_lists_a_map(self):
+        # "Add its link" saves a link in one browser only, so the world map sends a map's author to the form that
+        # lists it for everyone: beside that note, and on the card of a country nobody has mapped.
+        js = (ROOT / "web" / "js" / "ext" / "ports" / "index.js").read_text(encoding="utf-8")
+        self.assertIn('const REPO_URL = "https://github.com/earthciv/earthciv";', js)
+        m = re.search(r"const MAP_FORM_URL = `\$\{REPO_URL\}/issues/new\?template=([\w.-]+)`;", js)
+        self.assertIsNotNone(m, "MAP_FORM_URL not found in web/js/ext/ports/index.js")
+        form = ROOT / ".github" / "ISSUE_TEMPLATE" / m.group(1)
+        self.assertTrue(form.is_file(), f"the world map links to a form that does not exist: {form.name}")
+        self.assertGreaterEqual(js.count('href="${MAP_FORM_URL}"'), 2, "both places should link to the form")
+
 
 class WorldHomeTest(unittest.TestCase):
     """The deployed page opens on the world map; the editions live at ?country=<id>."""
