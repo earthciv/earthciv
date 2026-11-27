@@ -108,8 +108,14 @@ database_id = "<the id>"
 
 Then set the secret and deploy as usual ([DEPLOY.md](DEPLOY.md)); a secret takes effect with the next deployment.
 The secret is set per environment: production by default, and `--env preview` for the deployments of any other
-branch. Both environments use the database that `wrangler.toml` names, so ratings given on a preview deployment are
-real ones.
+branch. Both environments use the database that `wrangler.toml` names, so a preview deployment that took ratings
+would add real ones, under another secret than earthciv.org's: a second way to rate the same map. On earthciv.org's
+project the preview environment therefore has `RATINGS_CLOSED` set. Its preview deployments show the averages, take
+no ratings and answer `"open": false, "reason": "closed"`:
+
+```sh
+printf 1 | npx --yes wrangler@4.168.0 pages secret put RATINGS_CLOSED --project-name=usaciv-canada --env preview
+```
 
 ```sh
 openssl rand -hex 32 | npx --yes wrangler@4.168.0 pages secret put RATINGS_SALT --project-name=usaciv-canada
@@ -149,6 +155,11 @@ open them again.
 [vars]
 RATINGS_CLOSED = "1"
 ```
+
+That closes them wherever the file is deployed. To close one environment only, set `RATINGS_CLOSED` as a secret for
+it instead, as the preview environment has it ([Setting it up](#setting-it-up)), and delete the secret to open it
+again. Either way the change comes with that environment's next deployment: a deployment keeps the settings it was
+made with, so one that should stop taking ratings at once has to be replaced or deleted.
 
 **Remove ratings**, for example one map's since a given time. The totals follow by themselves:
 
