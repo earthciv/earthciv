@@ -26,6 +26,7 @@ from pyproj import Transformer
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
+from .build.lenses import DOMAIN_NOTE, percentile_domain
 from .build.world import (
     COAST,
     COAST_DEPTH_M,
@@ -100,6 +101,14 @@ source("dosm_population", "Population Table: Administrative Districts", DOSM,
        "Mid-year population by district: the adjusted 2020 Census count, then intercensal estimates (cohort-component "
        "method). Districts created since 2025 are folded back into the districts they were carved from.", {
            "population_district.csv": "https://storage.dosm.gov.my/population/population_district.csv"})
+source("dosm_census_religion", "MyCensus 2020 area profiles (Kawasanku): religion by district", DOSM,
+       "https://data.gov.my/dashboard/kawasanku", "CC BY 4.0", "2020 Census",
+       ["Religion lenses (shares of residents)"],
+       "Shares of all residents of each district, citizens and non-citizens, by religion as recorded by the 2020 "
+       "Population and Housing Census, from the data behind DOSM's Kawasanku dashboard. Its 'atheist' group is DOSM's "
+       "'Tiada agama / Tidak diketahui' (no religion or unknown).", {
+           "kawasanku_admin_barmeter.parquet":
+               "https://storage.dosm.gov.my/dashboards/kawasanku_admin_barmeter.parquet"})
 source("etopo", "ETOPO1 Global Relief Model", "NOAA National Centers for Environmental Information (via ERDDAP)",
        "https://www.ncei.noaa.gov/products/etopo-global-relief-model", "Public domain", "ETOPO1, 1 arc-minute",
        ["Elevation, relief and water depth"], "Elevations and depths from ETOPO1 at every arc-minute.", {
@@ -197,12 +206,13 @@ def sample_elevation(grid, xy):
     return samples
 
 
-def population():
-    """{(state, district): {year: people}} on the 160 boundary districts, and the list of years."""
+def population(ethnicity="overall"):
+    """{(state, district): {year: people}} on the 160 boundary districts, and the list of years. `ethnicity` is a
+    DOSM group (bumi_malay, bumi_other, chinese, indian, other_citizen, other_noncitizen) or "overall"."""
     raw = defaultdict(dict)
     with (SOURCE_DIR / "population_district.csv").open(encoding="utf8") as f:
         for r in csv.DictReader(f):
-            if r["sex"] == "both" and r["age"] == "overall" and r["ethnicity"] == "overall":
+            if r["sex"] == "both" and r["age"] == "overall" and r["ethnicity"] == ethnicity:
                 raw[(r["state"], r["district"])][int(r["date"][:4])] = float(r["population"]) * 1000
     pop = defaultdict(lambda: defaultdict(float))
     for key, series in raw.items():
@@ -213,6 +223,19 @@ def population():
                 pop[parent][year] += people * weight / total
     years = sorted({y for s in pop.values() for y in s})
     return {k: {y: round(v[y]) for y in years if y in v} for k, v in pop.items()}, years
+
+
+def census_religion():
+    """{district name: {religion: share of residents 0..1}} from MyCensus 2020 (Kawasanku)."""
+    import duckdb  # build group only; read here so serving and tests never need it
+
+    rows = duckdb.connect().execute(
+        "select area, variable, value from read_parquet(?) where area_type = 'district' and chart = 'religion'",
+        [str(SOURCE_DIR / "kawasanku_admin_barmeter.parquet")]).fetchall()
+    shares = defaultdict(dict)
+    for area, variable, value in rows:
+        shares[area][variable] = round(value / 100, 4)
+    return shares
 
 
 def figures(series, year):
@@ -360,10 +383,101 @@ def build(radius):
         "country": "Malaysia", "year": year, "vintage": f"DOSM {year} estimates",
         "population_vintage": f"DOSM mid-year population estimates, {year}",
         "nation": figures(national, year), "yields": YIELDS, "industries": {}})
+    build_lenses(props, shapes, pop, year, county)
     land = sum(len(v) for v in cells_of.values())
     empty = [states[o]["abbr"] for o in range(len(states)) if not cells_of[o]]
     print(f"Malaysia: {len(states)} states and FTs, {len(counties)} districts, {len(places)} cities, "
           f"{grid.size} hexes ({grid.cols}×{grid.rows}), {land} land hexes; regions without a hex: {empty or 'none'}")
+
+
+# Ethnicity and religion: shares only, never head counts; one neutral colour scale on a fixed 0–100% domain for every
+# group, so no group is stretched or coloured apart; groups in DOSM's published order; no "largest group" lens, no
+# rankings. Informational only: nothing else in the edition reads these values (PLAN.md, "Race and religion").
+SHARE_RAMP = ["#141c2b", "#24365a", "#3b5a8a", "#6a8fb8", "#a9c4dc", "#e8f0f7"]
+ETHNIC_GROUPS = [  # DOSM population table groups (citizens)
+    ("bumi_malay", "ethnic_malay", "Malay"),
+    ("bumi_other", "ethnic_other_bumiputera", "Other Bumiputera"),
+    ("chinese", "ethnic_chinese", "Chinese"),
+    ("indian", "ethnic_indian", "Indian"),
+    ("other_citizen", "ethnic_other", "Other citizens"),
+]
+RELIGIONS = [  # MyCensus 2020 (Kawasanku) variables
+    ("muslim", "religion_islam", "Islam"),
+    ("christian", "religion_christianity", "Christianity"),
+    ("buddhist", "religion_buddhism", "Buddhism"),
+    ("hindu", "religion_hinduism", "Hinduism"),
+    ("other", "religion_other", "Other religions"),
+    ("atheist", "religion_none", "No religion or unknown"),
+]
+LENS_GROUPS = [{"id": "people", "name": "People"}, {"id": "ethnicity", "name": "Ethnicity"},
+               {"id": "religion", "name": "Religion"}]
+
+
+def build_lenses(props, shapes, pop, year, county):
+    keys = [(p["state"], p["district"]) for p in props]
+    area_km2 = [s.area / 1e6 for s in shapes]  # equal-area projection
+
+    def spread(per_district):
+        return [per_district[i] if i >= 0 else None for i in county]
+
+    def share_lens(id, group, name, icon, emoji, unit, description, note, per_district, source):
+        return {"id": id, "group": group, "name": name, "icon": icon, "emoji": emoji, "unit": unit, "format": "pct",
+                "scale": "linear", "domain": [0, 1], "ramp": SHARE_RAMP, "higher_is": "neutral", "source": source,
+                "description": description, "note": note, "values": spread([round(v, 4) for v in per_district])}
+
+    density = [round(pop[k][year] / a, 1) for k, a in zip(keys, area_km2)]
+    growth = [round(pop[k][year] / pop[k][GROWTH_START] - 1, 4) for k in keys]
+    lenses = [
+        {"id": "density", "group": "people", "name": "Population", "icon": "l-people", "emoji": "👥",
+         "unit": "people / km²", "format": "int", "scale": "log", "higher_is": "neutral", "source": "dosm_population",
+         "ramp": ["#1b1035", "#4b2377", "#9a3b8a", "#e0645e", "#f9b24a", "#fff3a8"],
+         "description": f"Residents in {year} (DOSM mid-year estimate) per km² of the district that covers most of "
+                        "the hex, measured on the district boundary." + DOMAIN_NOTE,
+         "values": spread(density)},
+        {"id": "growth", "group": "people", "name": "Population change", "icon": "l-growth", "emoji": "📈",
+         "unit": "%", "format": "pct", "scale": "linear", "higher_is": "neutral", "source": "dosm_population",
+         "ramp": ["#23548b", "#508db3", "#efe1ae", "#c56d38", "#a92d2a"],
+         "description": f"Population change from {GROWTH_START} to {year} (DOSM mid-year estimates) in the district "
+                        "that covers most of the hex." + DOMAIN_NOTE,
+         "values": spread(growth)},
+    ]
+    for lens in lenses:  # density and growth: the U.S. colour range (2nd–98th percentile of hexes)
+        lens["domain"] = percentile_domain(lens["values"], lens["scale"] == "log")
+    noncitizen, _ = population("other_noncitizen")
+    lenses.append(share_lens(
+        "noncitizen", "people", "Non-citizens", "l-foreign-born", "🌍", "share of residents",
+        f"Non-citizens ÷ all residents of the district that covers most of the hex ({year} DOSM estimate). DOSM's "
+        "district table does not break non-citizens down by ethnic group, so they are shown here rather than in the "
+        "Ethnicity lenses.",
+        "Share of all residents, not a head count.", [noncitizen[k][year] / pop[k][year] for k in keys],
+        "dosm_population"))
+    # Citizens = the sum of the five groups (DOSM rounds each to 100 people, so groups need not add to the total).
+    groups = {dosm: population(dosm)[0] for dosm, _, _ in ETHNIC_GROUPS}
+    citizens = [sum(groups[g][k][year] for g in groups) for k in keys]
+    for dosm, id, name in ETHNIC_GROUPS:
+        people = groups[dosm]
+        extra = (" DOSM counts the many indigenous peoples of Sabah and Sarawak (among them the Iban, Kadazan-Dusun, "
+                 "Bidayuh, Bajau and Melanau) and the Orang Asli of the peninsula together as Other Bumiputera."
+                 if dosm == "bumi_other" else "")
+        lenses.append(share_lens(
+            id, "ethnicity", name, "l-people", "👥", "share of citizens",
+            f"{name} citizens ÷ all citizens of the district that covers most of the hex ({year} DOSM mid-year "
+            f"estimate, by DOSM's ethnic groups).{extra} Every ethnicity lens uses the same colour scale, 0 to 100%.",
+            f"Share of citizens ({year}), not a head count; non-citizens are in their own lens.",
+            [people[k][year] / c for k, c in zip(keys, citizens)], "dosm_population"))
+    religion = census_religion()
+    names = [p["district"] for p in props]
+    if set(names) != set(religion) or len(set(names)) != len(names):
+        raise ValueError(f"census religion districts differ: {sorted(set(names) ^ set(religion))}")
+    for dosm, id, name in RELIGIONS:
+        lenses.append(share_lens(
+            id, "religion", name, "l-faith", "🕯️", "share of residents",
+            f"Residents recorded under {name if dosm != 'atheist' else 'no religion or unknown religion'} ÷ all "
+            "residents, citizens and non-citizens, of the district that covers most of the hex (2020 Population and "
+            "Housing Census). Every religion lens uses the same colour scale, 0 to 100%.",
+            "Share of all residents (2020 Census), not a head count; one figure per district.",
+            [religion[n][dosm] for n in names], "dosm_census_religion"))
+    write("lenses", {"vintage": f"DOSM {year} estimates; 2020 Census", "groups": LENS_GROUPS, "lenses": lenses})
 
 
 YIELDS = [

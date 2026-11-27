@@ -54,6 +54,7 @@
     "cities",
     "nation",
     "states",
+    "lenses",
     "sources"
   ],
   "text": "text.json",
