@@ -36,3 +36,31 @@ place in Natural Earth. A city of 500,000 or more is a metro.
 
 **Summing.** Populations add up across a group. Medians and Gini coefficients (HIES) do not, so economic panels for
 the conurbations will need their own rule.
+
+## Resources and land (`resources.json`; states' `energy`, `land`, `forest_reserve`)
+
+Built by `pipeline/malaysia_resources.py`. Only data that carries its own position is placed on the map.
+
+| Layer | Source | Rule |
+|---|---|---|
+| Power plants | WRI Global Power Plant Database v1.3.0 (2019; the same pinned file as Canada's) | Every Malaysian plant of 25 MW or more, as listed; the hex is the plant's own, or the nearest land hex when the point falls in the sea. Solar rows come from Wiki-Solar. WRI's owner field reads "Penisular Malaysia Electricity Supply Company" for plants all over Sabah and Sarawak, so owners are shown only when it says something else |
+| Oil, gas and LNG sites | Wikidata (CC0), cached SPARQL result `wikidata_energy_sites.json` | Items whose country is Malaysia and whose class is an oil field, gas field, liquefaction or regasification terminal, with an English label. About a dozen: Tapis, Samarang, Tukau, Baronia, Betty, three Sabah blocks, Bintulu LNG, Melaka and Pengerang terminals. Left out: Ambalat (claimed by Indonesia), *Kilang Abok Berhad* (a company label at an onshore point). **Not an inventory**: no open dataset lists Petronas's producing fields with positions, and none is typed in from memory |
+| Offshore rule | as Canada's Grand Banks | A site on water goes to the nearest land hex of the whole map (reach 250 km; Tapis is ~175 km off Terengganu) and says so in its `detail`. Samarang, off Labuan, lands on Labuan's hex |
+| District crops | DOSM `crops_district_area` (2017–2024; latest year) | One site per district whose planted area of **durian** (≥ 1,000 ha), **coconut** (≥ 1,500), **pineapple** (≥ 800) or **sago** (≥ 1,500) passes the floor, on the hex of the district nearest its centre; `value` is hectares. `Selama`, `Kalabakan`, `Kecil Lojing` and the two federal territories without hexes are not in the table |
+| State `energy` | the plants above | MW per type, as Canada: only mapped plants |
+| State `land` | Esri Sentinel-2 cover sampled at 7 points per hex | Mean of the hex shares, as Canada. **Plantations read as trees** (see below) |
+| State `forest_reserve` | `forest_reserve_state` (Forestry Department, via data.gov.my; 2024) | Hectares of permanent reserved forest, an extra key; it is not a land-cover share |
+
+**Known double counts.** WRI lists Tanjung Bin (Johor) as two coal rows at one site (3,244 and 2,100 MW) and Kapar
+(Selangor) as a coal row and a gas row of the same company (1,600 and 2,420 MW). They are kept as published and
+flagged in the text pack; Johor and Selangor capacity may be overstated.
+
+**Not on the map, and why** (the text pack says the same):
+
+* **Mines** (tin, bauxite, gold, iron, silica…): `mineral_extraction` gives output by state and commodity (2016–2021),
+  with no positions. A point per state would be invented.
+* **Oil palm, rubber, paddy:** `crops_district_area` holds no oil palm, rubber or paddy. Paddy is in `crops_state`
+  (by state only); oil palm exists as MPOB's 2015 area by state (a data.gov.my archive spreadsheet); no open rubber area
+  was found.
+* **Large Sarawak hydro** (Bakun, Murum) is missing from the WRI database and is not added by hand.
+* Forest reserves have state totals only.
