@@ -37,7 +37,7 @@ npx --yes wrangler@4.168.0 pages deploy dist/usaciv --project-name=usaciv-canada
 Wrangler 4.168 needs Node 22.12 or newer, and uses the login saved by `wrangler login`. Deploy committed work, so the
 deployment records the commit.
 
-Run both commands in the project's root folder. Wrangler reads `wrangler.toml` and compiles `functions/` from the
+Run them in the project's root folder. Wrangler reads `wrangler.toml` and compiles `functions/` from the
 folder it is run in; from anywhere else the site would upload without its Function, and the ratings would turn off.
 
 ## Checks after a deploy
