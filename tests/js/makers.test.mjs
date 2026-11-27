@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankMakers } from "../../web/js/ext/ports/makers.js";
+import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "../../web/js/ext/ports/makers.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const PORTS = JSON.parse(readFileSync(new URL("web/data/ports.json", ROOT), "utf8")).ports;
@@ -332,4 +332,35 @@ test("repository stars rank unrated makers, count each repository once, and igno
   const rated = rankMakers(makers, { ratingOf: (id) => id === "a" ? { n: 3, sum: 15 } : id === "c" ? { n: 3, sum: 3 } : { n: 0, sum: 0 } });
   assert.deepEqual(keys(rated), ["ada", "bea"]);
   assert.equal(rated[0].average, 5);
+});
+
+test("rankCountryPorts picks merged, dedicated country, popular, then first catalog map", () => {
+  const byCountry = (iso) => PORTS.filter((p) => (p.countries || []).includes(iso));
+
+  // Built-in editions win for US and Canada; dedicated country maps win over multi-country and region maps.
+  assert.equal(rankCountryPorts(byCountry("US"), { catalogOrder: PORTS })[0].id, "us");
+  assert.equal(rankCountryPorts(byCountry("CA"), { catalogOrder: PORTS })[0].id, "ca");
+  assert.equal(rankCountryPorts(byCountry("FR"), { catalogOrder: PORTS })[0].id, "franceciv-astruc");
+  assert.equal(rankCountryPorts(byCountry("DE"), { catalogOrder: PORTS })[0].id, "deciv");
+  assert.equal(rankCountryPorts(byCountry("ES"), { catalogOrder: PORTS })[0].id, "spainciv-djinn");
+  assert.equal(rankCountryPorts(byCountry("BR"), { catalogOrder: PORTS })[0].id, "terra-a-vista");
+  // UK has a regional Wales map and a multi-country EU map: full-country/multi beats sub-region.
+  assert.equal(rankCountryPorts(byCountry("GB"), { catalogOrder: PORTS })[0].id, "eu-civ");
+  // Multi-only European countries prefer the higher-starred Europe Civilization over EU Civ.
+  assert.equal(rankCountryPorts(byCountry("SE"), { catalogOrder: PORTS })[0].id, "europeciv");
+
+  // Visitor star ratings (once at MIN_RATINGS) promote the popular community map to first.
+  const frRated = rankCountryPorts(byCountry("FR"), {
+    catalogOrder: PORTS,
+    globalMean: 4.0,
+    ratingOf: (id) => (id === "franceciv-pham" ? { n: 5, sum: 24 } : { n: 0, sum: 0 }),
+  });
+  assert.equal(frRated[0].id, "franceciv-pham");
+
+  // Even if only one map has ratings, a well-rated map still beats an unrated peer.
+  const esRated = rankCountryPorts(byCountry("ES"), {
+    catalogOrder: PORTS,
+    ratingOf: (id) => (id === "espana-map" ? { n: 4, sum: 19 } : { n: 0, sum: 0 }),
+  });
+  assert.equal(esRated[0].id, "espana-map");
 });

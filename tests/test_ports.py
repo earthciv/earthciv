@@ -155,6 +155,15 @@ class WorldHomeTest(unittest.TestCase):
         self.assertGreaterEqual(ports.count("${editionLink("), 4)
         self.assertNotRegex(ports, r"<button[^>]*\bdata-play=", "a control that opens an edition must be a link")
 
+    def test_double_clicking_a_country_opens_its_top_map(self):
+        world_map = self.read("js", "ext", "ports", "worldMap.js")
+        ports = self.read("js", "ext", "ports", "index.js")
+        self.assertIn("onOpenCountry", world_map)
+        self.assertIn("if (!e.shiftKey && tryOpenAt(sx, sy, false)) return;", world_map)
+        self.assertIn("if (!tryOpenAt(sx, sy, true)) zoomAtAnimated(sx, sy, 2.2);", world_map)
+        self.assertIn("onOpenCountry(country,", ports)
+        self.assertIn("rankCountryPorts(", ports)
+
 
 if __name__ == "__main__":
     unittest.main()
