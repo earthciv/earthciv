@@ -3,12 +3,17 @@
 Reads the archived Natural Earth 1:50m admin-0 GeoJSON in data/raw/canada/admin_0_countries.json
 and writes a lightweight web/data/world-outlines.json (standard library only, deterministic output).
 
+Each country's `center` is where the world map draws its name and pans to. It is the centre of the bounding box
+of the country's largest polygon, unless that point falls off the drawn country (Vietnam's is in Laos, Norway's in
+Sweden), when it is the point of the largest drawn ring farthest from its edges instead.
+
 Usage:
     uv run python -m pipeline.build_world_outlines
 """
 
 from __future__ import annotations
 
+import heapq
 import json
 import math
 from pathlib import Path
@@ -69,6 +74,77 @@ def _ring_bbox_center(pts: list[tuple[float, float]]) -> tuple[float, float]:
     xs = [p[0] for p in pts]
     ys = [p[1] for p in pts]
     return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
+
+
+def _in_ring(x: float, y: float, flat: list[float]) -> bool:
+    """Whether (x, y) is inside a drawn ring, given as a flat [lon, lat, lon, lat, ...] list (even-odd rule)."""
+    inside = False
+    n = len(flat) // 2
+    for i in range(n):
+        j = (i + 1) % n
+        x1, y1, x2, y2 = flat[2 * i], flat[2 * i + 1], flat[2 * j], flat[2 * j + 1]
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            inside = not inside
+    return inside
+
+
+def _pole_of_inaccessibility(flat: list[float], precision: float = 0.02) -> tuple[float, float]:
+    """The point inside a ring farthest from its edges, found by splitting cells best first (the polylabel method).
+    Longitudes are scaled by the cosine of the ring's middle latitude, so distances are roughly true on the ground."""
+    xs, ys = flat[0::2], flat[1::2]
+    min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
+    kx = math.cos(math.radians((min_y + max_y) / 2.0))
+    reach = math.hypot(kx, 1.0)  # a cell's half-size times this is its centre's distance to a corner
+    n = len(xs)
+
+    def depth(x: float, y: float) -> float:
+        d = min(_perp_dist(x * kx, y, xs[i] * kx, ys[i], xs[(i + 1) % n] * kx, ys[(i + 1) % n]) for i in range(n))
+        return d if _in_ring(x, y, flat) else -d
+
+    best_x, best_y = (min_x + max_x) / 2.0, (min_y + max_y) / 2.0
+    best_d = depth(best_x, best_y)
+    size = min(max_x - min_x, max_y - min_y)
+    if size <= 0.0:
+        return best_x, best_y
+    heap: list[tuple[float, float, float, float, float]] = []
+
+    def push(x: float, y: float, half: float) -> None:
+        d = depth(x, y)
+        heapq.heappush(heap, (-(d + half * reach), x, y, half, d))
+
+    x = min_x
+    while x < max_x:
+        y = min_y
+        while y < max_y:
+            push(x + size / 2.0, y + size / 2.0, size / 2.0)
+            y += size
+        x += size
+    while heap:
+        _, x, y, half, d = heapq.heappop(heap)
+        if d > best_d:
+            best_x, best_y, best_d = x, y, d
+        if d + half * reach - best_d <= precision:
+            continue
+        half /= 2.0
+        for dx in (-half, half):
+            for dy in (-half, half):
+                push(x + dx, y + dy, half)
+    return best_x, best_y
+
+
+def _label_point(center: list[float], rings: list[list[float]]) -> list[float]:
+    """Keep the box centre if it is on one of the country's drawn rings, else move it inside the largest one."""
+    if any(_in_ring(center[0], center[1], ring) for ring in rings):
+        return center
+    ring = max(rings, key=lambda r: _ring_area(list(zip(r[0::2], r[1::2]))))
+    if _ring_area(list(zip(ring[0::2], ring[1::2]))) == 0.0:
+        return center  # a sliver with no inside at this scale, such as Andorra
+    x, y = _pole_of_inaccessibility(ring)
+    for digits in (1, 2):
+        point = [round(x, digits), round(y, digits)]
+        if _in_ring(point[0], point[1], ring):
+            return point
+    return [round(x, 3), round(y, 3)]
 
 
 def _country_code(props: dict) -> str:
@@ -164,6 +240,7 @@ def build(src: Path = SRC, out: Path = OUT) -> dict:
     for code in sorted(by_code):
         item = by_code[code]
         item.pop("_area", None)
+        item["center"] = _label_point(item["center"], item["rings"])
         countries.append(item)
 
     payload = {
