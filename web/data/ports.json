@@ -345,7 +345,7 @@
       "author": "0xDanielLopez",
       "url": "https://0xdaniellopez.github.io/spain-strategy-map/",
       "embed": true,
-      "description": "Spain as a hex strategy map, all in Spanish: 10 km hexes, 12 INE lenses by municipality, 68 functional urban areas with jobs and GDP, power plants, World Heritage sites, national parks and airport passengers.",
+      "description": "Spain as a hex strategy map, all in Spanish: 10 km hexes, INE lenses by municipality (income, housing, crime, migration), 68 functional urban areas, live Renfe trains, and a transparency view with crime, official bulletin and public contract aggregates.",
       "github_stars": 0,
       "github_stars_checked": "2026-11-27"
     },
