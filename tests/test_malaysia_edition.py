@@ -642,3 +642,17 @@ class NoEthnicityOrReligionInCitizensTest(unittest.TestCase):
             self.assertNotIn(name, code)
         # the population table is read for the "overall" rows only
         self.assertIn('r["ethnicity"] == "overall"', code)
+
+
+class CityNamesTest(unittest.TestCase):
+    def test_no_two_cities_share_a_name_in_any_spelling(self):
+        # Natural Earth's one Kota Bharu point ("Kota Baharu") falls just inside Tumpat; it once named both cities.
+        import difflib
+
+        from pipeline.malaysia import SAME_NAME
+
+        names = [c["name"] for c in load("cities")]
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                ratio = difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio()
+                self.assertLess(ratio, SAME_NAME, f"{a} / {b}")

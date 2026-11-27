@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import hashlib
 import json
 import math
@@ -63,6 +64,7 @@ BOUNDARY_COMMIT = "a2378455ff907560c4f0f99fbfea4e6cd09fc658"  # last change to t
 EARTH = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson"
 DOSM = "Department of Statistics Malaysia (DOSM)"
 GROWTH_START = 2021  # the U.S. and Canadian growth window starts in 2021
+SAME_NAME = 0.85  # difflib ratio at which two place names are spellings of one (Kota Bharu / Kota Baharu)
 CITY_FLOOR = 150_000  # districts with at least this many residents get a banner (skeleton rule; M1 refines cities)
 NEIGHBOURS = ("THA", "SGP", "BRN", "IDN", "PHL")
 
@@ -574,11 +576,20 @@ def city_sites(props, shapes, pop, year, grid, xy, owners, county, econ):
     index = {(p["state"], p["district"]): i for i, p in enumerate(props)}
     taken, grouped = set(), set()
 
+    def names_other_district(name, i):
+        """True if `name` is (a spelling of) another district's name and not district i's own."""
+        def same(a, b):
+            return difflib.SequenceMatcher(None, a.lower(), b.lower()).ratio() >= SAME_NAME
+        return not same(name, props[i]["district"]) and any(
+            same(name, q["district"]) for j, q in enumerate(props) if j != i)
+
     def site(i, place=None):
         """Name and (x, y) of district i's banner: the named place if given, else its largest Natural Earth place."""
         inside = [(ne, pt) for (ne, _), pt in zip(places_ne, points) if shapes[i].covers(pt)]
         if place:
             inside = [t for t in inside if t[0]["NAME"] == place]
+        else:  # a place named for another district (Kota Baharu's point falls just inside Tumpat) does not name this one
+            inside = [t for t in inside if not names_other_district(t[0]["NAME"], i)]
         if inside:
             ne, pt = max(inside, key=lambda t: t[0].get("POP_MAX") or 0)
             return ne["NAME"], xy(*FROM_MAP.transform(pt.x, pt.y))
