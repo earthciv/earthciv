@@ -326,6 +326,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .wv-nofacts { margin: 12px 0 0; font-size: 12px; color: var(--ink-dim); }
 .wv-empty p { margin: 12px 0 0; font-size: 13px; line-height: 1.45; }
 .wv-empty .wv-linkbtn { display: block; margin-top: 10px; font-size: 12.5px; }
+.wv-empty a.wv-linkbtn { width: fit-content; } /* a link, unlike a button, would fill its row: only its words open it */
 .wv-cards { display: flex; flex-direction: column; gap: 8px; }
 
 /* a map's card: the whole card opens the map */

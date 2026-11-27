@@ -30,6 +30,9 @@ const CATALOG_PORT_COUNT = 44; // maps in ports.json, shown on the World button 
 const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
+// The form a map's author fills in to have it listed here for everyone (.github/ISSUE_TEMPLATE/add-your-map.yml).
+// "Add its link" below only saves a link in the visitor's own browser.
+const MAP_FORM_URL = `${REPO_URL}/issues/new?template=add-your-map.yml`;
 
 const GLOBE_SVG = `<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5a14.5 14.5 0 0 1 0 19M12 2.5a14.5 14.5 0 0 0 0 19"/></svg>`;
 const EXT_SVG = `<svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 4h6v6M10 14 20 4M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>`;
@@ -449,7 +452,8 @@ export function install(app) {
           <div class="wv-side-scroll" id="wv-side-scroll">
             <form class="ports-add-form" id="ports-add-form" hidden>
               <div class="ports-add-title">Add a map's link</div>
-              <p class="ports-add-note">Any EarthCiv-style map on the web, or one running on your own computer. It is kept in this browser only.</p>
+              <p class="ports-add-note">Any EarthCiv-style map on the web, or one running on your own computer. It is kept in this browser only.
+                Built it yourself? <a class="wv-linkbtn" href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">List it for everyone</a></p>
               <input type="url" name="url" placeholder="https://… or http://localhost:8000" required aria-label="Link to the map">
               <div class="ports-add-row">
                 <input type="text" name="name" placeholder="Name (optional)" aria-label="Name (optional)">
@@ -1041,6 +1045,7 @@ export function install(app) {
           <span class="wv-primary-ic" aria-hidden="true">${EXT_SVG}</span>
           <span class="wv-primary-text"><b>See how EarthCiv is built</b><small>the code and the data pipeline, on GitHub</small></span></a>
         <button type="button" class="wv-linkbtn" data-act="toggle-add" data-iso="${esc(c.id)}">Know of a map of ${esc(c.name)}? Add its link</button>
+        <a class="wv-linkbtn" href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Built a map of ${esc(c.name)}? List it for everyone</a>
       </div>`;
   }
 
