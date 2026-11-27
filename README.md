@@ -297,6 +297,7 @@ uv run python -m pipeline serve [--port 8765]         # serve web/
 uv run --group harness python -m pipeline package     # usaciv.zip: the site to upload, with the source inside
 uv run python -m unittest discover -s tests           # tests
 uv run --group harness python -m harness record       # record every view of both editions (docs/HARNESS.md)
+uv run python -m harness attach shot.png              # publish screenshots for a pull request (AGENTS.md)
 ```
 
 The first eight drive the U.S. pipeline. `--offline` never touches the network: it uses the newest complete cached
