@@ -98,5 +98,95 @@
   "cv.economy_note": "DOSM real GDP, {gdp_year}, constant 2015 ringgit, counted where the work is done. Per person divides by the residents of {gdp_year}.",
   "cv.economy_note.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
   "cv.workforce_note": "Labour Force Survey 2021 workers by industry for each state, shared over districts by their 2020 GDP in the matching sector: an estimate, counted where people live.",
-  "report.gold_basis": "constant 2015 {currency}"
+  "report.gold_basis": "constant 2015 {currency}",
+  "cv.districts_counting": "DOSM publishes workers by industry for states, not districts. The Labour Force Survey's 2021 workers by industry in each state are shared over the state's districts by their 2020 GDP in the matching sector, and counted where people live. Every city in a state therefore has that state's mix of service industries: read a district as the state's industry concentrated in this city, not as a count of the city's own workers.",
+  "cv.districts_note": "{vintage}. ×N = location quotient against Malaysia: estimates, not counts. DOSM publishes no ports, aviation or defence workers, so there are no Harbor, Aerodrome or Encampment districts.",
+  "cv.no_districts": "{name} has no workers-by-industry estimate, so it has no industry districts.",
+  "cv.spread_like": "Malaysia's",
+  "cv.legend_districts_counted": "workers",
+  "cv.legend_districts_source": "estimated from state workers",
+  "citizens.none": "DOSM's population table has no row for {name}, so there are no citizen figures here.",
+  "citizens.row_missing": "DOSM publishes no table for this below the national level that the map can read (occupation, how people get to work and where people were born are all missing), so this row is left out.",
+  "citizens.median_age": "Median age, interpolated from DOSM's five-year age bands (mid-year estimate)",
+  "citizens.degree": "Not shown: DOSM publishes education by state only, as no formal education, primary, secondary or tertiary.",
+  "citizens.note": "{vintage}. Age: DOSM's mid-year estimate for the city's districts, in five-year bands, so children are 0-14. Education: DOSM publishes it by state only, so each city takes its state's mix of the labour force (people aged 15 and over in work or looking for it) in 2021; within a state every city has the same mix. Occupation, commute and place of birth are not published at this level. Figures are rounded (largest remainder) so each row adds up; hover or tap a figure for its share. ▲▼ = at least 1.5× or at most 0.67× Malaysia's share. Rows are never split by ethnicity or religion.",
+  "citizens.short": {
+    "age": {
+      "child": "Under 15",
+      "young": "15–34",
+      "midlife": "35–64",
+      "elder": "65+"
+    },
+    "education": {
+      "less_than_hs": "None",
+      "high_school": "Primary",
+      "some_college": "Secondary",
+      "bachelors": "Tertiary"
+    }
+  },
+  "citizens.phrases": {
+    "age": {
+      "child": [
+        "is a child (under 15)",
+        "are children (under 15)"
+      ],
+      "young": [
+        "is aged 15–34",
+        "are aged 15–34"
+      ],
+      "midlife": [
+        "is aged 35–64",
+        "are aged 35–64"
+      ],
+      "elder": [
+        "is 65 or older",
+        "are 65 or older"
+      ]
+    },
+    "education": {
+      "less_than_hs": [
+        "has no formal education",
+        "have no formal education"
+      ],
+      "high_school": [
+        "stopped after primary school",
+        "stopped after primary school"
+      ],
+      "some_college": [
+        "reached secondary school (but not tertiary)",
+        "reached secondary school (but not tertiary)"
+      ],
+      "bachelors": [
+        "has a tertiary qualification (diploma, certificate or degree)",
+        "have a tertiary qualification (diploma, certificate or degree)"
+      ]
+    }
+  },
+  "citizens.fields": [
+    [
+      "age",
+      "child",
+      "Children under 15"
+    ],
+    [
+      "age",
+      "young",
+      "Aged 15-34"
+    ],
+    [
+      "age",
+      "elder",
+      "Elders 65+"
+    ],
+    [
+      "education",
+      "less_than_hs",
+      "No formal education"
+    ],
+    [
+      "education",
+      "bachelors",
+      "Tertiary education"
+    ]
+  ]
 }

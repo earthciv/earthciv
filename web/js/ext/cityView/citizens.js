@@ -97,6 +97,10 @@ const SHORT = {
 for (const [row, v] of Object.entries(TEXT["citizens.phrases"] || {})) PHRASE[row] = { ...(PHRASE[row] || {}), ...v };
 for (const [row, v] of Object.entries(TEXT["citizens.short"] || {})) SHORT[row] = { ...(SHORT[row] || {}), ...v };
 
+// A file may reword a row's subtitle and nouns (citizens.json `row_labels`: Malaysia's education row is a state mix of
+// the labour force, not adults 25+).
+const rowOf = (rd, data) => ({ ...rd, ...(data.row_labels?.[rd.id] || {}) });
+
 /** Largest-remainder rounding of counts into n figures (the pipeline's method, for rows without figures). */
 export function largestRemainder(counts, keys, n) {
   const tot = keys.reduce((a, k) => a + (counts[k] || 0), 0);
@@ -167,13 +171,14 @@ export function citizensHtml(m, data) {
   const usFb = nat.nativity?.foreign_born ?? nat.nativity?.shares?.foreign_born;
   const chip = (v, us, fmt, lbl, tip) => (v == null ? "" : `<div class="cv-cz-chip" title="${esc(tip)}"><b>${fmt(v)}</b><span>${esc(lbl)}</span>${us != null ? `<small>${NAT} ${fmt(us)}</small>` : ""}</div>`);
   const top = (row0.specialists || []).find((s) => s.ratio >= (data.rule?.specialist_high ?? 1.5));
-  const topRow = ROWS.find((r) => r.id === top?.row);
+  const topRow = ROWS.map((r) => rowOf(r, data)).find((r) => r.id === top?.row);
   const great = top && topRow ? `<div class="cv-great" style="--fc:${esc(CATEGORY_COLOR[top.row]?.[top.key] || "#c9a45c")}">
       <span class="cv-great-fig" data-great="${esc(top.row)}|${esc(top.key)}" aria-hidden="true"></span>
       <div><small>Standout citizens</small><b>${esc(label[top.row]?.[top.key] || top.key)}</b>
       <span>${pct(top.share, 1)} of ${esc(topRow.noun[1])} here, ${pct(top.national, 1)} nationally: ${top.ratio.toFixed(1)}× ${NAT_SHARE}.</span></div></div>` : "";
 
-  const rows = ROWS.map((rd) => {
+  const rows = ROWS.map((rd0) => {
+    const rd = rowOf(rd0, data);
     const row = row0[rd.id];
     const head = `<div class="cv-cz-h"><b>${esc(rd.title)}</b><span>${esc(rd.sub)}</span></div>`;
     if (!row) {
@@ -264,7 +269,7 @@ export function mountCitizens(host, m, data) {
 
   host.querySelectorAll(".cv-cz-row[data-row]").forEach((rowEl) => {
     const rid = rowEl.dataset.row;
-    const rd = ROWS.find((r) => r.id === rid);
+    const rd = rowOf(ROWS.find((r) => r.id === rid), data);
     const row = row0[rid];
     const out = rowEl.querySelector(".cv-cz-out");
     if (!row || !out) return;

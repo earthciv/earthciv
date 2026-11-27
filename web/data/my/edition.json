@@ -57,7 +57,9 @@
     "lenses",
     "resources",
     "sources",
-    "counties"
+    "counties",
+    "districts",
+    "citizens"
   ],
   "text": "text.json",
   "view": {
@@ -69,7 +71,8 @@
       "population": "dosm_population",
       "growth": "dosm_population",
       "areas": "dosm_districts",
-      "cover": "esri_cover"
+      "cover": "esri_cover",
+      "citizens": "dosm_city_view"
     }
   }
 }
