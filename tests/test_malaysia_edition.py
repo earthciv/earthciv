@@ -1,17 +1,24 @@
 """The Malaysia edition's data (web/data/my/), built by pipeline/malaysia.py.
 
-Ethnicity and religion are shown with care (docs/MALAYSIA.md, "Race and religion"): shares only, one neutral colour scale on a
-fixed 0–100% domain for every group, no "largest group" lens, a stated denominator, and nothing else in the edition
-reading them.
+Ethnicity and religion are shown with care (docs/MALAYSIA.md, "Race and religion"): shares only, one neutral colour
+scale on a fixed 0–100% domain for every group, no "largest group" lens, a stated denominator, and nothing else in the
+edition reading them.
+
+Tests that import pipeline.malaysia or pipeline.malaysia_layers run only where the build dependency group is installed
+(`uv run --group build python -m unittest discover -s tests`); the default environment is standard library only.
 """
 
 import json
 import re
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "web" / "data" / "my"
 SENSITIVE = ("ethnicity", "religion")
+# pipeline.malaysia and pipeline.malaysia_layers import these (the build dependency group)
+needs_build = unittest.skipUnless(all(find_spec(m) for m in ("numpy", "shapely", "pyproj", "PIL")),
+                                  "needs the build dependency group")
 
 
 def load(name):
@@ -114,6 +121,7 @@ class ConurbationTest(unittest.TestCase):
                 self.assertNotIn(d, seen, f"district {d} is in {seen.get(d)} and {c['id']}")
                 seen[d] = c["id"]
 
+    @needs_build
     def test_footprints_are_the_member_districts(self):
         from pipeline.malaysia import CONURBATIONS
 
@@ -130,6 +138,7 @@ class ConurbationTest(unittest.TestCase):
         self.assertEqual(set(kl["states"]), {"KUL", "PJY", "SGR"})
         self.assertEqual([c["id"] for c in self.cities if c["capital"]], ["my-kl"])
 
+    @needs_build
     def test_banners_sit_in_the_principal_district(self):
         from pipeline.malaysia import CONURBATIONS
 
@@ -138,6 +147,7 @@ class ConurbationTest(unittest.TestCase):
             d = counties[self.world["county"][self.by_id[g["id"]]["cell"]]]
             self.assertEqual((d["state"], d["name"]), g["districts"][0], g["id"])
 
+    @needs_build
     def test_close_to_published_totals(self):
         from pipeline import malaysia
 
@@ -192,6 +202,7 @@ class EconomyFunctionsTest(unittest.TestCase):
         self.assertIsNone(apportion(100, {"a": None, "b": 0}))
 
 
+@needs_build
 class EconomySourcesTest(unittest.TestCase):
     """Every name in every year of the raw DOSM tables must reach a boundary district (or be deliberately dropped)."""
 
@@ -483,6 +494,7 @@ class LayersTest(unittest.TestCase):
         self.assertEqual(text["advisor.culture.disaster_sources"], ["dosm_floods"])
 
 
+@needs_build
 class LayerReaderTest(unittest.TestCase):
     """The small file readers of pipeline/malaysia_layers.py."""
 
@@ -644,6 +656,7 @@ class NoEthnicityOrReligionInCitizensTest(unittest.TestCase):
         self.assertIn('r["ethnicity"] == "overall"', code)
 
 
+@needs_build
 class CityNamesTest(unittest.TestCase):
     def test_no_two_cities_share_a_name_in_any_spelling(self):
         # Natural Earth's one Kota Bharu point ("Kota Baharu") falls just inside Tumpat; it once named both cities.
