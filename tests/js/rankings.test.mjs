@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import {
   OVERALL, cellOf, formatValue, lensScale, listWords, measureOf, ordinal, rampColor, rankOf, ranking, standing, summary, tabOf, RAMPS,
 } from "../../web/js/ext/ports/rankings.js";
-import { rankingsHtml } from "../../web/js/ext/ports/rankingsView.js";
+import { demographicsHtml, rankingsHtml } from "../../web/js/ext/ports/rankingsView.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const DOC = JSON.parse(readFileSync(new URL("web/data/world-rankings.json", ROOT), "utf8"));
@@ -109,11 +109,16 @@ test("an address names a tab", () => {
 test("figures are written in words, in U.S. dollars whatever the edition", () => {
   const usd = { format: "usd" };
   assert.equal(formatValue(usd, 30769700000000), "US$30.77 trillion");
-  assert.equal(formatValue(usd, 30769700000000, { short: true }), "$30.77T");
+  assert.equal(formatValue(usd, 30769700000000, { short: true }), "$30.8T");
+  assert.equal(formatValue(usd, 626000000000, { short: true }), "$626B");
+  assert.equal(formatValue(usd, 2319899772426, { short: true }), "$2.32T");
   assert.equal(formatValue(usd, 552324919096), "US$552.3 billion");
   assert.equal(formatValue(usd, 999960000000), "US$1.00 trillion");
   assert.equal(formatValue(usd, 48986.2), "US$48,986");
-  assert.equal(formatValue(usd, 147300, { short: true }), "$147.3K");
+  assert.equal(formatValue(usd, 147300, { short: true }), "$147K");
+  assert.equal(formatValue(usd, 55697.7, { short: true }), "$55,698");
+  assert.equal(formatValue({ format: "people" }, 41651653, { short: true }), "41.7M");
+  assert.equal(formatValue({ format: "people" }, 999700000, { short: true }), "1.00B");
   assert.equal(formatValue(usd, 0), "US$0");
   assert.equal(formatValue({ format: "people" }, 1463865525), "1.46 billion");
   assert.equal(formatValue({ format: "people" }, 341784857), "341.8 million");
@@ -194,4 +199,21 @@ test("names are escaped", () => {
   const html = rankingsHtml(doc, ctx({ tab: "net" }));
   assert.match(html, /&lt;b&gt;Evil&lt;\/b&gt;/);
   delete NAMES.XX;
+});
+
+test("Demographics: every measure, the country's rank and figure beside the highest, average and lowest", () => {
+  const html = demographicsHtml(SMALL, "DK", { nameOf, flag: (iso) => `[${iso}]` });
+  assert.equal((html.match(/<tr>/g) || []).length, 1 + SMALL.measures.length); // the header row and one per measure
+  assert.match(html, /Demographics <span>where Denmark stands<\/span>/);
+  assert.match(html, /class="dm-k" data-rank-tab="net"/); // a measure's name opens its tab
+  assert.match(html, /<td class="dm-rank">4<\/td>/);
+  assert.match(html, /\[BH\]<i>\+2<\/i><\/span>100%/); // a shared highest: the first flag and how many more
+  assert.match(html, /https:\/\/data\.worldbank\.org\/indicator\/X\?locations=DK/);
+});
+
+test("Demographics: a figure from another year shows its year and no rank; no figures at all says so", () => {
+  const html = demographicsHtml(SMALL, "TV", { nameOf, flag: (iso) => `[${iso}]` });
+  assert.match(html, /<td class="dm-rank is-none" title="Not ranked: no 2024 figure">–<\/td>/);
+  assert.match(html, /35\.2%<\/a><small>2017<\/small>/);
+  assert.match(demographicsHtml(SMALL, "TW", { nameOf, flag: (iso) => iso }), /The World Bank publishes no figures for Taiwan\./);
 });

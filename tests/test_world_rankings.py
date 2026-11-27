@@ -216,6 +216,11 @@ class RankingsWiringTest(unittest.TestCase):
         for edition_only in ("app/edition.js", "app/text.js", "format.js", "main.js"):
             self.assertNotIn(edition_only, loaded)
 
+    def test_a_countrys_card_shows_its_demographics(self):
+        self.assertIn("demographicsHtml(rankDoc, iso,", self.index)
+        self.assertIn("${figuresHtml(iso)}", self.index)
+        self.assertNotIn("world-figures.json", self.index)  # the card's three figures are among the ten now
+
     def test_rankings_have_their_own_address(self):
         self.assertIn('app.hash.register("rankings"', self.index)
         home = read("web", "js", "app", "home.js")
@@ -238,7 +243,8 @@ class RankingsWiringTest(unittest.TestCase):
 
     def test_styles_exist(self):
         css = read("web", "css", "ports.css")
-        for cls in (".wv-rank-btn", ".wv-rankings", ".rk-tab", ".rk-card", ".rk-row", ".rk-mine", ".rk-bubble", ".rk-code"):
+        for cls in (".wv-rank-btn", ".wv-rankings", ".rk-tab", ".rk-card", ".rk-row", ".rk-mine", ".rk-bubble", ".rk-code",
+                    ".dm-table", ".dm-k", ".dm-rank", ".dm-avg"):
             self.assertIn(cls, css)
 
 

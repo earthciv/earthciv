@@ -376,11 +376,13 @@ top bar) lists the exact files, URLs, checksums and caveats.
 
 The world map (the home page, and the **World** button inside an edition) shows every EarthCiv edition and community
 map listed in `web/data/ports.json`. Every country can be clicked, on the map, in the list beside it or through its
-search box: its card has a button that opens its map, and its population, GDP per person and life expectancy from the World
-Bank's [World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0). Each figure
-is the newest the World Bank has for that country, labelled with its year. `uv run python -m pipeline.build_world_figures`
-rebuilds `web/data/world-figures.json` (add `--refresh` to download newer figures). The country outlines are Natural
-Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
+search box: its card has a button that opens its map, and its **Demographics**, after a strategy game's demographics
+screen: where the country stands on the ten measures of World Rankings (below), from the World Bank's
+[World Development Indicators](https://datacatalog.worldbank.org/search/dataset/0037712) (CC BY 4.0), beside the
+highest, the average and the lowest of the countries ranked on the same year. Each figure is labelled with its year; a
+figure from another year than the ranked one shows that year and no rank. A measure's name opens its tab in World
+Rankings with the country's row in view, and a figure opens the World Bank's own chart of it. The country outlines are
+Natural Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
 
 **World Rankings** ([earthciv.org/#rankings=overall](https://earthciv.org/#rankings=overall), and the button at the top
 right of the world map) compares every country on ten measures from the same World Development Indicators, in five

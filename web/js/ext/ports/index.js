@@ -7,9 +7,9 @@
 //     inside EarthCiv. It is the same menu in an edition's top bar and in the bar above an open community map, so
 //     any map is one pick away from any other.
 //   * Click or tap any country, pick it in the list beside the map, or find it with the search box (/): its card
-//     shows the country's World Bank figures, one big button that opens its best map (an EarthCiv edition, a
-//     community map shown inside EarthCiv, or one on its own site) and every other map of it. A country nobody has
-//     mapped yet says so and links to how EarthCiv is built.
+//     has one big button that opens its best map (an EarthCiv edition, a community map shown inside EarthCiv, or one
+//     on its own site), its Demographics (where it stands on World Rankings' measures) and every other map of it. A
+//     country nobody has mapped yet says so and links to how EarthCiv is built.
 //   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js): on its
 //     card, in the bar above a community map open here, and in an edition's own top bar.
 //   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
@@ -21,8 +21,8 @@
 //   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>,
 //     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view) and
 //     #rankings=overall (World Rankings; a measure's key, such as #rankings=gdp, opens its tab).
-//   * Loads web/data/world-outlines.json, world-figures.json and world-rankings.json only when first opened. An
-//     edition reads ports.json as it starts, for its map menu, and ratings.json where its top bar has room for the stars.
+//   * Loads web/data/world-outlines.json and world-rankings.json only when first opened. An edition reads ports.json
+//     as it starts, for its map menu, and ratings.json where its top bar has room for the stars.
 
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
@@ -36,13 +36,13 @@ import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
 import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "./makers.js";
 import { OVERALL, measureOf, tabOf } from "./rankings.js";
-import { RANKINGS_ADVISOR, rankingsHtml } from "./rankingsView.js";
+import { RANKINGS_ADVISOR, demographicsHtml, rankingsHtml } from "./rankingsView.js";
 // The advisors' medallions, which the World Rankings' tabs share (no edition is loaded with them).
 import { emblem } from "../advisors/core/emblems.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127e", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127f", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
@@ -199,17 +199,6 @@ function homeLongitude() {
   }
 }
 
-function formatFigure(key, v) {
-  if (key === "population") {
-    if (v >= 1e9) return `${(v / 1e9).toFixed(2)} billion`;
-    if (v >= 1e6) return `${(v / 1e6).toFixed(1)} million`;
-    return Math.round(v).toLocaleString("en-US");
-  }
-  if (key === "gdp_pc") return `US$${Math.round(v).toLocaleString("en-US")}`;
-  if (key === "life") return `${Number(v).toFixed(1)} years`;
-  return String(v);
-}
-
 export function install(app) {
   injectCss();
   preventIosInputZoom(); // the map menu's font is under 16 px; an edition has done this already, the home page has not
@@ -218,7 +207,6 @@ export function install(app) {
   let catalogP = null;
   let portsP = null;
   let basePorts = [];
-  let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
   let rankDoc = null; // world-rankings.json (pipeline/build_world_rankings.py): every country on ten measures
   let rankP = null;
   let rankFailed = false;
@@ -421,7 +409,7 @@ export function install(app) {
   }
 
   // The list of maps alone (24 KB). An edition loads it as it starts, for its map menu; the world's outlines and
-  // figures wait until the world view opens.
+  // figures (World Rankings) wait until the world view opens.
   function loadPorts() {
     if (!portsP) {
       portsP = fetchJson(new URL("ports.json", DATA_URL)).then((portsDoc) => {
@@ -447,23 +435,15 @@ export function install(app) {
       catalogP = Promise.all([
         loadPorts(),
         fetchJson(new URL("world-outlines.json", DATA_URL)),
-        // Headline figures per country (pipeline/build_world_figures.py). The world view works without them.
-        fetchJson(new URL("world-figures.json", DATA_URL)).catch((err) => {
-          console.error("could not load world-figures.json", err);
-          return null;
-        }),
-      ]).then(([ports, outlinesDoc, figuresDoc]) => {
-        figures = figuresDoc;
-        return { ports, outlines: outlinesDoc };
-      });
+      ]).then(([ports, outlinesDoc]) => ({ ports, outlines: outlinesDoc }));
       catalogP.catch(() => (catalogP = null)); // a failed load is retried the next time
     }
     ratings.load(); // not waited for: the stars appear when they arrive, and the world view works without them
     return catalogP;
   }
 
-  // World Rankings' figures (58 kB). Asked for when the world view opens, so a tab or a card has them when needed; a
-  // failed load is retried the next time World Rankings opens.
+  // World Rankings' figures (58 kB), which a country's card shows too (its Demographics). Asked for when the world
+  // view opens, not waited for; a failed load is retried the next time World Rankings opens.
   function loadRankings() {
     if (!rankP) {
       rankFailed = false;
@@ -485,9 +465,10 @@ export function install(app) {
   // as typed: rewriting it would add a step to the browser's Back.
   function whenRankings() {
     const done = () => {
-      if (!map || !ui.rankings) return;
-      ui.rankings = tabOf(rankDoc, ui.rankings);
-      if (!ui.selected) rerenderRankings();
+      if (!map) return;
+      if (ui.rankings) ui.rankings = tabOf(rankDoc, ui.rankings);
+      if (ui.selected) rerenderCard(); // its Demographics
+      else if (ui.rankings) rerenderRankings();
       syncTitle();
     };
     loadRankings().then(done, done);
@@ -1042,6 +1023,7 @@ export function install(app) {
     if (act === "rankings-retry") return whenRankings();
     if (act === "rankings-about") return toggleRankAbout(el);
     if (act === "rankings-find") return findMine();
+    if (d.rankTab && el.classList.contains("dm-k")) return openRankings(d.rankTab, { reveal: ui.selected }); // from a card's Demographics
     if (d.rankTab) return openRankings(d.rankTab, { focus: el.classList.contains("rk-tab") ? "tab" : el.classList.contains("rk-card") ? "title" : "seg" });
     if (act === "makers") return openMakers("all", { focus: true });
     if (act === "makers-close") return closeMakers({ focus: true });
@@ -1341,7 +1323,7 @@ export function install(app) {
   // It takes the country list's place in the panel, as the list of makers does. `tab` is "overall" or a measure's key
   // (a group's key opens its first measure). A country picked while it is open shows its card over it; the card's
   // back link, Esc and the browser's Back return to it. `keepCountry` (an address naming both) leaves that card open.
-  function openRankings(tab = OVERALL, { write = true, focus = null, keepCountry = false } = {}) {
+  function openRankings(tab = OVERALL, { write = true, focus = null, keepCountry = false, reveal = null } = {}) {
     if (!map) return;
     const wanted = tabOf(rankDoc, tab);
     const scroller = overlay.querySelector("#wv-side-scroll");
@@ -1368,7 +1350,8 @@ export function install(app) {
     syncTitle();
     syncRankingsButton();
     if (write) app.hash.soon();
-    focusRankings(focus);
+    if (reveal) findRow(reveal); // the country whose card asked for this tab
+    else focusRankings(focus);
     if (!rankDoc) whenRankings();
   }
 
@@ -1413,6 +1396,17 @@ export function install(app) {
     if (focusSel) overlay.querySelector(focusSel)?.focus({ preventScroll: true });
   }
 
+  // The open card, drawn again where it is (its figures arrived), with the focus where it was.
+  function rerenderCard() {
+    const scroller = overlay.querySelector("#wv-side-scroll");
+    const at = scroller.scrollTop;
+    const a = document.activeElement;
+    const keep = !sideEl.contains(a) ? null : a.classList.contains("wv-primary") ? ".wv-primary" : a.id ? `#${CSS.escape(a.id)}` : null;
+    renderSide();
+    scroller.scrollTop = at;
+    if (keep) overlay.querySelector(keep)?.focus({ preventScroll: true });
+  }
+
   function rankingsViewHtml() {
     return rankingsHtml(rankDoc, {
       tab: ui.rankings, mine: myCountry(), details: ui.rankDetails, about: ui.rankAbout, failed: rankFailed && !rankDoc,
@@ -1436,8 +1430,13 @@ export function install(app) {
 
   // "Show": the visitor's own row, brought into view and focused.
   function findMine() {
-    const row = overlay.querySelector(".rk-row.is-me");
-    if (!row) return;
+    findRow(null);
+  }
+
+  // A country's row (the visitor's own without one), brought into view, focused and lit up for a moment.
+  function findRow(iso) {
+    const row = iso ? overlay.querySelector(`.rk-row[data-select="${CSS.escape(iso)}"]`) : overlay.querySelector(".rk-row.is-me");
+    if (!row) return focusRankings("title");
     const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     row.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
     row.focus({ preventScroll: true });
@@ -1709,7 +1708,7 @@ export function install(app) {
           </div>
         </div>
         ${n ? primaryHtml(list[0]) : emptyHtml(c)}
-        ${factsHtml(iso, c.name)}
+        ${figuresHtml(iso)}
         ${n ? `<h3 class="wv-group">${n === 1 ? "Its map" : `All ${n} maps of ${esc(c.name)}`}</h3>
           <div class="wv-cards">${list.map((p) => cardHtml(p, p.id === ui.pickedPortId)).join("")}</div>` : ""}
       </div>`;
@@ -1734,30 +1733,12 @@ export function install(app) {
       </div>`;
   }
 
-  // The country's headline figures from the World Bank, each labelled with its own year (each is the newest the World
-  // Bank has for that country, so years can differ between figures and between countries).
-  function factsHtml(iso, cname) {
-    if (!figures) return "";
-    const src = figures.source || {};
-    const srcUrl = parseSafeUrl(src.url);
-    const srcName = `${src.publisher || ""}, ${src.title || ""}`;
-    const cite = `<p class="wv-src">${srcUrl ? `<a href="${esc(srcUrl.href)}" target="_blank" rel="noopener noreferrer">${esc(srcName)}</a>` : esc(srcName)}${src.license ? ` (${esc(src.license)})` : ""}${src.updated ? `, <span class="wv-nowrap">updated ${esc(src.updated)}</span>` : ""}</p>`;
-    const row = figures.countries?.[iso];
-    const items = (figures.figures || [])
-      .filter((f) => Array.isArray(row?.[f.key]))
-      .map((f) => {
-        const [year, value] = row[f.key];
-        const inner = `<span class="wv-fact-k">${esc(f.label)} <small>${esc(year)}</small></span><span class="wv-fact-v">${esc(formatFigure(f.key, value))}</span>`;
-        // Each figure opens the World Bank's own chart of it for this country.
-        const href = /^[A-Z0-9.]+$/i.test(f.indicator || "") && /^[A-Z]{2}$/.test(iso)
-          ? `https://data.worldbank.org/indicator/${f.indicator}?locations=${iso}`
-          : null;
-        return href
-          ? `<li><a class="wv-fact" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(`${f.label}, ${f.unit || ""}: the World Bank's chart for ${cname}`)}">${inner}</a></li>`
-          : `<li><span class="wv-fact" title="${esc(f.unit || "")}">${inner}</span></li>`;
-      });
-    if (!items.length) return `<p class="wv-nofacts">The World Bank publishes no figures for ${esc(cname)}.</p>`;
-    return `<ul class="wv-facts">${items.join("")}</ul>${cite}`;
+  // The country's figures: its Demographics, where it stands on World Rankings' measures, each with its year. Nothing
+  // until they have loaded (the card is drawn again then); a note if they could not.
+  function figuresHtml(iso) {
+    if (rankDoc) return demographicsHtml(rankDoc, iso, { nameOf: countryName, flag: flagHtml });
+    if (!rankFailed) return "";
+    return `<p class="wv-nofacts">The World Bank's figures could not load. <button type="button" class="wv-linkbtn" data-act="rankings-retry">Try again</button></p>`;
   }
 
   function cardHtml(p, picked = false) {

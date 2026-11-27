@@ -941,3 +941,37 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .rk-row.is-found { animation: none; }
   .rk-tab .adv-emblem, .rk-fold svg { transition: none; }
 }
+
+/* ---------- Demographics on a country's card (rankingsView.js demographicsHtml): rank, value, highest, average, lowest ---------- */
+.dm { margin-top: 4px; }
+.dm-head { margin-bottom: 4px; }
+.dm-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.dm-table th, .dm-table td {
+  padding: 6px 3px; text-align: right; white-space: nowrap; vertical-align: bottom;
+  border-bottom: 1px solid rgba(255, 255, 255, .05); font-weight: normal;
+}
+.dm-table thead th {
+  padding: 2px 3px 5px; font: 600 8.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim);
+  border-bottom: 1px solid rgba(201, 164, 92, .42);
+}
+.dm-table th:first-child, .dm-table td:first-child { padding-left: 0; text-align: left; white-space: normal; }
+.dm-table tbody th small { display: block; margin-top: 1px; font: 600 9.5px var(--sans); color: var(--gold); white-space: nowrap; }
+.dm-k {
+  padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+  font: normal 13px/1.2 var(--serif); color: var(--ink);
+  text-decoration: underline dotted rgba(201, 164, 92, .55); text-underline-offset: 3px;
+}
+.dm-k:hover, .dm-k:focus-visible { color: var(--gold-bright); }
+.dm-rank { font: 600 14px var(--serif) !important; color: var(--gold-bright); }
+.dm-rank.is-none { color: rgba(185, 171, 136, .65); }
+.dm-v { font-size: 12px; }
+.dm-v a, .dm-v span { color: var(--ink); font-weight: 600; text-decoration: none; }
+.dm-v a:hover, .dm-v a:focus-visible { color: var(--gold-bright); text-decoration: underline; text-underline-offset: 2px; }
+.dm-v small { display: block; font: 600 9.5px var(--sans); color: var(--gold); }
+.dm-x, .dm-avg { font-size: 11px; color: var(--ink-dim); }
+.dm-flag { display: block; margin-bottom: 1px; font-size: 14px; line-height: 1.1; }
+.dm-flag .rk-code { font-size: 8.5px; }
+.dm-flag i { margin-left: 2px; font: 600 9px var(--sans); font-style: normal; color: var(--ink-dim); vertical-align: 2px; }
+@container wvside (max-width: 360px) {
+  .dm-avg { display: none; } /* a narrow panel keeps rank, value, highest and lowest */
+}

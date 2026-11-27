@@ -129,32 +129,35 @@ const STEPS = [
 ];
 const group = (v, digits = 0) => v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
-// Four significant figures in trillions, billions or millions ("30.77 trillion", "552.3 billion"); below a million,
-// whole numbers with separators ("48,986"), and below ten, two decimals at most ("0.13").
+// In trillions, billions or millions: four significant figures written out ("30.77 trillion", "552.3 billion"), three
+// when short ("30.8T", "552B"). Below a million, whole numbers with separators ("48,986"; short from 100,000: "147K"),
+// and below ten, two decimals at most ("0.13").
+const fixed = (x, short) => {
+  const a = Math.abs(x);
+  return short ? x.toFixed(a >= 99.95 ? 0 : a >= 9.995 ? 1 : 2) : x.toFixed(a >= 99.995 ? 1 : 2);
+};
 function big(v, short) {
   const a = Math.abs(v);
   for (let i = 0; i < STEPS.length; i++) {
     const [unit, long, abbr] = STEPS[i];
     if (a < unit * 0.9995) continue;
-    let x = v / unit;
-    let text = Math.abs(x) >= 99.995 ? x.toFixed(1) : x.toFixed(2);
+    const text = fixed(v / unit, short);
     // 999.96 billion rounds to "1000.0": write it in the larger unit instead
     if (Math.abs(Number(text)) >= 1000 && i > 0) {
       const [u2, l2, a2] = STEPS[i - 1];
-      x = v / u2;
-      return `${x.toFixed(2)}${short ? a2 : l2}`;
+      return `${fixed(v / u2, short)}${short ? a2 : l2}`;
     }
     return `${text}${short ? abbr : long}`;
   }
-  if (short && a >= 1e5) return `${(v / 1e3).toFixed(1)}K`;
+  if (short && a >= 1e5) return `${fixed(v / 1e3, true)}K`;
   if (a >= 10 || Number.isInteger(v)) return group(Math.round(v));
   return String(Number(v.toFixed(2)));
 }
 
 /**
  * A figure as the screen writes it. Long ({short: false}, the default): "US$30.77 trillion", "41.65 million",
- * "82.1 years", "94.4%", "8.79 million km²", "63.66 million tonnes". Short, for a table: "$30.77T", "41.65M", "82.1",
- * "94.4%", "8.79M", "63.66M". Missing values are "–".
+ * "82.1 years", "94.4%", "8.79 million km²", "63.66 million tonnes". Short, for a table: "$30.8T", "41.7M", "82.1",
+ * "94.4%", "8.79M", "63.7M". Missing values are "–".
  */
 export function formatValue(measure, value, { short = false } = {}) {
   if (!fin(value)) return "–";
