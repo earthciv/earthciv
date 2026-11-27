@@ -5,11 +5,75 @@
   "advisor.culture.caveats": [
     "Faith, wonders and disasters are not yet built for the Malaysia edition."
   ],
-  "advisor.culture.disaster_sources": ["dosm_population"],
-  "advisor.culture.sources": ["dosm_population"],
+  "advisor.culture.disaster_sources": [
+    "dosm_population"
+  ],
+  "advisor.culture.sources": [
+    "dosm_population"
+  ],
   "advisor.explorer.caveats": [
     "Population is DOSM's {year} mid-year estimate by administrative district. Six districts created in 2025 (Membakut in Sabah; Gedong, Lingga, Pantu, Sebuyau and Siburan in Sarawak) are counted in the districts they were carved from, so every figure sits on the 160 districts the map draws.",
-    "Cities are, for now, districts of 150,000 or more residents, named after their largest town; conurbations that span several districts (Greater Kuala Lumpur, Penang, Johor Bahru) are not yet joined."
+    "Cities are the conurbations of several whole districts (Greater Kuala Lumpur, George Town, Johor Bahru, Kuching, Kota Kinabalu; see the Almanac) and every other district of 150,000 or more residents, named after its largest town."
   ],
-  "advisor.people.sources": ["dosm_population", "dosm_districts"]
+  "advisor.people.sources": [
+    "dosm_population",
+    "dosm_districts"
+  ],
+  "advisor.economy.sources": [
+    "dosm_gdp",
+    "dosm_employment",
+    "dosm_lfs",
+    "dosm_population"
+  ],
+  "advisor.economy.gdp_note": "Value added by each sector in constant 2015 ringgit, where the work is done (the states summed, with offshore oil and gas in mining). Hover a sector to light up the states where it is the biggest share of the economy.",
+  "advisor.economy.workers_note": "Employed persons by industry, counted where they live (Labour Force Survey 2021, by state). Hover an industry to light up the states where it is the biggest share of jobs; click it to rank the cities that specialise in it. City figures are estimates (see the notes below).",
+  "advisor.economy.caveats": [
+    "GDP is in constant 2015 ringgit, so years compare. States and Malaysia are {year}; districts and cities are 2020, the latest year DOSM publishes by district. Offshore oil and gas belongs to no state: it is in Malaysia's GDP only, so the states add to less than the national figure.",
+    "GDP by sector has five sectors (agriculture; mining & quarrying; manufacturing; construction; services). Their shares are of GDP before import duties, so they add to a little less than GDP.",
+    "Kuala Lumpur's 2020 district GDP includes Putrajaya's (DOSM could not separate them); Putrajaya shows no district GDP.",
+    "Workers by industry are Labour Force Survey estimates by state for 2021, benchmarked to the 2020 Census. DOSM publishes no district split, so district and city figures share each state's workers by the district's 2020 GDP in the matching sector: they are estimates."
+  ],
+  "advisor.prosperity.sources": [
+    "dosm_hies",
+    "dosm_lfs",
+    "dosm_population"
+  ],
+  "advisor.prosperity.caveats": [
+    "Incomes are gross monthly household income in ringgit (HIES {census_vintage}), not annual. Poverty is the absolute poverty rate: the share of households below the national poverty line income.",
+    "Districts made of several survey districts (the parents of the districts created in 2025) and cities made of several districts use population-weighted means; their medians are the weighted mean of the medians (an approximation) and they have no Gini.",
+    "Unemployment: {unemployment_vintage}. Perlis, Kuala Lumpur, Labuan and Putrajaya, each one district, show their state's survey."
+  ],
+  "advisor.prosperity.poverty_title": "Poverty",
+  "advisor.prosperity.poverty_rates": "poverty rates",
+  "advisor.prosperity.poverty_note": "Districts by the share of households below the national poverty line income (HIES 2024, absolute poverty). Hover a bar to outline those districts; the table lists them all.",
+  "advisor.prosperity.unemployment_note": "Unemployed ÷ labour force ({unemployment_vintage}). Cities of {min}+ people.",
+  "advisor.explorer.sources_areas": [
+    "dosm_population",
+    "dosm_gdp",
+    "dosm_hies"
+  ],
+  "advisor.explorer.sources_counties": [
+    "dosm_districts",
+    "dosm_population",
+    "dosm_gdp",
+    "dosm_hies",
+    "dosm_lfs",
+    "dosm_employment"
+  ],
+  "fields.gdp": "GDP in constant 2015 ringgit, counted where the work is done: {year} for states, {metro_year} for districts and cities.",
+  "fields.gdp_pc": "GDP ÷ residents of the same year ({year} for states, {metro_year} for districts and cities), constant 2015 ringgit.",
+  "fields.unemployment": "Unemployed ÷ labour force, {unemployment_vintage}.",
+  "report.unemployment.description": "Unemployed ÷ labour force, the Labour Force Survey's annual average for 2024. Malaysia is the sum of the 16 states.",
+  "report.gdp_years_hint": "{regions}: {year} GDP. Cities: {metro_year}, the latest year DOSM publishes by district. All in constant 2015 ringgit.",
+  "report.gdp_per_person_hint": "{regions}: {year} GDP ÷ {year} residents.",
+  "report.gdp_per_person_hint.metros": " Cities: {metro_year} GDP ÷ {metro_year} residents; cities of {min}+ people.",
+  "report.gdp_industry_credit": "DOSM, {year} real GDP by sector (constant 2015 prices)",
+  "report.gdp_breakdown_note": "{year} GDP by sector at constant 2015 prices, the 16 states plus offshore oil and gas (in mining); shares are of GDP before import duties.",
+  "panel.city_foot.gdp": "Constant 2015 ringgit, {gdp_year} (the latest year DOSM publishes by district), summed over the city's districts; per person divides by the residents of {gdp_year}.",
+  "panel.city_foot.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
+  "panel.city_foot.unemployment_survey": "{unemployment_vintage}; counts summed over the city's districts.",
+  "cv.economy_note": "DOSM real GDP, {gdp_year}, constant 2015 ringgit, counted where the work is done. Per person divides by the residents of {gdp_year}.",
+  "cv.economy_note.no_gdp": "DOSM publishes no GDP for this area (Putrajaya's is inside Kuala Lumpur's).",
+  "cv.workforce_note": "Labour Force Survey 2021 workers by industry for each state, shared over districts by their 2020 GDP in the matching sector: an estimate, counted where people live.",
+  "report.gold_basis": "constant 2015 {currency}"
 }
