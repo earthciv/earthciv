@@ -416,7 +416,7 @@
       "scope": "country",
       "region": "Asia",
       "countries": ["VN"],
-      "center": [106.0, 16.2],
+      "center": [105.8, 21.0],
       "languages": ["en", "vi"],
       "license": "MIT",
       "repo": "jarektkaczyk/vnm-civ",
