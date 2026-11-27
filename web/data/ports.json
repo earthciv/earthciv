@@ -59,10 +59,10 @@
       "languages": ["en"],
       "license": "MIT",
       "repo": "earthciv/earthciv",
-      "author": "EarthCiv",
+      "author": "MyCiv",
       "url": null,
       "embed": true,
-      "description": "EarthCiv edition (in progress): 13 states and 3 federal territories, 160 districts and their towns, from DOSM open data."
+      "description": "Malaysia from DOSM open data: 13 states and 3 federal territories, 160 districts, 47 cities and conurbations, City View and advisors."
     },
     {
       "id": "europeciv",
