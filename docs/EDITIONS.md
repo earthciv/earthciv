@@ -137,6 +137,8 @@ Where editions differ in what their data means, the data says so, and the code f
 | `wonders.json` `rules[].measure`, `among` | what a wonder ranking measures, and among which sites | `ext/layers/tips.js` |
 | `nation.json` `income_year` | the year incomes refer to, when it is not the survey year | `ui/infoPanel.js`, `ext/cityView/screen.js` |
 | `cities.json`, `states.json` `census_population`, `gdp_population` | the population a figure divides by, from the figure's own year | `ui/yieldReport.js`, `ui/infoPanel.js` |
+| `nation.json` `employed_year`, `employed_vintage`; rows' `employed_population` | the year and source of the employed counts when they are not the census's, and the population of that year | `app/years.js`, `ui/yieldReport.js`, `ui/infoPanel.js`, `ext/cityView/screen.js` |
+| `nation.json` national row `unemployment_by_year` | the nation's unemployment rate in each year an area's rate is from | `app/years.js`, `ui/yieldReport.js`, `ui/infoPanel.js`, `ext/advisors/views/prosperity.js` |
 | `cities.json`, `states.json` `unemployment_census` | unemployment from the census where the labour survey has none | `ui/cityPanel.js`, `ui/infoPanel.js` |
 | `trade.json` `units` | the units of freight figures (tonnes or short tons) | `ext/advisors/views/commerce.js` |
 | `infrastructure.json` ports' `domestic`, airports' `cargo_t` | ports split into domestic, imports and exports; air cargo in tonnes rather than pounds (`cargo_lbs`) | `ext/advisors/views/commerce.js`, `ext/layers/tips.js` |

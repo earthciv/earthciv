@@ -3,6 +3,7 @@
   "default": "us",
   "editions": [
     {"id": "us", "name": "United States", "emblem": "★", "home_pictures": true},
-    {"id": "ca", "name": "Canada", "emblem": "🍁", "home_pictures": true}
+    {"id": "ca", "name": "Canada", "emblem": "🍁", "home_pictures": true},
+    {"id": "my", "name": "Malaysia", "emblem": "🌺"}
   ]
 }
