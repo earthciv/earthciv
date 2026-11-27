@@ -13,6 +13,7 @@ import { citizensHtml, mountCitizens } from "./citizens.js";
 import { badgeHtml, cityDistricts, districtsHtml } from "./districts.js";
 import { declares, edition } from "../../app/edition.js";
 import { CURRENCY, LABEL_YEARS, NATION, TERMS, defaults, rich, txt } from "../../app/text.js";
+import { employedBase, employedYear, nationalUnemployment } from "../../app/years.js";
 
 // The edition's words (manifest): its city areas (the U.S. edition's metro and micro areas, Canada's CMAs and CAs) and
 // the nation its figures are compared with.
@@ -143,10 +144,11 @@ function citizens(m) {
       ${meter(v, tick, max ?? Math.max(v || 0, us || 0) * 1.35, better)}
     </div>`;
   // Employed residents: no national figure to set beside a count, so the share of residents (and the nation's share).
-  // Census counts divide by the census population where the rows give it (census_population; Canada).
-  const residents = c.census_population ?? c.population;
-  const natResidents = n.census_population ?? n.population;
-  const census = m.nation.census_year ?? null, income = m.nation.income_year ?? null;
+  // Counts of an earlier year divide by that year's population where the rows give it (census_population: Canada's
+  // census; employed_population: Malaysia's 2021 survey).
+  const residents = employedBase(c);
+  const natResidents = employedBase(n);
+  const census = m.nation.census_year ?? null, income = m.nation.income_year ?? null, empYear = employedYear(m.nation);
   const empShare = c.employed != null && residents > 0 ? c.employed / residents : null;
   const usEmpShare = n.employed != null && natResidents > 0 ? n.employed / natResidents : null;
   const empSub = empShare == null ? ""
@@ -155,7 +157,7 @@ function citizens(m) {
   // The survey's rate where it is published, else the census rate beside the nation's census rate (Canada's Labour Force
   // Survey covers CMAs, not census agglomerations).
   const lfs = c.unemployment != null || c.unemployment_census == null;
-  const unemp = lfs ? [c.unemployment, n.unemployment, `Unemployment${LABEL_YEARS ? ` (${c.unemployment_year ?? ""})` : ""}`]
+  const unemp = lfs ? [c.unemployment, nationalUnemployment(n, c), `Unemployment${LABEL_YEARS ? ` (${c.unemployment_year ?? ""})` : ""}`]
     : [c.unemployment_census, n.unemployment_census, `Unemployment (${census} Census)`];
   const multi = m.tiles.length > 1;
   const tilesNote = multi
@@ -175,7 +177,7 @@ function citizens(m) {
       <p class="cv-note">${esc(txt("cv.population_note"))}</p>
     </div>
     <div class="cv-stats">
-      ${row("pop", "👥", `Employed residents${yr(census)}`, c.employed, null, int, null, residents, empSub, usEmpShare != null ? usEmpShare * residents : null)}
+      ${row("pop", "👥", `Employed residents${yr(empYear)}`, c.employed, null, int, null, residents, empSub, usEmpShare != null ? usEmpShare * residents : null)}
       ${row("unemployment", "😐", unemp[2], unemp[0], unemp[1], (x) => pct(x), "low")}
       ${row("l-income", "💵", `Median household income${yr(income)}`, c.median_income, n.median_income, dollars, "high")}
       ${row("l-homeownership", "🔑", `${txt("cv.rent")}${yr(census)}`, c.median_rent, n.median_rent, dollars, null)}
@@ -296,7 +298,7 @@ function workforce(m) {
   return `
   <section class="cv-sec" id="cv-workforce" data-sec="workforce" aria-labelledby="cv-h-workforce">
     <h3 id="cv-h-workforce">${icon("y-production", "⚙️", { size: 15 })}Workforce</h3>
-    <p class="cv-lead">Where the ${esc(AREA)}'s ${int(m.city.employed)} employed residents${LABEL_YEARS && m.nation.census_year ? ` (${m.nation.census_year})` : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with ${esc(txt("cv.workforce_compare", { adj: NATION.adj }))}.</p>
+    <p class="cv-lead">Where the ${esc(AREA)}'s ${int(m.city.employed)} employed residents${LABEL_YEARS && employedYear(m.nation) ? ` (${employedYear(m.nation)})` : ""} work, by industry. <span class="cv-lq hi">×N</span> compares an industry's share of jobs with ${esc(txt("cv.workforce_compare", { adj: NATION.adj }))}.</p>
     <div class="cv-blds">${cards || `<p class="muted cv-note">No industry data.</p>`}</div>
     <p class="cv-note">${rich("cv.workforce_note", { vintage: m.nation.vintage ?? "" })}</p>
   </section>`;

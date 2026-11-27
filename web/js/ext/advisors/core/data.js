@@ -7,6 +7,7 @@
 //   field = {key, label, format, unit, higher_is, source, description, lens?, group, derived?}
 import { edition, TEXT } from "../../../app/edition.js";
 import { CURRENCY, LABEL_YEARS, NATION, TERMS, defaults, txt } from "../../../app/text.js";
+import { unemploymentYear } from "../../../app/years.js";
 import { fin, ratio } from "./util.js";
 import { isMoney } from "../../../format.js";
 import { frameBox } from "./frame.js";
@@ -104,21 +105,23 @@ export function buildData(app) {
   // --- fields ---------------------------------------------------------------------------------------------------
   const F = (key, label, format, o = {}) => ({ key, label, format, unit: o.unit || null, higher_is: o.higher_is || "neutral", source: o.source || "", description: o.description || "", lens: o.lens || null, group: o.group || "Economy", derived: !!o.derived });
   const fv = { vintage, census_vintage: censusVintage, population_vintage: nation.population_vintage || vintage, unemployment_vintage: nation.unemployment_vintage || "", gdp_vintage: nation.gdp_vintage || "", year: nat.gdp_year ?? "", metro_year: metroGdpYear ?? "", years: (nat.growth_years || []).join("–") };
-  const econFields = (src) => [
+  // `uYear`: the year of the level's unemployment rates, which can differ between levels (Malaysia: states 2025,
+  // cities 2024), so each level's column names its own.
+  const econFields = (src, uYear = nat.unemployment_year) => [
     F("population", "Population", "int", { unit: "people", source: ROLES.population || src, group: "People", description: txt("fields.population", fv), lens: "density" }),
     F("growth", "Growth", "signed", { unit: "population change", higher_is: "neutral", source: SRC.growth, group: "People", description: txt("fields.growth", fv) }),
     F("gdp", "GDP", "money", { unit: `${CURRENCY} per year`, source: SRC.gdp, description: txt("fields.gdp", fv) }),
     F("gdp_pc", "GDP per person", "usd", { unit: `${CURRENCY} per resident`, higher_is: "good", source: SRC.gdp, description: txt("fields.gdp_pc", fv) }),
-    F("median_income", "Income", "usd", { unit: "median household income", higher_is: "good", source: src, group: "Prosperity", description: `Median household income (${censusVintage}).`, lens: "income" }),
+    F("median_income", "Income", "usd", { unit: "median household income", higher_is: "good", source: src, group: "Prosperity", description: `Median household income (${nation.income_vintage || censusVintage}).`, lens: "income" }),
     F("median_rent", "Rent", "usd", { unit: txt("fields.rent_unit"), source: src, group: "Prosperity", description: txt("fields.rent", fv) }),
     F("home_value", "Home value", "usd", { unit: "median home value", source: src, group: "Prosperity", description: txt("fields.home_value", fv), lens: app.lensById?.has("home") ? "home" : null }),
     F("affordability", "Home value ÷ income", "ratio", { unit: "years of income", higher_is: "bad", group: "Prosperity", description: "Median home value ÷ median household income: how many years of income a typical home costs.", derived: true }),
     F("rent_burden", "Rent ÷ income", "pct", { unit: "median rent × 12 ÷ median income", higher_is: "bad", source: src, group: "Prosperity", description: "Median rent × 12 ÷ median household income (a ratio of medians, not the share of renters who are burdened)." }),
     // With a census rate beside the survey's (Canada: the Labour Force Survey's annual average covers provinces,
     // territories and CMAs, not CAs), the census rate is its own column, so the two years are never ranked together.
-    F("unemployment", LABEL_YEARS ? `Unemployment (${nat.unemployment_year ?? ""})` : "Unemployment", "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: ROLES.unemployment || src, group: "Prosperity", description: txt("fields.unemployment", fv) }),
+    F("unemployment", LABEL_YEARS ? `Unemployment (${uYear ?? ""})` : "Unemployment", "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: ROLES.unemployment || src, group: "Prosperity", description: txt("fields.unemployment", fv) }),
     ...(nat.unemployment_census != null ? [F("unemployment_census", `Unemployment (${nation.census_year ?? ""} Census)`, "pct", { unit: "unemployed ÷ labour force", higher_is: "bad", source: src, group: "Prosperity", description: txt("fields.unemployment_census", fv) })] : []),
-    F("employed", "Employed", "int", { unit: "employed residents", source: src, description: `Employed residents, where they live (${censusVintage}).` }),
+    F("employed", "Employed", "int", { unit: "employed residents", source: src, description: `Employed residents, where they live (${nation.employed_vintage || censusVintage}).` }),
     ...workerYields.map((y) => F(`y_${y.key}`, `${y.label} workers`, "int", { unit: "workers", source: src, group: "Yields", description: y.description })),
   ];
   const rollupFields = () => counties ? [...ROLLUP.map((k) => {
@@ -206,6 +209,7 @@ export function buildData(app) {
     affordability: ratio(o.home_value, o.median_income),
     rent_burden: o.rent_burden ?? null,
     unemployment: o.unemployment ?? null,
+    unemployment_year: o.unemployment_year ?? null, // which year the rate is from (no column; for comparisons)
     ...(nat.unemployment_census != null ? { unemployment_census: o.unemployment_census ?? null } : {}),
     employed: o.employed ?? null,
     ...Object.fromEntries(workerYields.map((y) => [`y_${y.key}`, o.yields?.[y.key] ?? null])),
@@ -234,7 +238,7 @@ export function buildData(app) {
   const states_ = makeLevel({
     id: "states", label: TERMS.region.many, noun: TERMS.region.one.toLowerCase(),
     rows: stateRows,
-    fields: [F("name", TERMS.region.short, "text", { group: "Name" }), ...econFields(SRC.areas), ...rollupFields(), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), ...landFields, energyField],
+    fields: [F("name", TERMS.region.short, "text", { group: "Name" }), ...econFields(SRC.areas, unemploymentYear(states, nat.unemployment_year)), ...rollupFields(), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), ...landFields, energyField],
     highlight: (rows) => ({ states: new Set(rows.map((r) => r.ref)) }),
     rowAtCell: (cell, byKey) => (owner[cell] >= 0 ? stateRows[owner[cell]] || null : null),
     focus: (row) => app.selectState(row.ref, { fly: true }),
@@ -255,7 +259,7 @@ export function buildData(app) {
   const metros = makeLevel({
     id: "metros", label: "Metros", noun: "metro",
     rows: metroRows,
-    fields: [F("name", "Metro", "text", { group: "Name" }), F("states", TERMS.region.short_many ?? TERMS.region.many, "text", { group: "Name" }), F("kind", "Type", "text", { group: "Name", description: txt("fields.area_kind") }), ...econFields(SRC.areas), ...rollupFields().map((f) => (ownBachelors && f.key === "bachelors"
+    fields: [F("name", "Metro", "text", { group: "Name" }), F("states", TERMS.region.short_many ?? TERMS.region.many, "text", { group: "Name" }), F("kind", "Type", "text", { group: "Name", description: txt("fields.area_kind") }), ...econFields(SRC.areas, unemploymentYear(cities, nat.unemployment_year)), ...rollupFields().map((f) => (ownBachelors && f.key === "bachelors"
       ? { ...f, label: f.label.replace(/ ≈$/, ""), source: ROLES.citizens || f.source, derived: false, description: txt("fields.area_bachelors") }
       : f)), F("land_km2", "Land area", "km2", { unit: "km²", source: SRC.land, group: "Land", derived: true }), energyField],
     highlight: (rows, o = {}) => {
