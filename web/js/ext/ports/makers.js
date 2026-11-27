@@ -29,8 +29,17 @@ const PRIOR_RATINGS = 3;
 const DAY_MS = 86_400_000;
 
 const login = (value) => (typeof value === "string" && LOGIN.test(value) ? value : null);
+const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 /** A map that can be opened: an EarthCiv edition, or a community map with a site (as ./ratings.js rateable()). */
 const opens = (port) => port.status === "merged" || (port.status === "live" && !!port.url);
+
+/** A map's repository star count when its repository belongs to the credited maker, or null otherwise. */
+export function ownRepoStars(port) {
+  if (!port?.repo || !REPO.test(port.repo) || !Number.isSafeInteger(port.github_stars) || port.github_stars < 0) return null;
+  const owner = port.repo.split("/")[0].toLowerCase();
+  if ("author_github" in port && (!port.author_github || String(port.author_github).toLowerCase() !== owner)) return null;
+  return port.github_stars;
+}
 
 function webAddress(value) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -144,9 +153,10 @@ export function rankMakers(makers, { ratingOf = () => ({ n: 0, sum: 0 }), day = 
     const repositories = new Map();
     for (const port of maker.ports) {
       const r = ratingOf(port.id) || {};
-      if (port.repo && Number.isSafeInteger(port.github_stars) && port.github_stars >= 0) {
+      const stars = ownRepoStars(port);
+      if (stars !== null) {
         const repo = port.repo.toLowerCase();
-        repositories.set(repo, Math.max(repositories.get(repo) || 0, port.github_stars));
+        repositories.set(repo, Math.max(repositories.get(repo) || 0, stars));
       }
       n += r.n || 0;
       sum += r.sum || 0;

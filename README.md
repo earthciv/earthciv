@@ -94,7 +94,7 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
   profile. With `"author_github": null` you are credited by name alone, with no picture and no profile link.
 - `author_twitter` is your optional Twitter / X handle, without `@`. It appears beside your creator credit and on Today’s map when featured. Use the map submission form to add or update it for an existing listing.
 - `author_twitter_source` records the public profile or personal site that confirms a discovered handle.
-- `github_stars` and `github_stars_checked` hold the repository’s star count and the UTC date it was checked with GitHub’s repository API. The count links to the repository’s stargazers beside visitor ratings. Stars from distinct repositories break ties in creator ranking after visitor rating scores and vote counts. A featured creator is selected from that order when no map has an explicit feature.
+- `github_stars` and `github_stars_checked` hold the repository’s star count and the UTC date it was checked with GitHub’s repository API. Positive star counts on a maker’s own repository appear beside visitor ratings and link to its GitHub stargazers. Stars from distinct repositories break ties in creator ranking after visitor rating scores and vote counts. A featured creator is selected from that order when no map has an explicit feature.
 - `featured_creator: true` puts that map’s maker and their maps in the home panel’s featured creator section.
 - `based_on` optionally names another catalog entry whose original work this map builds on. Its creator is credited on the map card.
 - `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
