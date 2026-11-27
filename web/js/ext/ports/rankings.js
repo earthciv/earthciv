@@ -207,6 +207,9 @@ export function lensScale(doc, key) {
   return { log, d0, d1, t, ticks: [0, 0.25, 0.5, 0.75, 1].map(valueAt) };
 }
 
+/** A country without a figure for the open tab's year, on the map. */
+export const NO_DATA = "#41464e";
+
 /** Each tab's colours on the map, dark to light, from its advisor's colour (web/js/ext/advisors/core/roster.js). */
 export const RAMPS = {
   economy: ["#2b1f08", "#5c4314", "#937024", "#c9a43a", "#e6cb72", "#fff2c2"],

@@ -388,7 +388,9 @@ tabs: Economy (GDP and GDP per person), People (population and life expectancy),
 articles and Internet users), Land (land area and the cereal harvest) and Commerce (goods exports and imports). The
 Overall tab shows who leads each tab's first measure. A visitor can pick their own country, and its row is marked
 wherever it is ranked. A row opens that country's card, and the card's back link returns to the same tab. Each tab
-has its own address, such as `#rankings=gdp`.
+has its own address, such as `#rankings=gdp`. While a tab is open the map becomes its lens, as a strategy game's map
+does when its religion or culture rankings are open: every ranked country takes the tab's colours, the maps' pins
+step aside, and the tab's key takes the map key's place. Hovering a country shows its figure, year and rank.
 
 Each measure is ranked on one year only: the newest year for which at least 80% of the countries with a figure since
 2015 have one, and for which every G20 country has one. A country whose figure is from another year is listed after
@@ -427,6 +429,9 @@ The map is drawn to be fun, but the numbers are real, so it is worth knowing whe
   inside the data files and shown in the app.
 - **Every lens states its caveat.** For example, the Religion Census counts congregations' adherents, not what
   residents believe, and covers about half the population.
+- **World Rankings' colours can be on a log scale.** Measures that span several orders of magnitude (GDP,
+  population, articles, land, the harvest, trade) are coloured on a log scale, as the map's key says; the bars in a
+  tab are each figure's share of the highest. A country in grey has no figure for the ranked year, not a low one.
 
 ### Credits and terms
 

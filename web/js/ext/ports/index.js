@@ -17,7 +17,8 @@
 //     (./makers.js).
 //   * World Rankings compares every country on the World Bank's figures, a tab per group of measures, with the
 //     visitor's own country marked (./rankingsView.js, ./rankings.js). It takes the country list's place, as Map
-//     makers does; a row opens that country's card, whose back link returns to the same tab.
+//     makers does; a row opens that country's card, whose back link returns to the same tab. While a tab is open the
+//     map is its lens: every country in the tab's colours, its key in the map key's place, the maps' pins aside.
 //   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>,
 //     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view) and
 //     #rankings=overall (World Rankings; a measure's key, such as #rankings=gdp, opens its tab).
@@ -35,14 +36,14 @@ import { editionUrl } from "../../app/home.js";
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
 import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "./makers.js";
-import { OVERALL, measureOf, tabOf } from "./rankings.js";
-import { RANKINGS_ADVISOR, demographicsHtml, rankingsHtml } from "./rankingsView.js";
+import { NO_DATA, OVERALL, measureOf, tabOf } from "./rankings.js";
+import { RANKINGS_ADVISOR, demographicsHtml, lensFills, lensLegendHtml, lensTip, rankingsHtml } from "./rankingsView.js";
 // The advisors' medallions, which the World Rankings' tabs share (no edition is loaded with them).
 import { emblem } from "../advisors/core/emblems.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127f", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127g", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
@@ -469,6 +470,7 @@ export function install(app) {
       if (ui.rankings) ui.rankings = tabOf(rankDoc, ui.rankings);
       if (ui.selected) rerenderCard(); // its Demographics
       else if (ui.rankings) rerenderRankings();
+      syncLens();
       syncTitle();
     };
     loadRankings().then(done, done);
@@ -1294,6 +1296,7 @@ export function install(app) {
     ui.makers = wanted;
     ui.rankings = null;
     syncRankingsButton();
+    syncLens();
     ui.selected = null;
     ui.pickedPortId = null;
     map.setSelectedCountry(null);
@@ -1349,6 +1352,7 @@ export function install(app) {
     announce(`World Rankings: ${m ? `${m.label}, ${m.year}` : "Overall"}`);
     syncTitle();
     syncRankingsButton();
+    syncLens();
     if (write) app.hash.soon();
     if (reveal) findRow(reveal); // the country whose card asked for this tab
     else focusRankings(focus);
@@ -1365,6 +1369,7 @@ export function install(app) {
     }
     syncTitle();
     syncRankingsButton();
+    syncLens();
     if (write) app.hash.soon();
     if (focus) overlay.querySelector(".wv-rank-btn")?.focus({ preventScroll: true });
   }
@@ -1521,12 +1526,30 @@ export function install(app) {
     syncMenus(); // a link added or removed is in both menus too
     if (!map) return;
     map.setPorts(allPorts(), filteredPorts());
-    overlay.querySelector("#wv-legend").innerHTML = kindsHtml();
+    syncLens(); // the map key, or the open tab's colours
     const mapped = new Set(allPorts().flatMap((p) => p.countries || []));
     const nMakers = listMakers(basePorts).length;
     overlay.querySelector("#wv-coverage").innerHTML = `<b>${mapped.size}</b> countries mapped · <b>${allPorts().length}</b> maps`
       + (nMakers ? ` by <button type="button" class="wv-coverage-makers" data-act="makers" title="Everyone who made a map"><b>${nMakers}</b> makers</button>` : "");
     renderSide();
+  }
+
+  // While a tab of World Rankings is open the map is its lens: the tab's colours replace the maps' own (and their
+  // pins), and its key takes the map key's place. Overall, and every other view, show the maps.
+  let lensKey = null;
+  function syncLens() {
+    if (!map || !overlay) return;
+    const key = ui.rankings && ui.rankings !== OVERALL && measureOf(rankDoc, ui.rankings) ? ui.rankings : null;
+    if (key !== lensKey) {
+      lensKey = key;
+      map.setLens(key ? { fills: lensFills(rankDoc, key), noData: NO_DATA } : null);
+      showMapTip(null);
+    }
+    const legend = overlay.querySelector("#wv-legend");
+    legend.classList.toggle("is-lens", !!key);
+    overlay.querySelector(".ports-atlas").classList.toggle("has-lens", !!key);
+    legend.setAttribute("aria-label", key ? "Map key: the open tab's colours" : "Map key: click one to show only those countries");
+    legend.innerHTML = key ? lensLegendHtml(rankDoc, key) : kindsHtml();
   }
 
   function kindsHtml() {
@@ -1821,6 +1844,12 @@ export function install(app) {
       lines.push(`<div class="pt-head"><span>${esc(iconOf(info.port) || "🌍")}</span><b>${esc(info.port.name)}</b></div>`);
       const maker = creditOf(info.port);
       lines.push(`<div class="pt-sub">${esc(KIND[k].label)}${maker ? ` · by ${esc(maker.name)}` : ""}</div>`);
+    } else if (lensKey) {
+      // Under World Rankings' lens: the country's figure on the open tab, its year and its rank.
+      const t = lensTip(rankDoc, lensKey, iso);
+      lines.push(`<div class="pt-head"><span>${flagEmoji(iso)}</span><b>${esc(info.country.name)}</b></div>`);
+      lines.push(`<div class="pt-sub">${esc(t?.value || "")}</div>`);
+      if (t?.rank) lines.push(`<div class="pt-rank">${esc(t.rank)}</div>`);
     } else {
       lines.push(`<div class="pt-head"><span>${flagEmoji(iso)}</span><b>${esc(info.country.name)}</b></div>`);
       const k = bestKind(list);
@@ -1828,7 +1857,7 @@ export function install(app) {
       lines.push(`<div class="pt-sub">${esc(sub)}</div>`);
     }
     const target = info.port || list[0] || null;
-    if (target) {
+    if (target && !lensKey) {
       const clickHint = iso === ui.selected ? "Card open" : "Click for card";
       const openHint = info.port ? "Double-click to open" : `Double-click to open ${esc(target.name)}`;
       lines.push(`<div class="pt-more">${clickHint} · ${openHint}</div>`);
