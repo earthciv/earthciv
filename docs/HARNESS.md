@@ -55,6 +55,36 @@ The page side, `web/dev/snap.js`, chooses the views from the edition's own data,
 
 `web/dev/snap.html` runs one view by hand in any browser (serve `web/` and open `/dev/snap.html`).
 
+## Screenshots for a pull request
+
+Every pull request shows its change in a screenshot ([AGENTS.md](../AGENTS.md) has the rule and what to capture).
+`attach` publishes image files and prints the Markdown for the description:
+
+```sh
+uv run python -m harness attach out/shots/ca/home.png out/shots/ca/phone-home.png
+```
+
+```markdown
+![home](https://raw.githubusercontent.com/earthciv/earthciv/<commit>/home.png)
+![phone home](https://raw.githubusercontent.com/earthciv/earthciv/<commit>/phone-home.png)
+```
+
+It takes PNG, JPEG, GIF and WebP files of up to 5 MB each, and needs only git and push access to `origin`, not the
+`harness` dependency group. `--remote NAME` publishes to another remote, such as your fork.
+
+Each set of images becomes one commit that no branch contains, pushed to `refs/pr-screenshots/<commit>`:
+
+- GitHub serves the files by commit id, so the addresses never change.
+- A clone or fetch does not download refs outside `refs/heads` and `refs/tags`, and nothing lands in `main`'s
+  history.
+- The commit is made from the files' names and bytes alone, with a fixed author and date. Attaching the same files
+  again gives the same addresses, and a different set never replaces an earlier one.
+- Neither your working tree nor your index is touched.
+
+`git ls-remote origin 'refs/pr-screenshots/*'` lists what has been published. To withdraw a set, delete its ref with
+`git push origin :refs/pr-screenshots/<commit>`. GitHub can keep serving the files for a while afterwards, so treat
+anything attached as published.
+
 ## Keeping it deterministic
 
 Every view starts from a fresh page in its own browser context, so views recorded side by side share no storage (the
