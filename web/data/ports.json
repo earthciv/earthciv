@@ -331,6 +331,25 @@
       "github_stars_checked": "2026-11-27"
     },
     {
+      "id": "spain-strategy-map",
+      "name": "Spain Strategy Map (0xDanielLopez)",
+      "emblem": "🇪🇸",
+      "status": "live",
+      "scope": "country",
+      "region": "Europe",
+      "countries": ["ES"],
+      "center": [-3.2, 38.0],
+      "languages": ["es"],
+      "license": "MIT",
+      "repo": "0xDanielLopez/spain-strategy-map",
+      "author": "0xDanielLopez",
+      "url": "https://0xdaniellopez.github.io/spain-strategy-map/",
+      "embed": true,
+      "description": "Spain as a hex strategy map, all in Spanish: 10 km hexes, 12 INE lenses by municipality, 68 functional urban areas with jobs and GDP, power plants, World Heritage sites, national parks and airport passengers.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
+    },
+    {
       "id": "italyciv",
       "name": "ItalyCiv",
       "emblem": "🇮🇹",
