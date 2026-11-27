@@ -9,9 +9,9 @@ pipeline/canada_disasters.py. Left out for lack of open data, and said so in doc
 * ports in infrastructure.json: no open port-by-port cargo statistics, and Natural Earth lacks Port Klang and
   Tanjung Pelepas. `ports` is an empty list rather than an unranked guess.
 
-Race and religion rules (PLAN.md): no wonder is chosen by a community or a faith. The wonders are UNESCO's inscribed
-properties, a short hand-picked list of parks and landmarks that are not places of worship, and the designated
-research universities by their number of lecturers.
+Rule 4 of "Race and religion" (docs/MALAYSIA.md): no wonder is chosen by a community or a faith. The wonders are
+UNESCO's inscribed properties, a short hand-picked list of parks and landmarks that are not places of worship, and the
+designated research universities by their number of lecturers.
 """
 
 from __future__ import annotations

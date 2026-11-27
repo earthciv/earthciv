@@ -52,7 +52,27 @@ Beaufort and Papar in proportion to their falls.
 give each DOSM group as a share of **citizens** (latest mid-year estimate); religion lenses give each group as a share
 of **all residents** (Census 2020, Kawasanku area profiles). Every ethnicity and religion lens uses the same neutral
 colour scale on a fixed 0-100% domain. There is no "largest group" lens, and nothing else in the edition (yields,
-scores, cities, citizens, advisors) reads these figures.
+scores, cities, citizens, advisors) reads these figures: see [Race and religion](#race-and-religion).
+
+## Race and religion
+
+DOSM publishes ethnicity and religion by district. The edition maps them as context only, under five rules that
+`tests/test_malaysia_edition.py` checks:
+
+1. **Shares, never head counts.** Each ethnicity lens is one DOSM group's share of a district's **citizens** (latest
+   mid-year estimate); each religion lens is one group's share of **all residents** (Census 2020, Kawasanku). Every lens
+   states its denominator and says it is not a head count, and a district's shares add up to 100%.
+2. **One neutral scale.** Every ethnicity and religion lens, and the non-citizen lens, uses the same neutral colour ramp
+   on a fixed 0-100% domain, and none is marked better or worse when higher, so no group is stretched or coloured apart
+   from another. Groups follow DOSM's published order.
+3. **No largest group, no rankings.** No lens shows each district's largest group, and no place is ranked by a group's
+   share.
+4. **No wonder by community or faith.** Wonders come from published lists (UNESCO's World Heritage List, the designated
+   research universities) or a short hand-picked list of parks and landmarks. None is a place of worship, and no rule
+   names a community or a faith.
+5. **Nothing else reads them.** Ethnicity and religion never feed yields, scores, cities, states, the nation, the City
+   View's citizens and districts, names or advisor text. The economy and City View modules read only the population
+   table's "overall" rows and never the religion table.
 
 ## Cities
 
@@ -210,7 +230,7 @@ Built by `pipeline/malaysia_layers.py` (called from `pipeline/malaysia.py`); the
 | Wonders: parks | hand-picked | Taman Negara, Bako, Endau-Rompin, Tunku Abdul Rahman Park and Royal Belum State Park (not UNESCO sites). Malaysia publishes no open visitor counts by park, so they are `curated` and not ranked. No park footprints are published as open data, so `cells` is null |
 | Wonders: research universities | The five public universities the Ministry of Higher Education designated Research Universities (UM, UKM, USM, UPM in 2006, UTM in 2010), ranked by lecturers in 2025 (`lecturers_uni`, MOHE via data.gov.my) | At most 2 per city, as Canada. **UPM is left out** because UM and UKM already fill Greater Kuala Lumpur; the rule text says so. Malaysia publishes no research spending or doctoral enrolment by university. Campus points come from the project geocoder (OpenStreetMap) |
 | Wonders: landmarks | hand-picked | Petronas Twin Towers, Bakun Dam, Kellie's Castle and the Langkawi Sky Bridge: none a place of worship, at most one per city, none on the hex of another wonder. Candidates dropped for sharing a city or hex with another wonder: Perdana Putra (Putrajaya, Greater Kuala Lumpur), the Penang Bridge (George Town); Sipadan has no land hex in reach |
-| Disasters | DOSM *Impact of Floods* workbooks, 2022–2025 releases (each carries two years; each year is taken from the latest release that has it) | `floods`: the value of flood losses in current ringgit (RM thousand) per year 2021–2025, by state (six categories, totals) and by district. The 2021 release has no workbook; 2021 is the one in the 2022 report. DOSM's `n.a` and broken cells are `null`, its `-` ("not affected") is 0. **District figures cover only living quarters, vehicles, business premises and manufacturing** (agriculture and infrastructure are published by state only), so districts do not add up to the state or the nation. **2021 state rows are partial**: DOSM published that year's agriculture and infrastructure losses for the nation only (RM 90.6 million and RM 2.0 billion), so the states add up to RM 4.0 billion of the national RM 6.1 billion (`states_complete` is false for 2021, and the viewer's multi-year sum starts in 2022); from 2022 they add up to the nation. Perlis and the federal territories take their state row; districts DOSM only lists after 2025 are split over their parents with the M2 crosswalk |
+| Disasters | DOSM *Impact of Floods* workbooks, 2022–2025 releases (each carries two years; each year is taken from the latest release that has it) | `floods`: the value of flood losses in current ringgit (RM thousand) per year 2021–2025, by state (six categories, totals) and by district. The 2021 release has no workbook; 2021 is the one in the 2022 report. DOSM's `n.a` and broken cells are `null`, its `-` ("not affected") is 0. **District figures cover only living quarters, vehicles, business premises and manufacturing** (agriculture and infrastructure are published by state only), so districts do not add up to the state or the nation. **2021 state rows are partial**: DOSM published that year's agriculture and infrastructure losses for the nation only (RM 90.6 million and RM 2.0 billion), so the states add up to RM 4.0 billion of the national RM 6.1 billion (`states_complete` is false for 2021, and the viewer's multi-year sum starts in 2022); from 2022 they add up to the nation. Perlis and the federal territories take their state row; districts DOSM only lists after 2025 are split over their parents with the new-district crosswalk (see "Districts" above) |
 
 The viewer reads the flood block from a generic shape (`disasters.json` `floods`, DATA_CONTRACTS.md); the layer tooltip
 and the Culture advisor read a wonders rule's `measure` / `measure_name` (any ranking) and `listed` (a published list).
@@ -230,8 +250,8 @@ and the Culture advisor read a wonders rule's `measure` / `measure_name` (any ra
 
 Bakun Dam is a hand-picked landmark here; that does not conflict with the resources layer, which leaves the large Sarawak hydro plants out only because WRI omits them and no capacity is typed in by hand.
 
-Race and religion (PLAN.md): no wonder is chosen by a community or a faith; no place of worship is a wonder; the
-tests check wonder names and rule texts.
+Rule 4 of [Race and religion](#race-and-religion): no wonder is chosen by a community or a faith, and no place of
+worship is a wonder; the tests check wonder names and rule texts.
 
 ## City View (`districts.json`, `citizens.json`)
 
@@ -243,13 +263,13 @@ generic change (`citizens.json` `row_labels` may reword a row's subtitle and nou
 
 The U.S. rule (location quotient ≥ 1.25 and ≥ 1,000 workers or 1% of the city's workers; ≤ 5 per city; badge from the
 strongest district; "Capital city" only for Kuala Lumpur) applied to each city's workers by industry (`cities.json`
-`jobs`, M2). **These are estimates, not counts**: DOSM publishes workers by industry for states only (LFS 2021), and
-M2 shares each state's workers over its districts by 2020 district GDP in the matching sector (agriculture, mining,
+`jobs`, from "Economy" above). **These are estimates, not counts**: DOSM publishes workers by industry for states only
+(LFS 2021), and `malaysia_economy.py` shares each state's workers over its districts by 2020 district GDP in the matching sector (agriculture, mining,
 manufacturing, construction, services). Inside a state every city therefore has the state's mix of service
 industries, scaled by how large its services sector is; read a district as "this state's industry, concentrated in
 this city". The file's `rule.text` and the text pack (`cv.districts_counting`, `cv.districts_note`) say so.
 
-| District | Industries (M2 keys) |
+| District | Industries (`cities.json` `jobs` keys) |
 |---|---|
 | Campus | professional, information, education |
 | Commercial hub | finance |
@@ -276,11 +296,11 @@ born** (citizenship is not place of birth, so it is not used for that row). Hous
 (Census 2020, Kawasanku `household_size`) but the City View has no row or chip for it, so it is not added. Only the age
 row is compared with Malaysia for the "standout citizens" call-out and the ▲▼ marks: the education row is the state's
 mix, and showing it as a local trait would mislead. Income is already in
-the City View through M2 (`median_income`).
+the City View through the economy figures (`median_income`).
 
 ### Race and religion are not here
 
-Rule 5 of "Race and religion" (PLAN.md): ethnicity and religion never feed personas, names, scores or advisor text.
+Rule 5 of [Race and religion](#race-and-religion): ethnicity and religion never feed personas, names, scores or advisor text.
 The City View's citizens are unnamed figures of one skin tone, so the edition needs no naming scheme: nothing in the
 file or the interface gives anyone a name, and none of the rows is split by ethnicity or religion. The module never
 reads the ethnicity columns (other than the "overall" rows), the religion parquet or the non-citizen column.

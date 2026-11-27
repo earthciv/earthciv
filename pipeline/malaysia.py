@@ -1,8 +1,9 @@
 """Build the Malaysia edition (web/data/my/) from public data.
 
-Walking skeleton (PLAN.md, M1): the hex world (states, districts, relief, water, land cover, rivers) and population
-figures for the nation, the states and federal territories, and the larger districts as cities. Economic fields
-the later milestones fill are present and null ("no data"), never zero.
+The hex world (states, districts, relief, water, land cover, rivers), the population of the nation, the states and
+federal territories and the cities, and the lenses. The economy, resources, map layers and City View come from
+malaysia_economy.py, malaysia_resources.py, malaysia_layers.py and malaysia_cityview.py; docs/MALAYSIA.md gives every
+source and rule. A figure that is not published is null ("no data"), never zero.
 
     uv run --group build python -m pipeline.malaysia [--radius KM] [--force]
 """
@@ -54,7 +55,8 @@ from .core.store import atomic_write_text
 SOURCE_ID = "malaysia"
 SOURCE_DIR = RAW / SOURCE_ID
 OUT = WEB / "data" / "my"
-RADIUS = 6  # km; see PLAN.md (Malaysia is ~4% of the lower 48's area, so 25 km hexes would leave ~500 land hexes)
+# km; docs/MALAYSIA.md, "Map": Malaysia is ~4% of the lower 48's area, so 25 km hexes would leave ~500 land hexes
+RADIUS = 6
 MARGIN = 120  # km of sea or neighbouring land around the outermost district
 BBOX = (98.2, -0.6, 120.7, 8.8)  # lon/lat window for relief and land cover: the whole hex grid, margin included
 # Lambert azimuthal equal-area centred between the peninsula and Borneo.
@@ -65,7 +67,7 @@ EARTH = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/g
 DOSM = "Department of Statistics Malaysia (DOSM)"
 GROWTH_START = 2021  # the U.S. and Canadian growth window starts in 2021
 SAME_NAME = 0.85  # difflib ratio at which two place names are spellings of one (Kota Bharu / Kota Baharu)
-CITY_FLOOR = 150_000  # districts with at least this many residents get a banner (skeleton rule; M1 refines cities)
+CITY_FLOOR = 150_000  # a district outside the conurbations with at least this many residents is a city of its own
 NEIGHBOURS = ("THA", "SGP", "BRN", "IDN", "PHL")
 
 # DOSM state codes (1..16) are the ISO 3166-2:MY numbers. Abbreviations are the common three-letter forms.
@@ -77,7 +79,7 @@ STATES = {
 }
 # Districts created after the boundary file (they appear in DOSM population tables from 2025), folded back into the
 # district(s) they were carved from. Parents and shares come from the 2024 -> 2025 drop in each parent's population
-# (PLAN.md, "New-district crosswalk"); Membakut took land from both Beaufort and Papar.
+# (docs/MALAYSIA.md, "Districts"); Membakut took land from both Beaufort and Papar.
 NEW_DISTRICTS = {
     ("Sabah", "Membakut"): {("Sabah", "Beaufort"): 20.8, ("Sabah", "Papar"): 33.7},
     ("Sarawak", "Gedong"): {("Sarawak", "Simunjan"): 1},
@@ -450,7 +452,7 @@ def build(radius):
 
 # Ethnicity and religion: shares only, never head counts; one neutral colour scale on a fixed 0–100% domain for every
 # group, so no group is stretched or coloured apart; groups in DOSM's published order; no "largest group" lens, no
-# rankings. Informational only: nothing else in the edition reads these values (PLAN.md, "Race and religion").
+# rankings. Informational only: nothing else in the edition reads these values (docs/MALAYSIA.md, "Race and religion").
 SHARE_RAMP = ["#141c2b", "#24365a", "#3b5a8a", "#6a8fb8", "#a9c4dc", "#e8f0f7"]
 ETHNIC_GROUPS = [  # DOSM population table groups (citizens)
     ("bumi_malay", "ethnic_malay", "Malay"),

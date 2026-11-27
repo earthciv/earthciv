@@ -9,8 +9,9 @@
   its labour force (a state mix: DOSM publishes it by state only, applied to each district's labour force).
 
 Not here, by design: ethnicity and religion. They feed no row, no persona and no figure of this file, and nothing in
-this module reads them (rule 5 of PLAN.md "Race and religion"; tests/test_malaysia_edition.py checks both). The City
-View's figures are unnamed, one skin tone, and drawn only for occupations, ages and schooling, so no names are needed.
+this module reads them (rule 5 of "Race and religion" in docs/MALAYSIA.md; tests/test_malaysia_edition.py checks both).
+The City View's figures are unnamed, one skin tone, and drawn only for occupations, ages and schooling, so no names are
+needed.
 
 Missing on purpose: occupation, how people get to work and where people were born (no DOSM table at district or state
 level that we can read). Household size is published by district (Census 2020, Kawasanku) but the City View has no

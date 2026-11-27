@@ -1,6 +1,6 @@
 """The Malaysia edition's data (web/data/my/), built by pipeline/malaysia.py.
 
-Ethnicity and religion are shown with care (PLAN.md, "Race and religion"): shares only, one neutral colour scale on a
+Ethnicity and religion are shown with care (docs/MALAYSIA.md, "Race and religion"): shares only, one neutral colour scale on a
 fixed 0–100% domain for every group, no "largest group" lens, a stated denominator, and nothing else in the edition
 reading them.
 """
@@ -604,7 +604,7 @@ class CityViewFunctionsTest(unittest.TestCase):
 
 
 class NoEthnicityOrReligionInCitizensTest(unittest.TestCase):
-    """Rule 5 of PLAN.md "Race and religion": ethnicity and religion never feed personas, names, scores or text."""
+    """Rule 5 of "Race and religion" (docs/MALAYSIA.md): ethnicity and religion never feed personas, names, scores or text."""
 
     WORDS = re.compile(r"\b(ethnic\w*|race|racial|bumi\w*|malay|malays|chinese|indian|orang|religio\w*|faith|muslim|islam\w*"
                        r"|christian\w*|buddhis\w*|hindu\w*|atheis\w*|sikh|tribe|tribal)\b", re.I)
