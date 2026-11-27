@@ -174,8 +174,11 @@ specialities (`sub` is empty): DOSM publishes no detailed industries.
 | Education | `labour_force_education_state.csv` (DOSM, archive.data.gov.my, 1982-2021 table; 2021 used) | **a state mix**: no education table exists by district. Each district's LFS 2024 labour force takes its state's 2021 mix (none / primary / secondary / tertiary). It counts the labour force aged 15+, not adults 25+, and tertiary includes diplomas and certificates, so `bachelors_plus` is left out and the "have a degree" chip is hidden. Within a state every city has the same mix. |
 
 Missing, and said so in the text pack (`citizens.row_missing`, `citizens.note`): **occupation** (the archive lists
-"Employed persons by occupation and state" but attaches no file), **how people get to work**, **where people were
-born** (citizenship is not place of birth, so it is not used for that row), and household size. Income is already in
+"Employed persons by occupation and state" but attaches no file), **how people get to work** and **where people were
+born** (citizenship is not place of birth, so it is not used for that row). Household size is published by district
+(Census 2020, Kawasanku `household_size`) but the City View has no row or chip for it, so it is not added. Only the age
+row is compared with Malaysia for the "standout citizens" call-out and the ▲▼ marks: the education row is the state's
+mix, and showing it as a local trait would mislead. Income is already in
 the City View through M2 (`median_income`).
 
 ### Race and religion are not here

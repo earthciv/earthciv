@@ -12,8 +12,9 @@ Not here, by design: ethnicity and religion. They feed no row, no persona and no
 this module reads them (rule 5 of PLAN.md "Race and religion"; tests/test_malaysia_edition.py checks both). The City
 View's figures are unnamed, one skin tone, and drawn only for occupations, ages and schooling, so no names are needed.
 
-Missing on purpose (no DOSM table at district or state level that we can read): occupation, how people get to work,
-household size and where people were born. The text pack says so where the City View would have shown those rows.
+Missing on purpose: occupation, how people get to work and where people were born (no DOSM table at district or state
+level that we can read). Household size is published by district (Census 2020, Kawasanku) but the City View has no
+slot for it, so it is not added. The text pack says so where the City View would have shown those rows.
 """
 
 from __future__ import annotations
@@ -312,7 +313,9 @@ def citizens_doc(places, props, econ, city_of, new_districts, source_dir):
             for level, n in state.items():
                 mix[level] += districts[k]["lf"] * n / total_state
         parts = {"age": age_row(bands, sum(women[k] for k in keys)), "education": education_row(mix)}
-        parts["specialists"] = specialists(parts, national)
+        # Only the age row can stand out: education is the state's mix, so it would present a state statistic as this
+        # city's trait (and give a whole state the same chevrons).
+        parts["specialists"] = specialists({"age": parts["age"]}, national)
         parts["reliable"] = True
         return parts
 
@@ -326,7 +329,7 @@ def citizens_doc(places, props, econ, city_of, new_districts, source_dir):
             "max_high": MAX_HIGH, "max_low": MAX_LOW,
             "text": f"Figures are rounded with the largest-remainder method so each row adds up exactly. A specialist is "
                     f"a category whose share is at least {SPECIALIST_HIGH:g}× or at most {SPECIALIST_LOW:g}× Malaysia's "
-                    f"share (categories under {SPECIALIST_MIN_SHARE:.0%} both here and nationally are skipped). Age: DOSM's "
+                    f"share (categories under {SPECIALIST_MIN_SHARE:.0%} both here and nationally are skipped); only the age row is compared, because the education row is the state's mix. Age: DOSM's "
                     f"{year} mid-year estimate for the districts of the city, in five-year bands (so children are 0-14, not "
                     f"under 18); the median age is interpolated inside its band. Education: DOSM publishes it by state "
                     f"only, so each district takes its state's {EDUCATION_YEAR} mix of the labour force (people aged 15 and "
