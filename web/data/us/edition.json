@@ -3,7 +3,8 @@
   "id": "us",
   "name": "United States",
   "emblem": "★",
-  "title": "EarthCiv — The real world, mapped like a strategy game",
+  "title": "EarthCiv — United States",
+  "description": "Explore the cities, terrain, and economy of the United States on EarthCiv’s interactive strategy map.",
   "map_label": "Hex map of the contiguous United States",
   "nation": {
     "vs": "US",

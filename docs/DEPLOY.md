@@ -1,8 +1,9 @@
 # Deploying
 
 The site is static. Packaging writes `dist/usaciv/` with the site, generated social preview pages and images,
-and `usaciv-source.zip`, a copy of the project linked from the in-app help. Preview pages expose their city or
-lens in the URL path so social crawlers can read the card from the original HTML.
+`robots.txt` and `sitemap.xml`, and `usaciv-source.zip`, a copy of the project linked from the in-app help. Preview
+pages expose their city or lens in the URL path so social crawlers can read the card from the original HTML. The
+sitemap lists the world map and each edition (`?country=<id>`), on the address in `web/index.html`'s `og:url`.
 
 One thing runs on the server: the Pages Function in `functions/`, which keeps the star ratings people give the maps
 in the world view. It needs a database and a secret, set up once ([RATINGS.md](RATINGS.md)). Without them the site
@@ -52,4 +53,8 @@ folder it is run in; from anywhere else the site would upload without its Functi
 - https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up, and a map's card on the
   world map shows its stars. With `"open": false` its `"reason"` says what is missing: `"static"` (no database is
   bound, or the Function was not uploaded), `"no_secret"` or `"closed"` ([RATINGS.md](RATINGS.md)).
+- https://earthciv.org/robots.txt names the sitemap, https://earthciv.org/sitemap.xml lists the world map and every
+  edition, and an unknown address such as https://earthciv.org/no-such-page answers 404.
+- In the browser, each view's `link[rel=canonical]` is its own address: `https://earthciv.org/` on the world map,
+  `https://earthciv.org/?country=ca` on Canada. The page sets it; the HTML file has none.
 - The browser console shows no errors on either edition.

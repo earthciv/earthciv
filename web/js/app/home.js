@@ -55,3 +55,29 @@ export function pinEditionInUrl(id) {
     /* some sandboxes forbid history writes */
   }
 }
+
+/**
+ * Give search engines this view's own address: the site's address (index.html's og:url) for the world map, plus
+ * ?country=<id> for an edition, as in editionUrl(). One HTML file serves every view, so it has no canonical link of
+ * its own: a fixed one would call each edition a copy of the world map, and search engines may ignore a canonical
+ * link that a script changes. Packaging lists the same addresses in sitemap.xml (pipeline/sitemap.py).
+ */
+export function declareCanonical(editionId = null, defaultId = null) {
+  if (!html) return;
+  let url;
+  try {
+    url = new URL(document.querySelector('meta[property="og:url"]')?.content);
+  } catch {
+    return; // no address declared (a copy of the site without social tags)
+  }
+  url.search = "";
+  url.hash = "";
+  if (editionId && (WORLD_HOME || editionId !== defaultId)) url.searchParams.set("country", editionId);
+  let link = document.head.querySelector('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "canonical";
+    document.head.append(link);
+  }
+  link.href = url.href;
+}

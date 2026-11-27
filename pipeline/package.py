@@ -3,6 +3,7 @@ site, ready to upload as /usaciv/. (dist/usaciv/ is the same folder unzipped, ke
 
 The site gets a copy of the source code as usaciv-source.zip, linked from the in-app help, so anyone can download,
 run and remix it. Archive entries are sorted and given fixed timestamps. Social cards are rendered with headless Chromium.
+robots.txt and sitemap.xml are written from the site's address (index.html's og:url) and the edition index.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from tempfile import TemporaryDirectory
 
 from .core.paths import ROOT, WEB
 from .share_pages import build_share_pages
+from .sitemap import build_crawler_files
 
 NAME = "usaciv"
 DIST = ROOT / "dist"
@@ -67,8 +69,9 @@ def cmd_package() -> None:
         stage = Path(temp) / NAME
         stage.mkdir()
         share_count = build_share_pages(WEB, stage)
+        page_count = build_crawler_files(WEB, stage)
 
-        # 1. The site: web/ without the dev pages, plus generated social previews.
+        # 1. The site: web/ without the dev pages, plus generated social previews, robots.txt and sitemap.xml.
         for f in _files(WEB, ["."]):
             rel = f.relative_to(WEB)
             if rel.parts[0] in SITE_SKIP_DIRS or (stage / rel).exists():
@@ -96,4 +99,5 @@ def cmd_package() -> None:
     mb = lambda b: f"{b / 1e6:.1f} MB"
     print(f"{bundle.name}  ({mb(site_size)})  ← upload this: it unzips to {NAME}/ ({n_site} site files + {SOURCE_ZIP})")
     print(f"  {share_count} share pages with preview images")
+    print(f"  robots.txt and sitemap.xml ({page_count} pages)")
     print(f"  {SOURCE_ZIP}: {len(src_files)} files, {mb(src_size)}")

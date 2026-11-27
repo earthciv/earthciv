@@ -4,6 +4,7 @@
   "name": "Canada",
   "emblem": "🍁",
   "title": "EarthCiv — Canada",
+  "description": "Explore the cities, terrain, and economy of Canada on EarthCiv’s interactive strategy map.",
   "map_label": "Hex map of Canada",
   "nation": {
     "vs": "Canada",
