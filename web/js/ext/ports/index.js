@@ -10,13 +10,15 @@
 //     shows the country's World Bank figures, one big button that opens its best map (an EarthCiv edition, a
 //     community map shown inside EarthCiv, or one on its own site) and every other map of it. A country nobody has
 //     mapped yet says so and links to how EarthCiv is built.
-//   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js).
+//   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js): on its
+//     card, in the bar above a community map open here, and in an edition's own top bar.
 //   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
 //     and in the bar and the note of a community map that is open here. "Map makers" lists everyone who made one
 //     (./makers.js).
 //   * URL hash: #ports=all (over an edition) or #ports=<map id> (a map open inside), #country=<ISO code>, and
 //     #makers=all (the list of makers; a maker's key in place of "all" brings that maker into view).
-//   * Loads web/data/ports.json, world-outlines.json, world-figures.json and ratings.json only when first opened.
+//   * Loads web/data/world-outlines.json and world-figures.json only when first opened. An edition reads ports.json
+//     as it starts, for its map menu, and ratings.json where its top bar has room for the stars.
 
 import { esc } from "../../app/escape.js";
 import { icon } from "../../ui/icon.js";
@@ -32,10 +34,11 @@ import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listM
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127c", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261127d", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const CATALOG_PORT_COUNT = 62; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
+const RATING_BAR = "(min-width: 701px)"; // where a map's bar has room for its stars (css/ports.css hides .rt-bar below)
 // Editions with pictures of their own map for their card here: home.jpg and home-small.jpg in the edition's folder,
 // declared by "home_pictures" in editions.json (docs/EDITIONS.md; pipeline/home_pictures.py makes them).
 const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
@@ -189,12 +192,13 @@ export function install(app) {
   let figures = null; // world-figures.json: {source, figures: [{key, label, unit}], countries: {ISO-2: {key: [year, value]}}}
   let customPorts = loadCustomPorts();
   let overlay = null;
-  // The maps' star ratings. Every element with data-rating-of="<map id>" (a card, the viewer's bar) is a slot that
-  // ratings.sync() fills and keeps up to date; a slot of a map that cannot be rated stays hidden.
+  // The maps' star ratings. Every element with data-rating-of="<map id>" (a card, the viewer's bar, an edition's top
+  // bar) is a slot that ratings.sync() fills and keeps up to date; a slot of a map that cannot be rated stays hidden.
   const ratings = createRatings({
     url: new URL("ratings.json", DATA_URL),
     onChange: () => {
       ratings.sync(overlay, portById);
+      ratings.sync(editionRating?.parentElement, portById);
       syncMakers(); // the makers' order follows the ratings
     },
   });
@@ -227,6 +231,7 @@ export function install(app) {
   const picker = home ? null : document.getElementById("country-picker");
   let editionMaker = null;
   let editionKind = null;
+  let editionRating = null;
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
   const editionUnder = EDITIONS.find((e) => e.id === EDITION_ID);
   const editionName = editionUnder?.name || "the map";
@@ -337,7 +342,17 @@ export function install(app) {
       editionKind.className = `pc-badge ports-vkind ${KIND.merged.cls}`;
       editionKind.textContent = KIND.merged.label;
       editionKind.hidden = true;
-      switcher.append(editionMaker, editionKind);
+      // At the row's far end, the edition's rating, as the bar above a community map has that map's: the average,
+      // and five stars to give a rating with. It is named for the edition's entry once the list of maps is here.
+      editionRating = document.createElement("div");
+      editionRating.className = "rt rt-bar";
+      editionRating.hidden = true;
+      editionRating.addEventListener("click", (e) => {
+        const star = e.target.closest(".rt-star");
+        // The second click of a double-click is not a second choice (it would take the rating straight back).
+        if (star?.dataset.rate && e.detail <= 1) ratePort(star.dataset.rate, Number(star.dataset.stars));
+      });
+      switcher.append(editionMaker, editionKind, editionRating);
     }
 
     if (picker) {
@@ -349,6 +364,14 @@ export function install(app) {
         onMenuPick(picker, EDITION_ID);
       }, true);
       loadPorts().catch((err) => console.error("could not load ports.json", err));
+      if (editionRating) {
+        // The stars need the ratings. A phone's first row has no room for them (css/ports.css), so a phone reads
+        // the ratings when the world view opens, as before.
+        const roomForStars = matchMedia(RATING_BAR);
+        const loadRatings = () => roomForStars.matches && ratings.load();
+        loadRatings();
+        roomForStars.addEventListener?.("change", loadRatings);
+      }
     }
   }
 
@@ -366,8 +389,13 @@ export function install(app) {
     if (!portsP) {
       portsP = fetchJson(new URL("ports.json", DATA_URL)).then((portsDoc) => {
         basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
-        renderTopbarMaker(editionMaker, basePorts.find((port) => port.editionId === EDITION_ID));
+        const editionPort = basePorts.find((port) => port.editionId === EDITION_ID);
+        renderTopbarMaker(editionMaker, editionPort);
         if (editionKind) editionKind.hidden = false;
+        if (editionRating && editionPort) {
+          editionRating.dataset.ratingOf = editionPort.id;
+          ratings.sync(editionRating.parentElement, portById);
+        }
         syncLaunchCount();
         syncMenus();
         return basePorts;

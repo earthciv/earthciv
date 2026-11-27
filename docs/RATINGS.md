@@ -2,8 +2,9 @@
 
 Visitors can give each map in the world view one to five stars. A map's card shows its average and how many people
 rated it, with five stars beside them. Picking a star rates the map, picking another changes the rating, and picking
-the same star again takes it back. A map opened inside EarthCiv has the same stars in the bar above it (not on
-phones, where the bar has no room: there a map is rated on its card).
+the same star again takes it back. A map that is open has the same stars in the bar above it: a community map
+opened inside EarthCiv in its bar, an EarthCiv edition at the end of its top bar's first row. A phone's bar has no
+room for them: there a map is rated on its card.
 
 A map can be rated when it can be opened: an EarthCiv edition, or a community map with a site. A map that is source
 code only cannot, and neither can a link a visitor added for themselves.
@@ -79,9 +80,10 @@ and that takes little: a home IPv6 connection is often given hundreds of /64 net
 out fresh addresses. If ratings get stuffed, close them (below), remove what was stuffed, and put a Cloudflare
 rate-limiting rule or Turnstile in front of the POST.
 
-On Cloudflare's free plan the account has daily allowances (checked 2026-11-26): 100,000 Function requests, of
-which each visit to the world map uses one and every other file of the site none, and for D1 5 million rows read and
-100,000 rows written. A rating writes two rows. When an allowance runs out the stars disappear until midnight UTC
+On Cloudflare's free plan the account has daily allowances (checked 2026-11-26): 100,000 Function requests, and for
+D1 5 million rows read and 100,000 rows written. Each visit to the world map uses one Function request, and so does
+each edition opened on a screen wider than a phone, where its top bar shows the stars. Every other file of the site
+uses none. A rating writes two rows. When an allowance runs out the stars disappear until midnight UTC
 and the rest of the site carries on; the D1 allowance is shared with any other database in the account. Nothing in
 the Function limits reading, so one address that reads the ratings 100,000 times in a day uses up the Function
 allowance for everyone. A rate-limiting rule for `/data/ratings.json` on the custom domain is the guard against

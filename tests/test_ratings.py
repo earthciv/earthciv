@@ -61,6 +61,28 @@ class RatingsFilesTest(unittest.TestCase):
         for cls in (".rt-avg", ".rt-give", ".rt-star", ".rt-bar"):
             self.assertIn(cls, css)
 
+    def test_an_edition_is_rated_from_its_own_top_bar(self):
+        # An edition's first row ends with the same slot as the bar above a community map: named for the edition's
+        # entry in the list of maps, kept up to date with the cards, and answering a click on a star.
+        index = (ROOT / "web" / "js" / "ext" / "ports" / "index.js").read_text(encoding="utf-8")
+        self.assertIn('editionRating.className = "rt rt-bar";', index)
+        self.assertIn("switcher.append(editionMaker, editionKind, editionRating);", index)
+        self.assertIn("editionRating.dataset.ratingOf = editionPort.id;", index)
+        self.assertIn("ratings.sync(editionRating?.parentElement, portById);", index)
+        self.assertIn(
+            "if (star?.dataset.rate && e.detail <= 1) ratePort(star.dataset.rate, Number(star.dataset.stars));", index)
+        # The edition reads the ratings as it starts only where the row shows the stars: the width at which the
+        # stylesheet stops hiding them.
+        m = re.search(r'const RATING_BAR = "\(min-width: (\d+)px\)";', index)
+        self.assertIsNotNone(m, "RATING_BAR is missing from web/js/ext/ports/index.js")
+        self.assertIn("const loadRatings = () => roomForStars.matches && ratings.load();", index)
+        css = (ROOT / "web" / "css" / "ports.css").read_text(encoding="utf-8")
+        phone_rule = r"@media \(max-width: (\d+)px\) \{(?:(?!\n\}\n).)*?\n  \.rt-bar \{ display: none; \}"
+        hidden = re.search(phone_rule, css, re.S)
+        self.assertIsNotNone(hidden, "the rule that hides .rt-bar on a phone is missing from css/ports.css")
+        self.assertEqual(int(m.group(1)), int(hidden.group(1)) + 1)
+        self.assertIn("#topbar .rt-bar { flex: none; margin: 0 0 0 auto; }", css)
+
     def test_page_script_needs_no_other_script(self):
         # tests/js imports it outside a browser, so it must not import the app's modules.
         self.assertNotRegex(PAGE_PATH.read_text(encoding="utf-8"), r"(?m)^\s*import\s")
