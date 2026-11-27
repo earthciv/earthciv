@@ -226,6 +226,7 @@ export function install(app) {
   // --- the edition underneath (when not home) and the way to the world from it -------------------------------------
   const picker = home ? null : document.getElementById("country-picker");
   let editionMaker = null;
+  let editionKind = null;
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
   const editionUnder = EDITIONS.find((e) => e.id === EDITION_ID);
   const editionName = editionUnder?.name || "the map";
@@ -326,11 +327,17 @@ export function install(app) {
       app.on("mode", ({ name }) => btn.setAttribute("aria-pressed", String(name === MODE)));
     }
     if (switcher) {
+      // After World, as in the bar above a community map: the edition's maker, then what kind of map it is. Both
+      // show once the list of maps is here, so neither moves the other.
       editionMaker = document.createElement("span");
       editionMaker.className = "map-maker";
       editionMaker.hidden = true;
       editionMaker.addEventListener("error", removeBrokenMakerPicture, true);
-      switcher.append(editionMaker);
+      editionKind = document.createElement("span");
+      editionKind.className = `pc-badge ports-vkind ${KIND.merged.cls}`;
+      editionKind.textContent = KIND.merged.label;
+      editionKind.hidden = true;
+      switcher.append(editionMaker, editionKind);
     }
 
     if (picker) {
@@ -360,6 +367,7 @@ export function install(app) {
       portsP = fetchJson(new URL("ports.json", DATA_URL)).then((portsDoc) => {
         basePorts = syncWithEditions(portsDoc.ports || [], EDITIONS);
         renderTopbarMaker(editionMaker, basePorts.find((port) => port.editionId === EDITION_ID));
+        if (editionKind) editionKind.hidden = false;
         syncLaunchCount();
         syncMenus();
         return basePorts;

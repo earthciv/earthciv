@@ -53,6 +53,22 @@ class MapMenuTest(unittest.TestCase):
         self.assertNotIn("#country-picker", css)
         self.assertNotIn("#ports-vswitch", read("css", "ports.css"))
 
+    def test_every_map_opens_under_the_same_first_row(self):
+        # On a desktop an edition's top bar has two rows. The first holds what the bar above a community map holds:
+        # the map menu, World, the map's maker and what kind of map it is. The edition's own bar is the second row,
+        # where a community map shows its own, and the world view and the bar above a community map keep one row.
+        css = read("css", "style.css")
+        m = re.search(r"/\* -+ two rows on desktop -+ \*/.*?@media \(min-width: 701px\) \{\n(.*?)\n\}\n", css, re.S)
+        self.assertIsNotNone(m, "the two-row block is missing from css/style.css")
+        block = m.group(1)
+        self.assertIn(":root { --topbar-h: 80px; }", block)
+        self.assertIn(".ports-overlay { --topbar-h: 40px; }", block)
+        self.assertIn("#topbar > .country-switcher { flex: 0 0 100%; height: 40px; }", block)
+        self.assertIn("#topbar > .yields { flex: 1 1 0; }", block)  # the second row never wraps to a third
+        self.assertNotRegex(css, r"top: (52|54)px")  # what sat under the one-row bar now follows --topbar-h
+        self.assertIn("editionKind.textContent = KIND.merged.label;", self.ports)
+        self.assertIn("switcher.append(editionMaker, editionKind);", self.ports)
+
     def test_both_menus_are_filled_from_one_list(self):
         # One function writes the entries of both, so a map in one is in the other, in the same order.
         self.assertEqual(len(re.findall(r"\bmenuHtml\(\)", self.ports)), 2)  # its definition, and its one use:
