@@ -1,5 +1,5 @@
 // Original advisor emblems: a gilded medallion with a simple glyph, drawn as inline SVG (no external art).
-import { esc } from "./util.js";
+import { esc, uid } from "./util.js";
 
 const GLYPHS = {
   // lightning bolt over a small derrick-like base
@@ -48,6 +48,14 @@ const GLYPHS = {
     <path d="M24 51h16l-2.5-4h-11z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.3" stroke-linejoin="round"/>`,
   // a laurel wreath around a small flame
   culture: wreath(),
+  // World Rankings on the world map: a trophy with a star, on a stepped plinth
+  rankings: `<path d="M23 15h18v9c0 7.2-4 11.6-9 11.6S23 31.2 23 24z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M23 18.5h-5.5c0 6 2.6 9.6 7 10.4M41 18.5h5.5c0 6-2.6 9.6-7 10.4" fill="none" stroke="#2a1d08" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M23 18.5h-5.5c0 6 2.6 9.6 7 10.4M41 18.5h5.5c0 6-2.6 9.6-7 10.4" fill="none" stroke="#fff4d2" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="m32 18.4 1.6 3.4 3.7.4-2.8 2.5.8 3.6-3.3-1.9-3.3 1.9.8-3.6-2.8-2.5 3.7-.4z" fill="#e0b54c" stroke="#2a1d08" stroke-width=".9" stroke-linejoin="round"/>
+    <path d="M29.5 35.5h5v6h-5z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.3"/>
+    <path d="M24 41.5h16l1.5 4.5h-19z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M20 46h24v4.5H20z" fill="#e0b54c" stroke="#2a1d08" stroke-width="1.3"/>`,
 };
 
 function wreath() {
@@ -72,7 +80,9 @@ function wreath() {
 /** The medallion SVG for an advisor ({id, color}). */
 export function emblem(adv, size = 48, title = "") {
   const g = GLYPHS[adv.id] || GLYPHS.explorer;
-  const gid = `advg-${adv.id}-${size}`;
+  // Its own gradient ids: the same medallion drawn twice (a tab and a card) must not share them, or a hidden copy
+  // can blank the others' fill.
+  const gid = uid(`advg-${adv.id}`);
   const a11y = title ? `role="img" aria-label="${esc(title)}"` : `aria-hidden="true" focusable="false"`;
   return `<svg class="adv-emblem" ${a11y} width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
     <defs>
