@@ -17,10 +17,11 @@ and more, with every number traced to its source. It is a visualizer, not a game
 - **Every map names the person who made it,** with their picture: on its card, on the button that opens it and
   above the map while it is open. [Map makers](https://earthciv.org/#makers=all) lists everyone who made one.
 
-EarthCiv grew out of [usaciv](https://karpathy.ai/usaciv) by Andrej Karpathy
+EarthCiv and the community maps it showcases grew out of Andrej Karpathy's original U.S. map,
+[usaciv](https://karpathy.ai/usaciv)
 ([announcement](https://x.com/karpathy/status/2125779541952246039),
 [original source code](https://karpathy.ai/usaciv/usaciv-source.zip)). His map of the United States is the first
-edition here, and the Canada edition and the world map are built on his code.
+edition here, and the rest of EarthCiv is built on his code.
 
 ## Add your map
 

@@ -40,7 +40,6 @@
       "author": "EarthCiv",
       "author_url": "https://x.com/manpreetsgarha",
       "author_twitter": "manpreetsgarha",
-      "based_on": "usaciv-original",
       "url": null,
       "embed": true,
       "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors.",
@@ -969,7 +968,7 @@
       "original": true,
       "url": "https://karpathy.ai/usaciv/",
       "embed": true,
-      "description": "Andrej Karpathy's original usaciv: the map of the United States that inspired the others listed here."
+      "description": "Andrej Karpathy's original U.S. map that inspired EarthCiv and the community maps it showcases."
     },
     {
       "id": "usaciv-poro",
