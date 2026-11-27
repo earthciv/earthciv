@@ -699,3 +699,8 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 @media (prefers-reduced-motion: reduce) {
   .ports-side, .wv-primary, .ports-launch { transition: none; }
 }
+
+.mk-twitter { display: inline-block; color: var(--gold-bright); font: 500 11.5px/1.5 var(--sans); text-decoration: none; overflow-wrap: anywhere; }
+.mk-twitter:hover { text-decoration: underline; }
+.mk-twitter span { color: var(--ink-dim); }
+.wv-today-connect { padding: 6px 10px 9px; font-size: 12px; border-bottom: 1px solid rgba(201, 164, 92, .22); }

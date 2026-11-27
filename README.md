@@ -92,6 +92,8 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
   left out otherwise: `author_github`, your GitHub account (for a map with no repository, or one kept in an
   organization's), and `author_url`, an `https` page of your own for your name to link to instead of the
   profile. With `"author_github": null` you are credited by name alone, with no picture and no profile link.
+- `author_twitter` is your optional Twitter / X handle, without `@`. It appears beside your creator credit and on Today’s map when featured. Use the map submission form to add or update it for an existing listing.
+- `based_on` optionally names another catalog entry whose original work this map builds on. Its creator is credited on the map card.
 - `emblem` is one emoji, usually a flag. `name`, `author` and `description` are plain text.
 
 </details>

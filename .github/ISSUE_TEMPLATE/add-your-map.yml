@@ -77,6 +77,12 @@ body:
       options:
         - Yes, show it in a frame
         - No, open my site in a new tab
+  - type: input
+    id: twitter
+    attributes:
+      label: Your Twitter / X handle
+      description: Optional. We link this beside your creator credit. To add or change it for an existing map, select "Correct my map's listing" above.
+      placeholder: "@yourhandle"
   - type: textarea
     id: notes
     attributes:

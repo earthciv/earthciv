@@ -17,6 +17,7 @@
       "repo": "earthciv/earthciv",
       "author": "Andrej Karpathy",
       "author_github": "karpathy",
+      "author_twitter": "karpathy",
       "url": null,
       "embed": true,
       "description": "Andrej Karpathy's usaciv as an EarthCiv edition: the lower 48 states & D.C., 3,109 counties, metros, City View and advisors from US public data."
@@ -35,6 +36,9 @@
       "license": "MIT",
       "repo": "earthciv/earthciv",
       "author": "EarthCiv",
+      "author_url": "https://x.com/manpreetsgarha",
+      "author_twitter": "manpreetsgarha",
+      "based_on": "usaciv-original",
       "url": null,
       "embed": true,
       "description": "Built-in EarthCiv edition: 13 provinces & territories, 150+ urban areas, lenses, resources, City View and 10 advisors."
@@ -848,6 +852,7 @@
       "repo": null,
       "author": "Andrej Karpathy",
       "author_github": "karpathy",
+      "author_twitter": "karpathy",
       "original": true,
       "url": "https://karpathy.ai/usaciv/",
       "embed": true,

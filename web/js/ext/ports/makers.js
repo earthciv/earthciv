@@ -56,6 +56,8 @@ export function makerOf(port) {
     key: (github || name).toLowerCase(),
     name,
     github,
+    ...(typeof port.author_twitter === "string" && /^[A-Za-z0-9_]{1,15}$/.test(port.author_twitter)
+      ? { twitter: port.author_twitter } : {}),
     url: webAddress(port.author_url) || (github ? PROFILES + github : null),
   };
 }
@@ -98,6 +100,7 @@ export function listMakers(ports, { house = null } = {}) {
     }
     entry.ports.push(port);
     entry.url ||= maker.url;
+    if (maker.twitter) entry.twitter ||= maker.twitter;
     if (port.original === true) entry.original = true;
   }
   return [...byKey.values()];

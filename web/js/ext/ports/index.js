@@ -439,11 +439,21 @@ export function install(app) {
   }
 
   // A maker's name: a link to their GitHub profile, or to the page of theirs that the catalog names.
+  function makerTwitterHtml(maker) {
+    return maker.twitter ? `<a class="mk-twitter" href="https://x.com/${esc(maker.twitter)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(maker.name)} on Twitter / X">@${esc(maker.twitter)} <span>on X</span></a>` : "";
+  }
+
   function makerNameHtml(maker) {
-    if (!maker.url) return `<span class="mk-name">${esc(maker.name)}</span>`;
+    if (!maker.url) return `<span class="mk-name">${esc(maker.name)}</span> ${makerTwitterHtml(maker)}`;
     const onGitHub = !!maker.github && maker.url === `https://github.com/${maker.github}`;
     const title = onGitHub ? `${maker.name} on GitHub` : `${maker.name}'s own page`;
-    return `<a class="mk-name" href="${esc(maker.url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(maker.name)}</a>`;
+    return `<a class="mk-name" href="${esc(maker.url)}" target="_blank" rel="noopener noreferrer" title="${esc(title)}">${esc(maker.name)}</a> ${makerTwitterHtml(maker)}`;
+  }
+
+  function sourceCreditHtml(port) {
+    const source = basePorts.find((entry) => entry.id === port.based_on);
+    const maker = makerOf(source);
+    return maker ? `<div class="pc-by">Built on ${esc(source.name)} by ${makerNameHtml(maker)}</div>` : "";
   }
 
   /** "4.6" and "Rated 4.6 out of 5 by 12 people" for a number of ratings and the sum of their stars; null unrated. */
@@ -1301,7 +1311,8 @@ export function install(app) {
         <span class="wv-today-text"><small class="wv-today-lbl">Today's map</small><b>${esc(p.name)}</b>
           <small>by ${esc(maker.name)}${where ? ` · ${esc(where)}` : ""}</small></span>
         <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
-    return openerHtml(p, "wv-today", inner, `data-port-id="${esc(p.id)}"${n === 1 ? ` data-hover="${esc(p.countries[0])}"` : ""} title="${esc(a.title)}"`);
+    return `<div>${openerHtml(p, "wv-today", inner, `data-port-id="${esc(p.id)}"${n === 1 ? ` data-hover="${esc(p.countries[0])}"` : ""} title="${esc(a.title)}"`)}
+      <div class="wv-today-connect">${makerNameHtml(maker)}</div></div>`;
   }
 
   // Everyone who made a map, each with their maps. A map's line opens it, as its card's button would.
@@ -1353,6 +1364,7 @@ export function install(app) {
         <div class="wv-foot">
           <p>Makers whose maps have ${MIN_RATINGS} or more ratings are listed by their rating. The others take turns: their order moves
             one place every day.</p>
+          <p>Make one of these maps? <a href="${MAP_FORM_URL}&amp;request=Correct%20my%20map%27s%20listing" target="_blank" rel="noopener noreferrer">Add or update your Twitter / X</a></p>
           <p>Built a map in this style? <a href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Add it to the list</a></p>
         </div>
       </div>`;
@@ -1478,6 +1490,7 @@ export function install(app) {
               <span class="pc-badge ${KIND[k].cls}">${esc(KIND[k].label)}</span>
             </div>
             ${maker ? `<div class="pc-by">by ${makerNameHtml(maker)}</div>` : ""}
+            ${sourceCreditHtml(p)}
             <div class="pc-meta">
               ${scope ? `<span>${esc(scope)}</span>` : ""}
               ${p.license ? `<span>${esc(p.license)}</span>` : ""}
