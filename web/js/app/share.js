@@ -31,6 +31,19 @@ export const CAPTION_H = 118;
 const SERIF = '"Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif';
 const SANS = '-apple-system, "Segoe UI", system-ui, sans-serif';
 
+export function shareLink(editionId, card) {
+  if (!document.documentElement.hasAttribute("data-share-pages")) return location.href;
+  const segments = card ? [editionId, ...card] : [editionId];
+  const url = new URL(`../../share/${segments.map(encodeURIComponent).join("/")}/`, import.meta.url);
+  url.search = location.search;
+  url.searchParams.delete("country"); // the page's path identifies the edition
+
+  const state = new URLSearchParams(location.hash.slice(1));
+  if (card) state.delete(card[0]); // the share page restores this part of the view
+  url.hash = state.toString();
+  return url.href;
+}
+
 async function copyText(text) {
   try {
     if (navigator.clipboard?.writeText) {
@@ -214,7 +227,7 @@ function star(ctx, x, y, R, r, color) {
 }
 
 /**
- * opts: {button, getInfo() → composeImage info, fileName() → string, onToast(msg)}
+ * opts: {button, getInfo() → composeImage info, getLink() → string, fileName() → string, onToast(msg)}
  */
 export function initShare(opts) {
   const btn = opts.button;
@@ -262,8 +275,7 @@ export function initShare(opts) {
     const b = e.target.closest("[data-act]");
     if (!b) return;
     if (b.dataset.act === "copy") {
-      opts.beforeCopy?.();
-      const link = location.href;
+      const link = opts.getLink?.() ?? location.href;
       if (await copyText(link)) {
         status.textContent = "Link copied to the clipboard";
         opts.onToast?.("Link copied");

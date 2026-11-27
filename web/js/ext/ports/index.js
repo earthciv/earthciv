@@ -956,13 +956,11 @@ export function install(app) {
     const tile = (p) => {
       const iso = (p.countries || [])[0] || "";
       const current = !home && p.editionId === EDITION_ID;
-      return `<div class="wv-tile">
-        <button type="button" class="wv-tile-main" data-select="${esc(iso)}" data-hover="${esc(iso)}" title="${esc(p.name)}: figures and every map">
-          <span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
-          <span class="wv-tile-text"><b>${esc(p.name)}</b><small>${current ? "EarthCiv edition · you came from here" : "EarthCiv edition · hex map from public data"}</small></span>
-        </button>
-        <button type="button" class="wv-play" data-play="${esc(p.editionId)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></button>
-      </div>`;
+      return `<button type="button" class="wv-tile" data-play="${esc(p.editionId)}" data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}">
+        <span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
+        <span class="wv-tile-text"><b>${esc(p.name)}</b><small>${current ? "EarthCiv edition · you came from here" : "EarthCiv edition · hex map from public data"}</small></span>
+        <span class="wv-play">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></span>
+      </button>`;
     };
     const row = (r) => {
       const n = r.list.length;
@@ -976,7 +974,7 @@ export function install(app) {
     return `
       <div class="wv-intro">
         <h2 class="wv-h">Pick a country</h2>
-        <p class="wv-lede">Tap or click any country, on the map or in this list, to see its figures and open its map.
+        <p class="wv-lede">Open an EarthCiv edition, or pick a country on the map or in the list to see its figures and maps.
           ${plural(editions.length, "EarthCiv edition")} and ${plural(nCommunity, "community map")} cover ${nMapped} countries so far.</p>
       </div>
       ${editions.length ? `<div class="wv-tiles">${editions.map(tile).join("")}</div>` : ""}
