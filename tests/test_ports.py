@@ -120,7 +120,7 @@ class WorldHomeTest(unittest.TestCase):
         self.assertIn('data-home="world"', html)
         # The default edition stays declared: old links without ?country= (/#city=…) still open it.
         self.assertIn('data-default-country="us"', html)
-        self.assertRegex(html, r'<script type="module" src="js/boot\.js(?:\?[^"]+)?"></script>')
+        self.assertIn('<script type="module" src="js/boot.js"></script>', html)
         self.assertNotIn('src="js/main.js"', html)
 
     def test_boot_loads_either_the_world_map_or_an_edition(self):

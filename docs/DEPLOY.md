@@ -4,6 +4,8 @@ The site is static. Packaging writes `dist/usaciv/` with the site, generated soc
 `robots.txt` and `sitemap.xml`, and `usaciv-source.zip`, a copy of the project linked from the in-app help. Preview
 pages expose their city or lens in the URL path so social crawlers can read the card from the original HTML. The
 sitemap lists the world map and each edition (`?country=<id>`), on the address in `web/index.html`'s `og:url`.
+Packaging gives the JavaScript directory a name derived from its contents. The app and share pages use that
+directory so the browser loads all modules from the same build after a deploy.
 
 One thing runs on the server: the Pages Function in `functions/`, which keeps the star ratings people give the maps
 in the world view. It needs a database and a secret, set up once ([RATINGS.md](RATINGS.md)). Without them the site
