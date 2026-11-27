@@ -1,7 +1,58 @@
 # Malaysia edition (`my`)
 
-Built by `pipeline/malaysia.py` into `web/data/my/`. This page grows into the full sources-and-methods note as the
-edition is finished; for now it records the choices a reader can't see in the data.
+A Malaysia edition of EarthCiv: the 13 states and 3 federal territories, their 160 administrative districts
+(*daerah*) and 47 cities, on one map with the peninsula and Borneo. Built by `pipeline/malaysia.py` (with
+`malaysia_economy.py`, `malaysia_resources.py`, `malaysia_layers.py` and `malaysia_cityview.py`) into `web/data/my/`.
+
+Run `uv run python -m pipeline serve` from the project root and open
+[the local site](http://127.0.0.1:8765/?country=my).
+
+## Data and map methods
+
+| Publisher and dataset | Vintage | Licence | What the map uses |
+| --- | --- | --- | --- |
+| [Department of Statistics Malaysia (DOSM), via data.gov.my: Administrative district boundaries](https://github.com/data-gov-my/datagovmy-front) | 2023 (160 districts) | MIT | State and district of every hex |
+| [Department of Statistics Malaysia (DOSM): Population Table: Administrative Districts](https://data.gov.my/data-catalogue/population_district) | 2026 (mid-year estimate) | CC BY 4.0 | Population and growth of Malaysia, its states, federal territories, districts and cities |
+| [Department of Statistics Malaysia (DOSM): MyCensus 2020 area profiles (Kawasanku): religion by district](https://data.gov.my/dashboard/kawasanku) | 2020 Census | CC BY 4.0 | Religion lenses (shares of residents) |
+| [Department of Statistics Malaysia (DOSM): Real GDP by district and by state; real GDP of Malaysia](https://data.gov.my/data-catalogue/gdp_district_real_supply) | District 2020; state and nation 2025 | CC BY 4.0 | Gold (GDP) of districts, cities, states and Malaysia; GDP by sector |
+| [Department of Statistics Malaysia (DOSM): Employed persons by industry and state, 1982-2021](https://archive.data.gov.my/data/dataset/employed-persons-by-industry-and-state) | 2021 | Creative Commons Attribution (archive.data.gov.my; version not stated) | Food, Production, Science and Culture yields (workers by industry); Jobs by industry |
+| [Department of Statistics Malaysia (DOSM): Labour Force Survey: district and state](https://data.gov.my/data-catalogue/lfs_district) | 2024 annual | CC BY 4.0 | Unemployment |
+| [Department of Statistics Malaysia (DOSM): Household Income and Expenditure Survey: district, state and Malaysia](https://data.gov.my/data-catalogue/hies_district) | HIES 2024 | CC BY 4.0 | Income, poverty, Gini and household spending |
+| [Department of Statistics Malaysia (DOSM): Labour force by educational attainment and state, 1982-2021](https://archive.data.gov.my/data/dataset/labour-force-by-state-and-educational-attainment) | 2021 | Creative Commons Attribution (archive.data.gov.my; version not stated) | Education row of the City View (a state mix) |
+| [NOAA National Centers for Environmental Information (via ERDDAP): ETOPO1 Global Relief Model](https://www.ncei.noaa.gov/products/etopo-global-relief-model) | ETOPO1, 1 arc-minute | Public domain | Elevation, relief and water depth |
+| [Impact Observatory, Microsoft and Esri: Sentinel-2 10m Land Use/Land Cover](https://livingatlas.arcgis.com/landcover/) | Latest annual map | CC BY 4.0 | Terrain colours and symbols; Forest, farmland and built-up shares |
+| [Natural Earth: Natural Earth v5.1.2](https://www.naturalearthdata.com/) | v5.1.2 | Public domain | Neighbouring land, lakes and rivers; City banner positions |
+| [World Resources Institute: Global Power Plant Database](https://datasets.wri.org/datasets/global-power-plant-database) | Database v1.3.0; WRI records no capacity year for Malaysian plants | CC BY 4.0 | Power plants |
+| [Wikidata contributors: Wikidata: oil fields, gas fields and LNG terminals in Malaysia](https://www.wikidata.org/) | Query result at build time | CC0 | Oil, gas and LNG sites |
+| [DOSM, with the Ministry of Agriculture and Food Security (MAFS) and the Department of Agriculture (DOA), via data.gov.my: Crops by district](https://data.gov.my/data-catalogue/crops_district_area) | 2024 | CC BY 4.0 | Crop resources |
+| [Descals, Szantoi, Meijaard et al.: Global industrial and smallholder oil palm map, 2019](https://zenodo.org/records/4473715) | 2019 | CC BY 4.0 | Plantations counted as cropland, not forest; Oil palm sites |
+| [DOSM, from the Forestry Department (Perhutanan), via data.gov.my: Permanent reserved forest by state](https://data.gov.my/data-catalogue/forest_reserve_state) | 2024 | CC BY 4.0 | Forest reserve area of states |
+| [Natural Earth: Natural Earth v5.1.2 roads and railroads](https://www.naturalearthdata.com/) | v5.1.2 (1:10m) | Public domain | Roads and rail on the map |
+| [OurAirports (David Megginson): OurAirports](https://ourairports.com/data/) | As retrieved | Public domain | Airport positions by IATA code |
+| [Wikidata contributors: Wikidata: annual passengers of Malaysian airports](https://www.wikidata.org/) | Passengers in 2019, as retrieved | CC0 | Airports and their hub classes |
+| [Ministry of Higher Education (MOHE), via data.gov.my: Lecturers in public universities](https://data.gov.my/data-catalogue/lecturers_uni) | 2025 | CC BY 4.0 | Research-university wonders |
+| [UNESCO World Heritage Centre: UNESCO World Heritage List: Malaysia](https://whc.unesco.org/en/statesparties/my) | Inscriptions to 2025 | Public listing | World Heritage wonders |
+| [DOSM: Impact of Floods](https://open.dosm.gov.my/publications/flood_impact_2025) | 2021–2025 | No licence stated (© DOSM publication) | Flood losses by state and district |
+
+Licences are as each publisher's page states them. The data.gov.my catalogue pages give CC BY 4.0; the older
+archive.data.gov.my pages give "Creative Commons Attribution" with no version; DOSM's Impact of Floods publication
+states no licence, so its figures are cited as DOSM's and not redistributed beyond the map's totals.
+
+**Map.** Lambert azimuthal equal-area centred at 109.5°E 4°N, so the peninsula, the South China Sea and Borneo share
+one canvas at true relative size. Hexes have a 6 km radius (3,520 land hexes; Malaysia is about 4% of the lower 48's
+area, so the U.S. 25 km hexes would leave too few). Each hex takes the district holding most of its seven samples.
+Thailand, Singapore, Brunei, Indonesia and the Philippines are drawn as neighbouring land. Small islands and coasts are schematic.
+
+**Districts.** The boundary file (data.gov.my, 2023) has 160 districts. DOSM's tables from 2025 list six newer ones
+(Membakut in Sabah; Gedong, Lingga, Pantu, Sebuyau and Siburan in Sarawak). Each is folded back into the district it
+was carved from, found from the fall in that parent's population between 2024 and 2025; Membakut is split between
+Beaufort and Papar in proportion to their falls.
+
+**People lenses.** Density, growth (2021 to the latest year) and non-citizens (share of residents). Ethnicity lenses
+give each DOSM group as a share of **citizens** (latest mid-year estimate); religion lenses give each group as a share
+of **all residents** (Census 2020, Kawasanku area profiles). Every ethnicity and religion lens uses the same neutral
+colour scale on a fixed 0-100% domain. There is no "largest group" lens, and nothing else in the edition (yields,
+scores, cities, citizens, advisors) reads these figures.
 
 ## Cities
 
@@ -65,8 +116,8 @@ also holds import duties, so the sectors add to `gdp_basic`, not `gdp`.
 **Workers by industry.** A Census 2020 table of workers by industry for states or districts was searched for and not
 found: none appears in the data.gov.my catalogue, and the Kawasanku dashboard
 (district profiles from the census) has none either. The best available is the Labour Force Survey estimate by state,
-2021 (its estimates are benchmarked to the 2020 Census), from the data.gov.my archive; the archive's licence is not
-stated on the portal (see the M6 licence item). Yields follow Canada's mapping: Food = agriculture, forestry & fishing;
+2021 (its estimates are benchmarked to the 2020 Census), from the data.gov.my archive, whose dataset page gives the licence as
+"Creative Commons Attribution" (no version stated). Yields follow Canada's mapping: Food = agriculture, forestry & fishing;
 Production = manufacturing + construction + mining & quarrying; Science = professional, scientific & technical +
 information & communication; Culture = arts, entertainment & recreation. Electricity and water are merged as
 `utilities`, wholesale and retail as `retail`, and households as employers fall in `other`, so the industry icons
@@ -235,3 +286,14 @@ file or the interface gives anyone a name, and none of the rows is split by ethn
 reads the ethnicity columns (other than the "overall" rows), the religion parquet or the non-citizen column.
 `tests/test_malaysia_edition.py` enforces this: `citizens.json` and `districts.json` carry no field or text that names
 a group, `citizens.json` holds only the age and education rows, and the module's source is checked.
+
+## Rebuild
+
+```sh
+uv run --group build python -m pipeline.malaysia
+```
+
+Set `PYTHONUTF8=1` on Windows. The `build` dependency group pins the libraries that produced the committed data
+(duckdb reads the Kawasanku parquet). The rebuild downloads public files without API keys and caches them under
+`data/raw/malaysia/`; pass `--force` to refresh them. Publisher URLs, SHA-256 fingerprints and retrieval dates are
+logged in `data/raw/malaysia/manifest.json` and listed in the Almanac.

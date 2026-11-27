@@ -132,7 +132,7 @@ def register_inputs(source):
            "Inscriptions to 2025", ["World Heritage wonders"],
            "Malaysia's six inscribed properties (Gunung Mulu, Kinabalu, Melaka and George Town, Lenggong Valley, Niah "
            "Caves, FRIM Selangor Forest Park). Positions are hand-checked points from OpenStreetMap and Wikidata; there is no download.", {})
-    source("dosm_floods", "Impact of Floods", "DOSM", "https://open.dosm.gov.my/publications/flood_impact_2025", "CC BY 4.0",
+    source("dosm_floods", "Impact of Floods", "DOSM", "https://open.dosm.gov.my/publications/flood_impact_2025", "No licence stated (© DOSM publication)",
            "2021–2025", ["Flood losses by state and district"],
            "Value of flood losses (RM thousand) to living quarters, vehicles, business premises, manufacturing, "
            "agriculture and infrastructure, by state and district, from DOSM's yearly Impact of Floods workbooks. Each "

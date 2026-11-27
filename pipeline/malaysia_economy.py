@@ -133,7 +133,7 @@ def register_sources(source):
                "gdp_state_real_supply.csv": f"{storage}/gdp/gdp_state_real_supply.csv",
                "gdp_annual_real_supply.csv": f"{storage}/gdp/gdp_annual_real_supply.csv"})
     source("dosm_employment", "Employed persons by industry and state, 1982-2021", DOSM,
-           "https://archive.data.gov.my/data/dataset/employed-persons-by-industry-and-state", "see M6 licence check",
+           "https://archive.data.gov.my/data/dataset/employed-persons-by-industry-and-state", "Creative Commons Attribution (archive.data.gov.my; version not stated)",
            "2021", ["Food, Production, Science and Culture yields (workers by industry)", "Jobs by industry"],
            "Labour Force Survey estimates of employed persons by MSIC 2008 industry for each state, in thousands; the "
            "estimates from 2020 are benchmarked to the 2020 Census. The archive portal is the only place DOSM publishes "

@@ -65,7 +65,7 @@ def register_sources(source):
     """Add this module's input to pipeline.malaysia's source table (`source` is its `source()` function)."""
     source(SOURCE, "Labour force by educational attainment and state, 1982-2021", "Department of Statistics Malaysia (DOSM)",
            "https://archive.data.gov.my/data/dataset/labour-force-by-state-and-educational-attainment",
-           "CC BY 4.0 (as the archive portal labels it; see M6 licence check)", f"{EDUCATION_YEAR}",
+           "Creative Commons Attribution (archive.data.gov.my; version not stated)", f"{EDUCATION_YEAR}",
            ["Education row of the City View (a state mix)"],
            "Labour force (aged 15 and over, thousands) by highest education reached (no formal education, primary, "
            "secondary, tertiary) for each state and for Malaysia. The only education table DOSM publishes by state; "
