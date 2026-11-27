@@ -99,6 +99,11 @@ body.ports-open #topbar { visibility: hidden; }
 .wv-bar-end { margin-left: auto; display: flex; align-items: center; gap: 12px; flex: none; }
 .wv-coverage { font-size: 12px; color: var(--ink-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wv-coverage b { color: var(--ink); font-weight: 600; }
+.wv-coverage-makers { /* opens the list of makers */
+  padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: inherit;
+  text-decoration: underline; text-decoration-color: rgba(201, 164, 92, .6); text-underline-offset: 3px;
+}
+.wv-coverage-makers:hover, .wv-coverage-makers:hover b { color: var(--gold-bright); }
 .wv-gh {
   display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px;
   border: 1px solid rgba(201, 164, 92, .45); color: var(--ink-dim); font: 12px var(--sans); text-decoration: none;
@@ -238,6 +243,99 @@ body.ports-open #topbar { visibility: hidden; }
 }
 .wv-tile:hover .wv-tile-pic img { filter: brightness(1.1) saturate(1.05); }
 .wv-tile-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 9px; }
+/* Whose map an edition began as, on its picture. */
+.wv-tile-by {
+  position: absolute; left: 7px; bottom: 7px; z-index: 1; display: inline-flex; align-items: center; gap: 6px;
+  max-width: calc(100% - 14px); padding: 2px 9px 2px 2px; border-radius: 13px;
+  background: rgba(10, 18, 28, .84); border: 1px solid rgba(236, 208, 142, .5);
+  color: #f3ead2; font: 600 11.5px/1.2 var(--sans); white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+}
+.wv-tile-by .mk-av { width: 20px; height: 20px; font-size: 9px; border-width: 0; }
+.wv-tile-pic .mk-pic { width: 100%; height: 100%; aspect-ratio: auto; } /* not the map picture's shape (above) */
+.wv-tile-by > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- the makers: a picture and a name wherever a map is shown, and the list of everyone who made one ---------- */
+/* A maker's picture: their initials, and over them the picture from their GitHub account once it has loaded. */
+.mk-av {
+  position: relative; flex: none; display: inline-grid; place-items: center; overflow: hidden;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: hsl(var(--mk-hue, 210) 36% 30%); border: 1px solid rgba(236, 208, 142, .55);
+  color: #f3ead2; font: 600 11px/1 var(--sans); letter-spacing: .02em; text-transform: none;
+}
+.mk-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #1b2a3a; }
+.mk-av-house { background: radial-gradient(circle at 35% 30%, #2f6a9e, #173a5e); color: #9fe6d0; }
+.mk-av-house .icon { width: 58%; height: 58%; }
+.mk-av-lg { width: 40px; height: 40px; font-size: 15px; }
+.mk-name { color: var(--ink); font-weight: 600; text-decoration: none; }
+a.mk-name:hover { color: var(--gold-bright); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The makers' place on the country list, one block under the editions: today's map, which is a different maker's
+   every day, and under it the way to the list of makers, with the first makers' faces and how many there are. */
+.wv-credit {
+  margin: 10px 0 0; border-radius: 9px; overflow: hidden;
+  background: rgba(0, 0, 0, .26); border: 1px solid rgba(201, 164, 92, .32);
+}
+.wv-today, .wv-makers {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px;
+  border: 0; background: none; cursor: pointer; text-align: left; text-decoration: none; color: var(--ink); font: inherit;
+}
+.wv-today { padding: 8px 9px 8px 10px; border-bottom: 1px solid rgba(201, 164, 92, .22); }
+.wv-today:hover, .wv-today:focus-visible, .wv-makers:hover, .wv-makers:focus-visible { background: rgba(201, 164, 92, .12); }
+.wv-today:focus-visible, .wv-makers:focus-visible { outline-offset: -2px; }
+.wv-today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wv-today-text b { font: normal 15px/1.25 var(--serif); color: var(--gold-bright); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-today-text small { font-size: 11.5px; line-height: 1.35; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-today-text .wv-today-lbl { font: 600 9.5px/1.4 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.wv-today .mk-map-go { width: 30px; height: 30px; }
+.wv-today .mk-map-go .icon { width: 13px; height: 13px; }
+.wv-makers-faces { flex: none; display: flex; padding-left: 7px; }
+.wv-makers-faces .mk-av { margin-left: -7px; box-shadow: 0 0 0 2px #131d29; }
+.wv-makers-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wv-makers-text b { font: normal 14px var(--serif); color: var(--gold-bright); letter-spacing: .02em; white-space: nowrap; }
+.wv-makers-text small { font-size: 11px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The list of makers: each with their maps, and a map's line opens it. */
+.mk-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mk-row {
+  padding: 9px 10px 10px; border-radius: 9px; scroll-margin-top: 8px;
+  background: rgba(0, 0, 0, .27); border: 1px solid rgba(201, 164, 92, .24);
+}
+.mk-row.is-original { border-color: rgba(236, 208, 142, .62); background: linear-gradient(90deg, rgba(201, 164, 92, .15), rgba(0, 0, 0, .27)); }
+.mk-row.is-focus { border-color: var(--gold-bright); box-shadow: 0 0 0 1px rgba(236, 208, 142, .5); }
+.mk-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 7px 10px; align-items: start; }
+.mk-row > .mk-av { grid-row: 1 / span 2; }
+.mk-id { min-width: 0; align-self: center; }
+.mk-row > .mk-id:last-child { grid-row: 1 / span 2; }
+.mk-line { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; }
+.mk-row .mk-name { font: normal 15.5px/1.25 var(--serif); letter-spacing: .02em; color: var(--gold-bright); overflow-wrap: anywhere; }
+.mk-tag {
+  padding: 1px 6px; border-radius: 8px; font-size: 9.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  white-space: nowrap; background: rgba(236, 208, 142, .2); color: var(--gold-bright); border: 1px solid rgba(236, 208, 142, .55);
+}
+.mk-handle { font-size: 11.5px; color: var(--ink-dim); }
+.mk-sub { margin-top: 2px; font-size: 11.5px; line-height: 1.4; color: var(--ink-dim); }
+.mk-stars { color: var(--gold-bright); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mk-stars::before { content: "★ "; font-weight: 400; }
+.mk-maps { grid-column: 2; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mk-map { /* a button, or a link to an edition or to a map's own site */
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 3px 5px 3px 8px;
+  border-radius: 7px; cursor: pointer; text-align: left; text-decoration: none;
+  color: var(--ink); font: 13px var(--sans);
+  background: rgba(255, 255, 255, .045); border: 1px solid rgba(201, 164, 92, .26);
+}
+.mk-map:hover, .mk-map:focus-visible { border-color: var(--gold-bright); background: rgba(201, 164, 92, .14); }
+.mk-map-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-map-note { flex: none; font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+.mk-map-note.mk-stars { color: var(--gold-bright); font-size: 12px; }
+.mk-map-go {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: #fff6dc; background: linear-gradient(180deg, #2b7a69, #17463d);
+}
+.mk-map-go.k-merged { background: linear-gradient(180deg, #e8c77d, #b38a3c); color: #1a1208; }
+.mk-map-go.k-ext { background: linear-gradient(180deg, #9a6a2e, #5e3f17); }
+.mk-map-go.k-repo { background: linear-gradient(180deg, #3c546e, #233447); }
+.mk-map-go .icon { width: 11px; height: 11px; }
 
 .wv-kinds { display: none; } /* narrow screens: the map key moves into the panel */
 
@@ -349,7 +447,9 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
   background: rgba(255, 255, 255, .05); border: 1px solid rgba(201, 164, 92, .35); font-size: 15px;
 }
+.pc-face { width: 36px; height: 36px; font-size: 14px; } /* the maker's picture, where another card has its emblem */
 .pc-head { flex: 1; min-width: 0; }
+.pc-by { margin-top: 1px; font-size: 12.5px; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
 .pc-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pc-title-row h3 { margin: 0; font: normal 15px var(--serif); color: var(--gold-bright); letter-spacing: .02em; line-height: 1.25; }
 .pc-badge {
@@ -469,6 +569,14 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .ports-vbar[data-tight="3"] .brand { letter-spacing: 0; }
 .ports-vbar[data-tight="3"] .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
 .ports-vkind { flex: none; }
+/* Whose map is open. In a bar short of room it gives way before the map's name does. */
+.ports-vby {
+  flex: 0 100 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden;
+  font-size: 12.5px; color: var(--ink-dim); white-space: nowrap;
+}
+.ports-vby[hidden], .ports-vloading-by[hidden] { display: none; }
+.ports-vby .mk-av { width: 22px; height: 22px; font-size: 10px; }
+.ports-vby .mk-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ports-vactions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
 
 .ports-vstage { position: relative; flex: 1; min-height: 0; background: #0c2238; }
@@ -486,6 +594,9 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 }
 @keyframes ports-spin { to { transform: rotate(360deg); } }
 .ports-vloading-text { font: normal 16px var(--serif); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-bright); }
+.ports-vloading-by { display: inline-flex; align-items: center; gap: 8px; margin-top: -4px; font-size: 13.5px; color: var(--ink); }
+.ports-vloading-by b { font-weight: 600; color: var(--gold-bright); }
+.ports-vloading-by .mk-av { width: 30px; height: 30px; font-size: 12px; }
 
 .ports-vnotice {
   position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 4;
@@ -495,11 +606,15 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
 }
 .ports-vnotice-actions { display: flex; align-items: center; gap: 6px; }
+.ports-vnotice-by { flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 9px; line-height: 1.4; }
+.ports-vnotice-by .mk-av { width: 28px; height: 28px; }
+.ports-vnotice-by .mk-name { color: var(--gold-bright); }
 
 /* ---------- narrower screens: the map fills the screen and the panel is a sheet over its bottom ---------- */
 @media (max-width: 1100px) and (min-width: 901px) {
   .ports-atlas { grid-template-columns: minmax(0, 1fr) 340px; }
   .wv-coverage { display: none; }
+  .wv-makers-faces .mk-av:nth-child(n+6) { display: none; } /* the narrower panel has room for five faces */
 }
 @media (max-width: 900px) {
   .ports-atlas { display: block; }
@@ -558,6 +673,8 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   }
   .ports-vgh { display: none; }
   .rt-bar { display: none; } /* no room in a phone's bar: a map is rated on its card */
+  .ports-vby { display: none; } /* nor for its maker: the note under the map names them */
+  .mk-map { min-height: 42px; font-size: 14px; }
 }
 /* Picture cards where room is short (the sheet on phones and tablets, a laptop's low window): side by side, with
    just the name and Play under each picture, so the list of countries keeps its place. */

@@ -133,9 +133,9 @@ class WorldHomeTest(unittest.TestCase):
 
     def test_only_the_world_views_own_hash_keys_keep_the_home_page(self):
         home = self.read("js", "app", "home.js")
-        self.assertIn('export const WORLD_HASH_KEYS = ["ports", "country"];', home)
+        self.assertIn('export const WORLD_HASH_KEYS = ["ports", "country", "makers"];', home)
         ports = self.read("js", "ext", "ports", "index.js")
-        for key in ("ports", "country"):
+        for key in ("ports", "country", "makers"):
             self.assertIn(f'app.hash.register("{key}"', ports)
 
     def test_edition_links_always_name_their_edition(self):
