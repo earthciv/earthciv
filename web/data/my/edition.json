@@ -55,7 +55,9 @@
     "nation",
     "states",
     "lenses",
-    "sources"
+    "resources",
+    "sources",
+    "counties"
   ],
   "text": "text.json",
   "view": {

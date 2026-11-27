@@ -276,3 +276,69 @@ class EconomyDataTest(unittest.TestCase):
         # (it reads only the "overall" row of the population table's ethnicity column, the total)
         for word in ("religio", "bumi", "muslim", "kawasanku", "chinese", "indian", "other_citizen", "noncitizen"):
             self.assertNotIn(word, code)
+
+
+class ResourcesTest(unittest.TestCase):
+    """resources.json and the states' `energy`, `land`, `forest_reserve` (pipeline/malaysia_resources.py)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.res = load("resources")
+        cls.world = load("world")
+        cls.states = load("states")
+        cls.types = {t["id"]: t for t in cls.res["types"]}
+
+    def test_every_site_is_on_a_land_hex_of_its_state(self):
+        abbrs = [s["abbr"] for s in self.world["states"]]
+        for it in self.res["items"]:
+            self.assertIn(it["type"], self.types)
+            owner = self.world["owner"][it["cell"]]
+            self.assertGreaterEqual(owner, 0, it["name"])
+            self.assertEqual(abbrs[owner], it["state"], it["name"])
+
+    def test_fields_at_sea_say_so(self):
+        offshore = [i for i in self.res["items"] if i["type"] in ("oil", "gas")]
+        self.assertTrue(offshore)
+        tapis = next(i for i in offshore if "Tapis" in i["name"])
+        self.assertEqual(tapis["state"], "TRG")
+        self.assertIn("offshore", tapis["detail"])
+        self.assertFalse({"Ambalat", "Kilang Abok Berhad"} & {i["name"] for i in self.res["items"]})
+
+    def test_plants_are_25_mw_or_more_and_energy_adds_up(self):
+        plants = [i for i in self.res["items"] if self.types[i["type"]]["unit"] == "MW"]
+        self.assertTrue(all(i["value"] >= 25 for i in plants))
+        total = sum(s["energy"]["total"] for s in self.states)
+        self.assertAlmostEqual(total, sum(i["value"] for i in plants))
+        mw = {t for t, v in self.types.items() if v["unit"] == "MW"}
+        for s in self.states:
+            self.assertEqual(set(s["energy"]["by_type"]), mw)
+
+    def test_only_positioned_data_is_mapped(self):
+        # Mines (state totals only), oil palm, rubber and paddy have no positions in open data: none is invented.
+        self.assertFalse({"tin", "bauxite", "gold", "oil_palm", "rubber", "paddy"} & set(self.types))
+        self.assertTrue({t["category"] for t in self.types.values()} <= {"energy", "agri"})
+
+    def test_district_crop_sites_carry_hectares(self):
+        for it in self.res["items"]:
+            if self.types[it["type"]]["category"] == "agri":
+                self.assertGreater(it["value"], 0)
+                self.assertEqual(self.types[it["type"]]["unit"], "ha")
+
+    def test_summary_matches_items(self):
+        for key, row in self.res["summary"]["national"].items():
+            self.assertEqual(row["count"], sum(1 for i in self.res["items"] if i["type"] == key), key)
+
+    def test_state_land_shares_are_fractions(self):
+        for s in self.states:
+            self.assertIsNotNone(s["land"], s["abbr"])
+            self.assertLessEqual(sum(v for v in s["land"].values() if v is not None), 1.01, s["abbr"])
+
+    def test_manifest_lists_resources(self):
+        # The app requests only the files edition.json lists: without "resources" the map shows no resource layer.
+        self.assertIn("resources", load("edition")["files"])
+
+    def test_text_pack_states_the_gaps(self):
+        text = load("text")
+        self.assertIn("Not on the map", text["almanac.resources_intro"])
+        self.assertTrue(any("Mines are not mapped" in c for c in text["advisor.energy.caveats"]))
+        self.assertTrue(any("oil palm" in c.lower() for c in text["advisor.land.caveats"]))
