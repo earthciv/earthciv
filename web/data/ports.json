@@ -63,7 +63,9 @@
       "author_github": "pengkodam",
       "url": null,
       "embed": true,
-      "description": "Malaysia from DOSM open data: 13 states and 3 federal territories, 160 districts, 47 cities and conurbations, City View and advisors."
+      "description": "Malaysia from DOSM open data: 13 states and 3 federal territories, 160 districts, 47 cities and conurbations, City View and advisors.",
+      "author_twitter": "peyter",
+      "author_twitter_source": "https://github.com/earthciv/earthciv/pull/38#issuecomment-7229938110"
     },
     {
       "id": "europeciv",
@@ -384,6 +386,25 @@
       "url": "https://sigco3111.github.io/italyciv-ko/",
       "embed": true,
       "description": "A Korean translation of linker81's italyciv: Italy from ISTAT and other public data, with Italian and English one click away.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
+    },
+    {
+      "id": "italiaciv",
+      "name": "italiaciv (MacroReds)",
+      "emblem": "🇮🇹",
+      "status": "live",
+      "scope": "country",
+      "region": "Europe",
+      "countries": ["IT"],
+      "center": [16.0, 40.6],
+      "languages": ["it"],
+      "license": "MIT",
+      "repo": "MacroReds/italiaciv",
+      "author": "MacroReds",
+      "url": "https://italiaciv.marcoreds.com/",
+      "embed": true,
+      "description": "Italy on a 3 km hex grid, built from ISTAT, MEF, Agenzia delle Entrate (OMI), Eurostat and OpenStreetMap open data: 7,896 municipalities, 107 provinces and 20 regions, with every figure linked to its source, date and licence.",
       "github_stars": 0,
       "github_stars_checked": "2026-11-27"
     },
@@ -720,6 +741,25 @@
       "description": "Data-driven, Civilization-style hex atlas of India built from public data.",
       "author_twitter": "0xAnto",
       "author_twitter_source": "https://github.com/0xAnto",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-27"
+    },
+    {
+      "id": "pakistanciv",
+      "name": "Pakistan as a strategy game",
+      "emblem": "🇵🇰",
+      "status": "live",
+      "scope": "country",
+      "region": "Asia",
+      "countries": ["PK"],
+      "center": [72.0, 30.0],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "hammadtq/pakistanciv",
+      "author": "hammadtq",
+      "url": "https://hammadtariq.com/pakistanciv/",
+      "embed": true,
+      "description": "Pakistan on a 10 km hex grid, built from Census 2023 and other public data: 29 lenses, district panels with ranks, city views, and a source named for every figure.",
       "github_stars": 0,
       "github_stars_checked": "2026-11-27"
     },
