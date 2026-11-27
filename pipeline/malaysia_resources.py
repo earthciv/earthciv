@@ -6,7 +6,8 @@ pipeline/canada.py `resource_sites`. Every site here comes from a file that carr
 
 * power plants: WRI Global Power Plant Database v1.3.0 (same pinned file as Canada's), 25 MW and up;
 * oil, gas and LNG sites: Wikidata items for Malaysia with coordinates (a cached SPARQL result);
-* district crops: DOSM / MARDI-style planted area by district (`crops_district_area`), one site per district.
+* district crops: planted area by district (`crops_district_area`, DOSM with MAFS and the Department of Agriculture),
+  one site per district.
 
 Where a dataset has no positions (mines: state totals only; paddy and oil palm: state totals only; forest reserves:
 state totals only) nothing is placed: docs/MALAYSIA.md says so, and so does the text pack.
@@ -32,9 +33,7 @@ MIN_PLANT_MW = 25  # as Canada's resources.json
 WRI_URL = ("https://raw.githubusercontent.com/wri/global-power-plant-database/"
            "7a91cfbb2a4e272597acbc00506d61fc1ec73b3d/output_database/global_power_plant_database.csv")
 CROPS_AREA_URL = "https://storage.data.gov.my/agriculture/crops_district_area.csv"
-CROPS_STATE_URL = "https://storage.data.gov.my/agriculture/crops_state.csv"
 FOREST_RESERVE_URL = "https://storage.data.gov.my/environment/forest_reserve_state.csv"
-MINERAL_URL = "https://storage.data.gov.my/mining/mineral_extraction.csv"
 
 # Wikidata: Malaysian items with coordinates whose class is an oil or gas field or an LNG terminal.
 SPARQL = """SELECT DISTINCT ?f ?fLabel ?c ?tLabel WHERE {
@@ -58,8 +57,8 @@ FUELS = {  # WRI primary_fuel -> (type id, name, colour, icon, emoji)
     "Biomass": ("biomass", "Biomass power plant", "#8fab63", "r-gas_plant", "🌿"),
     "Wind": ("wind", "Wind power plant", "#72c5b2", "r-wind", "🌬️"),
 }
-PLANT_NOTE = ("Capacity of at least 25 MW as listed in WRI's Global Power Plant Database v1.3.0 (2019). Plants built or "
-              "closed since are not reflected, and the database omits some large Sarawak hydro stations (Bakun, Murum).")
+PLANT_NOTE = ("Capacity of at least 25 MW as listed in WRI's Global Power Plant Database v1.3.0, which records no capacity year "
+              "for Malaysian plants. Plants built or closed since are not reflected, and the database omits some large Sarawak hydro stations (Bakun, Murum).")
 
 # Fields and sites from Wikidata: (type id, name, colour, icon, emoji, description)
 SITE_TYPES = {
@@ -78,8 +77,8 @@ CROPS = {
     "pineapple": ("pineapple", "Pineapple farms", "#e6b73e", "🍍", 800),
     "sago": ("sago", "Sago palms", "#c9b27a", "🌴", 1500),
 }
-CROP_NOTE = ("Planted area of the crop in the district in {year} (DOSM, from the Department of Agriculture's crop "
-             "survey), in hectares; districts with at least {floor:,} ha. Oil palm, rubber and paddy are not in the "
+CROP_NOTE = ("Planted area of the crop in the district in {year} (DOSM, with MAFS and the Department of "
+             "Agriculture), in hectares; districts with at least {floor:,} ha. Oil palm, rubber and paddy are not in the "
              "district table: see the text pack.")
 
 
@@ -87,27 +86,22 @@ def register_inputs(source):
     """Add this module's raw files to pipeline/malaysia.py's INPUTS (called once at import)."""
     source("wri_plants", "Global Power Plant Database", "World Resources Institute",
            "https://datasets.wri.org/datasets/global-power-plant-database", "CC BY 4.0",
-           "Malaysian plants as listed in WRI v1.3.0 (2019)", ["Power plants"],
-           "Malaysian generating stations of 25 MW or more as WRI listed them (v1.3.0, 2019; solar from Wiki-Solar, the "
-           "rest from national sources). Plants built or closed since are not reflected, and some large Sarawak hydro "
+           "Database v1.3.0; WRI records no capacity year for Malaysian plants", ["Power plants"],
+           "Malaysian generating stations of 25 MW or more as WRI listed them (v1.3.0, which records no capacity year for them; "
+           "solar from Wiki-Solar). Plants built or closed since are not reflected, and some large Sarawak hydro "
            "stations are missing.", {"wri_plants.csv": WRI_URL})
     source("wikidata_energy", "Wikidata: oil fields, gas fields and LNG terminals in Malaysia", "Wikidata contributors",
            "https://www.wikidata.org/", "CC0", "Query result at build time", ["Oil, gas and LNG sites"],
            "Items with coordinates whose class is an oil field, gas field or LNG terminal and whose country is Malaysia.",
            {WIKIDATA_FILE: WIKIDATA_URL})
-    source("dosm_crops", "Crops by district and state", "Department of Statistics Malaysia, via data.gov.my",
-           "https://data.gov.my/data-catalogue/crops_district_area", "CC BY 4.0", "2024",
-           ["Crop resources", "Farmland of Sabah, Sarawak and the peninsula"],
-           "Planted area (ha) of fruit, vegetable, spice, herb, cash and industrial crops by district (annual, 2017–2024), "
-           "and planted area by state including paddy.", {"crops_district_area.csv": CROPS_AREA_URL,
-                                                          "crops_state.csv": CROPS_STATE_URL})
-    source("dosm_forest_reserve", "Permanent reserved forest by state", "Forestry Department Malaysia, via data.gov.my",
+    source("dosm_crops", "Crops by district", "DOSM, with the Ministry of Agriculture and Food Security (MAFS) and the "
+           "Department of Agriculture (DOA), via data.gov.my",
+           "https://data.gov.my/data-catalogue/crops_district_area", "CC BY 4.0", "2024", ["Crop resources"],
+           "Planted area (ha) of fruit, vegetable, spice, herb, cash and industrial crops by district (annual, 2017–2024). "
+           "It has no oil palm, rubber or paddy.", {"crops_district_area.csv": CROPS_AREA_URL})
+    source("dosm_forest_reserve", "Permanent reserved forest by state", "DOSM, from the Forestry Department (Perhutanan), via data.gov.my",
            "https://data.gov.my/data-catalogue/forest_reserve_state", "CC BY 4.0", "2024", ["Forest reserve area of states"],
            "Area (ha) of gazetted permanent reserved forest by state, annual.", {"forest_reserve_state.csv": FOREST_RESERVE_URL})
-    source("dosm_minerals", "Mineral extraction by state", "Department of Mineral and Geoscience Malaysia, via data.gov.my",
-           "https://data.gov.my/data-catalogue/mineral_extraction", "CC BY 4.0", "2021", ["Mineral output of states"],
-           "Output of metallic, non-metallic and energy minerals by state, annual 2016–2021. It has no site positions, so "
-           "no mine is placed on the map.", {"mineral_extraction.csv": MINERAL_URL})
 
 
 class Land:
@@ -290,7 +284,7 @@ def state_fields(state_data, states, owners, pct, cover, resources, source_dir):
         by_type = {t: capacity[row["abbr"]][t] for t in mw_types}
         row["energy"] = {"unit": "MW", "total": sum(by_type.values()), "by_type": by_type,
                          "sites": {t: sites[row["abbr"]][t] for t in mw_types},
-                         "note": "Only the mapped plants of 25 MW or more as WRI listed them in 2019, not the state's "
+                         "note": "Only the mapped plants of 25 MW or more as WRI listed them, not the state's "
                                  "total generating capacity."}
         sampled = [c for c in cells[i] if cover[c]]
         row["land"] = ({k: None if k == "pasture" else round(sum(pct[k][c] for c in sampled) / len(sampled) / 100, 3)
