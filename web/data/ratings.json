@@ -1,6 +1,7 @@
 {
   "version": 1,
   "open": false,
+  "reason": "static",
   "scale": 5,
   "ratings": {}
 }

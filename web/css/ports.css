@@ -388,14 +388,15 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 /* Pointing at a star lights it and the ones before it: the rating a click would give. Not on touch screens, where
    the "hover" would stay on the star last tapped. */
 @media (hover: hover) {
-  .rt:not(.is-busy) .rt-stars:hover .rt-star { color: #fff0be; }
-  .rt:not(.is-busy) .rt-stars:hover .rt-star svg { fill: currentColor; }
+  .rt:not(.is-busy) .rt-stars:hover .rt-star:not(.on) { color: #fff0be; }
+  .rt:not(.is-busy) .rt-stars:hover .rt-star:not(.on) svg { fill: currentColor; }
   .rt:not(.is-busy) .rt-stars .rt-star:hover ~ .rt-star { color: rgba(236, 208, 142, .55); }
   .rt:not(.is-busy) .rt-stars .rt-star:hover ~ .rt-star svg { fill: none; }
 }
 @media (pointer: coarse) {
   .rt-star { width: 32px; height: 36px; }
   .rt-star svg { width: 22px; height: 22px; }
+  .rt-bar .rt-star { height: 30px; } /* the bar above an open map keeps its height */
 }
 /* in the bar above an open map */
 .rt-bar { flex-wrap: nowrap; gap: 10px; margin: 0 4px 0 0; padding: 0; border: 0; }

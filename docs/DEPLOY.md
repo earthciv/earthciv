@@ -44,7 +44,7 @@ folder it is run in; from anywhere else the site would upload without its Functi
   States (`?country=us`) and Canada (`?country=ca`), and the World button in each edition brings the world map back.
 - An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
-- https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up (`"open": false` is the
-  static file: no database is bound, or the Function was not uploaded), and a map's card on the world map shows its
-  stars.
+- https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up, and a map's card on the
+  world map shows its stars. With `"open": false` its `"reason"` says what is missing: `"static"` (no database is
+  bound, or the Function was not uploaded), `"no_secret"` or `"closed"` ([RATINGS.md](RATINGS.md)).
 - The browser console shows no errors on either edition.

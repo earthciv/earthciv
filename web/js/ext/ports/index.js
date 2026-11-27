@@ -620,7 +620,8 @@ export function install(app) {
     if (el.tagName === "A") return; // links open themselves (and a link on a card does not also open the card)
     if (el.classList.contains("rt")) return; // a click that just misses a star must not open the card's map
     const d = el.dataset;
-    if (d.rate) return ratePort(d.rate, Number(d.stars));
+    // A star: the second click of a double-click is not a second choice (it would take the rating straight back).
+    if (d.rate) return e.detail > 1 ? undefined : ratePort(d.rate, Number(d.stars));
     const act = d.act;
     if (act === "close") return app.setMode(null);
     if (act === "back-atlas") return closeViewer();
@@ -876,7 +877,12 @@ export function install(app) {
     if (!port) return;
     const res = await ratings.choose(id, picked);
     if (res.ok) {
-      app.ui.toast?.(res.stars ? `You rated ${port.name} ${plural(res.stars, "star")}` : `Your rating of ${port.name} was removed`);
+      app.ui.toast?.(
+        res.stars ? `You rated ${port.name} ${plural(res.stars, "star")}`
+          : res.changed ? `Your rating of ${port.name} was removed`
+            // Ratings count per network: one given from another network cannot be taken back from this one.
+            : `No rating of ${port.name} from this network to remove`,
+      );
     } else if (res.error !== "ignored") {
       app.ui.toast?.(
         res.error === "too_many_changes" ? "That rating was changed too often today. Try again tomorrow."

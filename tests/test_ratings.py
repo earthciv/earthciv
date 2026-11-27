@@ -42,7 +42,7 @@ class RatingsFilesTest(unittest.TestCase):
     def test_static_file_says_ratings_are_not_open(self):
         # What a host without the Function serves, and what the Function falls back to: no stars anywhere.
         doc = json.loads(STATIC_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(doc, {"version": 1, "open": False, "scale": 5, "ratings": {}})
+        self.assertEqual(doc, {"version": 1, "open": False, "reason": "static", "scale": 5, "ratings": {}})
 
     def test_function_answers_at_the_static_files_address(self):
         # Pages routes functions/<path>.js to /<path>: the Function must sit where the static file is served.

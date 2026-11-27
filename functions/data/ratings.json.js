@@ -4,8 +4,10 @@
 //   POST /data/ratings.json  {"port": "<id>", "stars": 1-5}   give or change a rating; "stars": 0 takes it back
 //
 // This is a Cloudflare Pages Function, and it answers at the address of the static file web/data/ratings.json. That
-// file says "no ratings here" ("open": false): it is what any other host serves, and what this Function falls back
-// to while its database is not set up. So a copy of the site without the database simply shows no stars.
+// file says "no ratings here" ("open": false, "reason": "static"): it is what any other host serves, and what this
+// Function falls back to while its database is not set up. So a copy of the site without the database simply shows
+// no stars. With a database the Function answers "open": true, or "open": false with the reason: "no_secret"
+// (RATINGS_SALT is not set) or "closed" (RATINGS_CLOSED is).
 //
 // Ratings are anonymous and there is no sign-in. One network counts once per map: a rating is stored under an HMAC of
 // the visitor's IP address (for IPv6, its /64), keyed with the secret RATINGS_SALT, which is not in the database. The
@@ -65,7 +67,8 @@ const UPSERT = `
     updated_at = excluded.updated_at,
     changes = CASE WHEN ratings.day = excluded.day THEN ratings.changes + 1 ELSE 1 END,
     day = excluded.day
-  WHERE ratings.stars <> excluded.stars AND (ratings.day <> excluded.day OR ratings.changes < ?6)`;
+  WHERE ratings.stars <> excluded.stars AND (ratings.day <> excluded.day OR ratings.changes < ?6)
+  RETURNING stars`;
 
 const encoder = new TextEncoder();
 
@@ -152,7 +155,9 @@ async function smallBody(request) {
 
 // RATINGS_CLOSED closes ratings when it is set to anything but an explicit "no".
 const closed = (env) => !!env.RATINGS_CLOSED && !/^(0|false|no|off)$/i.test(String(env.RATINGS_CLOSED).trim());
-const accepting = (env) => !!(env.RATINGS_DB && env.RATINGS_SALT && !closed(env));
+// Why this Function, with its database, takes no ratings: null when it does.
+const whyNot = (env) => (!env.RATINGS_SALT ? "no_secret" : closed(env) ? "closed" : null);
+const accepting = (env) => !!env.RATINGS_DB && !whyNot(env);
 
 // Run `work`; if the database has no tables yet, make them and run it again.
 async function withSchema(db, work) {
@@ -184,7 +189,8 @@ async function summary(context) {
   }
   const ratings = {};
   for (const r of rows) ratings[r.port_id] = [r.n, r.sum];
-  const body = { version: 1, open: accepting(env), scale: SCALE, ratings };
+  const reason = whyNot(env);
+  const body = { version: 1, open: !reason, ...(reason ? { reason } : {}), scale: SCALE, ratings };
   // The totals are public figures, so any page may read them.
   return json(request.method === "HEAD" ? null : body, 200, { "access-control-allow-origin": "*" });
 }
@@ -225,14 +231,21 @@ async function rate({ request, env }) {
     const day = now.toISOString().slice(0, 10);
 
     return await withSchema(db, async () => {
-      const prev = await db.prepare("SELECT stars, day, changes FROM ratings WHERE port_id = ?1 AND voter = ?2").bind(port, voter).first();
-      const unchanged = prev ? prev.stars === stars : stars === 0;
-      if (!unchanged) {
+      const own = db.prepare("SELECT stars, day, changes FROM ratings WHERE port_id = ?1 AND voter = ?2").bind(port, voter);
+      const prev = await own.first();
+      // `changed` tells the page whether this request stored anything: taking back a rating that this network never
+      // gave (it was given from another one) changes nothing.
+      let changed = false;
+      if (prev ? prev.stars !== stars : stars > 0) {
         if (prev && prev.day === day && prev.changes >= CHANGES_PER_DAY) return refuse(429, "too_many_changes");
-        // The database's triggers bring the map's totals along in the same step.
-        await db.prepare(UPSERT).bind(port, voter, stars, Math.floor(now.getTime() / 1000), day, CHANGES_PER_DAY).run();
+        // The statement returns a row only when it stored the rating; the database's triggers bring the map's totals
+        // along in the same step. Another request from this network may have got in since the read above, so it is
+        // this answer, not that read, that says what happened.
+        const stored = await db.prepare(UPSERT).bind(port, voter, stars, Math.floor(now.getTime() / 1000), day, CHANGES_PER_DAY).first();
+        changed = !!stored;
+        if (!changed && ((await own.first())?.stars ?? 0) !== stars) return refuse(429, "too_many_changes");
       }
-      return json({ ok: true, port, stars, rating: await totalsOf(db, port) });
+      return json({ ok: true, port, stars, changed, rating: await totalsOf(db, port) });
     });
   } catch (err) {
     console.error("ratings: could not save", err);
