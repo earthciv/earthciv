@@ -4,6 +4,6 @@
   "editions": [
     {"id": "us", "name": "United States", "emblem": "★"},
     {"id": "ca", "name": "Canada", "emblem": "🇨🇦"},
-    {"id": "my", "name": "Malaysia", "emblem": "🌺"}
+    {"id": "my", "name": "Malaysia", "emblem": "🇲🇾"}
   ]
 }
