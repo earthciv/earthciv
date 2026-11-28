@@ -51,7 +51,7 @@ const DATA_URL = new URL("../../../data/", import.meta.url);
 const CSS_HREF = new URL("../../../css/ports.css?v=20261128b", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
-const CATALOG_PORT_COUNT = 74; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
+const CATALOG_PORT_COUNT = 75; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 const RATING_BAR = "(min-width: 701px)"; // where a map's bar has room for its stars (css/ports.css hides .rt-bar below)
 const REPO_URL = "https://github.com/earthciv/earthciv";
