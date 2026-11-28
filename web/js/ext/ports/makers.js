@@ -13,8 +13,13 @@
 //     counting each repository once. Remaining ties rotate one place each day.
 //   * One community map a day is "today's map" on the country list: every map that can be opened takes a day in
 //     turn, so each maker is on the first screen in their turn.
+//   * A country's card lists its EarthCiv edition first, then its community maps, the best rated of each kind first:
+//     by the score of World Rankings' Ratings tab, from a map's first rating (rankCountryPorts).
 //
-// This file imports nothing and never touches the page, so its rules can be tested outside a browser.
+// Apart from that score (./rankingsRatings.js), this file imports nothing. It never touches the page, so its rules
+// can be tested outside a browser.
+
+import { START, countedRating, scoreOf } from "./rankingsRatings.js";
 
 // A GitHub login: letters, digits and single hyphens, at most 39 characters. Anything else is not put into an address.
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
@@ -195,19 +200,25 @@ function portScopeRank(port) {
 }
 
 /**
- * Order a country's maps, best and most popular first:
- *   1. Kind: EarthCiv edition, visitor's own link, community map (opens inside), community map (own site), source code.
- *   2. Scope: dedicated single-country map before multi-country regional maps before sub-national/region maps.
- *   3. Popularity: weighted visitor rating (once a map has MIN_RATINGS ratings), vote count on ties, GitHub stars,
- *      featured creator flag, then the catalog's own order (falling back to name).
+ * A country's maps in the order its card lists them. The first is the one the card's big button opens, and the one a
+ * double-click on the country opens.
+ *   1. Kind: EarthCiv edition, visitor's own link, community map (opens inside), community map (own site), source
+ *      code. So an EarthCiv edition comes first whatever its rating.
+ *   2. Scope: a map of the country alone, then a map of several countries, then a map of a part of the country. So a
+ *      map of all of Europe does not come before a map of France, however well it is rated.
+ *   3. The visitors' score, from a map's first rating: the score World Rankings' Ratings tab ranks the maps by
+ *      (./rankingsRatings.js scoreOf). A map nobody has rated counts as START (3.00), where every map's score starts:
+ *      a map rated above that comes before it, one rated below after it. So of two maps of the same kind and scope,
+ *      the one placed higher in the Ratings tab comes first.
+ *   4. Where the score does not decide: more ratings first, then GitHub stars, the featured creator flag, the
+ *      catalog's own order and the name.
  *
  * @param {object[]} ports
  * @param {object} [options]
- * @param {(id: string) => {n: number, sum: number}} [options.ratingOf]
- * @param {number|null} [options.globalMean]
+ * @param {(id: string) => {n: number, sum: number}} [options.ratingOf]  a map's number of ratings and sum of stars
  * @param {Map<string, number>|object[]|null} [options.catalogOrder]
  */
-export function rankCountryPorts(ports, { ratingOf = () => ({ n: 0, sum: 0 }), globalMean = null, catalogOrder = null } = {}) {
+export function rankCountryPorts(ports, { ratingOf = () => ({ n: 0, sum: 0 }), catalogOrder = null } = {}) {
   const orderById = catalogOrder instanceof Map
     ? catalogOrder
     : Array.isArray(catalogOrder)
@@ -215,25 +226,9 @@ export function rankCountryPorts(ports, { ratingOf = () => ({ n: 0, sum: 0 }), g
       : null;
 
   const list = (ports || []).map((port, idx) => {
-    const r = ratingOf(port.id) || {};
-    const n = r.n || 0;
-    const sum = r.sum || 0;
-    const stars = ownRepoStars(port) || 0;
-    return { port, n, sum, average: n ? sum / n : null, ranked: n >= MIN_RATINGS, stars, idx };
+    const { n, sum } = countedRating(ratingOf(port.id));
+    return { port, n, score: n ? scoreOf(n, sum) : START, stars: ownRepoStars(port) || 0, idx };
   });
-
-  let mean = globalMean;
-  if (mean == null) {
-    const tot = list.reduce((t, x) => ({ n: t.n + x.n, sum: t.sum + x.sum }), { n: 0, sum: 0 });
-    mean = tot.n ? tot.sum / tot.n : 0;
-  }
-  for (const x of list) {
-    x.score = x.ranked ? (PRIOR_RATINGS * mean + x.sum) / (PRIOR_RATINGS + x.n) : mean;
-  }
-
-  // When scores tie (for instance when only one map is rated so its average equals the mean), a well-rated map still
-  // leads an unrated one, and more votes break ties between rated maps.
-  const rankedVotes = (x) => (x.ranked && x.average >= 3 ? x.n : 0);
 
   list.sort((a, b) => {
     const ka = PORT_KIND_ORDER[portKindOf(a.port)] ?? 9;
@@ -243,8 +238,7 @@ export function rankCountryPorts(ports, { ratingOf = () => ({ n: 0, sum: 0 }), g
     const sb = portScopeRank(b.port);
     if (sa !== sb) return sa - sb;
     if (b.score !== a.score) return b.score - a.score;
-    const byVotes = rankedVotes(b) - rankedVotes(a);
-    if (byVotes) return byVotes;
+    if (b.n !== a.n) return b.n - a.n;
     if (b.stars !== a.stars) return b.stars - a.stars;
     const fa = a.port.featured_creator === true ? 1 : 0;
     const fb = b.port.featured_creator === true ? 1 : 0;

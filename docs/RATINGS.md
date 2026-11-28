@@ -23,6 +23,7 @@ There is no sign-in. One network counts once per map, which is close to, but not
 | `functions/data/ratings.json.js` | A Cloudflare Pages Function that answers at the same address, `/data/ratings.json`, from a D1 database. |
 | `web/js/ext/ports/ratings.js` | The world view's side: reads the ratings, draws the stars, sends a visitor's rating. |
 | `web/js/ext/ports/rankingsRatings.js` | World Rankings' Ratings tab: the maps in order of their ratings ([below](#the-ratings-tab-of-world-rankings)). |
+| `web/js/ext/ports/makers.js` | `rankCountryPorts`: a country's maps in order, the best rated of each kind first ([below](#a-countrys-maps)). |
 
 On a host with no Function (any static host, `python -m pipeline serve`), the browser gets the static file, and the
 world view shows no stars. The Function also hands a request to that file while it has no database. So a copy of
@@ -98,6 +99,31 @@ scores and does not ask for ratings.
 [Limits](#limits) says what the ratings can and cannot withstand. The same holds for this ranking: it is a poll of
 the people who chose to rate, and while a map has few ratings, a few more can move it a long way. Each row
 therefore shows the number of ratings behind its score.
+
+## A country's maps
+
+A country's card lists every map of it, and its big button opens the first one, as a double-click on the country
+does. The ratings decide which of a country's community maps that is. The order, from `rankCountryPorts` in
+`web/js/ext/ports/makers.js`:
+
+1. **What kind of map it is.** EarthCiv editions, then links the visitor added, then community maps that open
+   inside EarthCiv, then those that open only in a new tab, then source code. An EarthCiv edition therefore stays
+   first, whatever its rating.
+2. **What it covers.** A map of the country alone, then a map of several countries, then a map of a part of the
+   country. A map of all of Europe does not come before a map of France, however well it is rated.
+3. **The visitors' score**, as [the Ratings tab](#the-ratings-tab-of-world-rankings) gives it, from a map's first
+   rating. A map nobody has rated counts as 3.00, where every map's score starts: a map rated above that comes before
+   it, and one rated below that after it. So of two maps of the same kind and cover, the one placed higher in the
+   Ratings tab comes first.
+4. **Where the score does not decide:** the map with more ratings, then the one whose repository has more GitHub
+   stars, then the catalog's order.
+
+The card puts its maps in order when it is drawn. If the ratings arrive after that, it is drawn again once, in
+their order. A rating given while the card is open moves none of its maps, since the next map would slide under the
+visitor's pointer; the new order shows the next time the card is drawn.
+
+While maps have few ratings, one rating decides: a single rating of 5 stars puts a map ahead of the maps nobody has
+rated, and a single rating of 1 star puts it behind them.
 
 ## What is stored
 
@@ -243,3 +269,4 @@ are gone. The database keeps what it has until it is deleted.
 `tests/test_ratings.py` checks the files and settings, and runs `tests/js/ratings.test.mjs` when it finds Node 22.13
 or newer: the Function against a real SQLite database, and the page's rules against the Function.
 `tests/test_world_rankings.py` runs `tests/js/rankingsRatings.test.mjs`, the Ratings tab's rules and its screen.
+`tests/test_makers.py` runs `tests/js/makers.test.mjs`, which has the order of a country's maps.

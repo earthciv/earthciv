@@ -7,9 +7,9 @@
 //     inside EarthCiv. It is the same menu in an edition's top bar and in the bar above an open community map, so
 //     any map is one pick away from any other.
 //   * Click or tap any country, pick it in the list beside the map, or find it with the search box (/): its card
-//     has one big button that opens its best map (an EarthCiv edition, a community map shown inside EarthCiv, or one
-//     on its own site), its Demographics (where it stands on World Rankings' measures) and every other map of it. A
-//     country nobody has mapped yet says so and links to how EarthCiv is built.
+//     has one big button that opens its best map (an EarthCiv edition, else the best rated of its community maps:
+//     ./makers.js rankCountryPorts), its Demographics (where it stands on World Rankings' measures) and every other
+//     map of it. A country nobody has mapped yet says so and links to how EarthCiv is built.
 //   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js): on its
 //     card, in the bar above a community map open here, and in an edition's own top bar.
 //   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
@@ -217,6 +217,7 @@ export function install(app) {
   let rankFailed = false;
   let rankShown = null; // what World Rankings shows: rankDoc, with the Ratings tab where there are ratings (rankView)
   let ratingsKnown = false; // the maps' ratings have arrived, or could not be read: whether there is a Ratings tab
+  let cardRated = false; // the open country's card was drawn with the maps' ratings in hand (see syncCardOrder)
   let mine = loadMine();
   let customPorts = loadCustomPorts();
   let overlay = null;
@@ -229,6 +230,7 @@ export function install(app) {
       ratings.sync(editionRating?.parentElement, portById);
       syncMakers(); // the makers' order follows the ratings
       syncRatingsRanking(); // and so does World Rankings' Ratings tab
+      syncCardOrder(); // and the order of an open country's maps, if it was drawn before the ratings arrived
     },
   });
   let map = null;
@@ -700,24 +702,24 @@ export function install(app) {
     });
   }
 
-  function globalRatingMean() {
-    let n = 0;
-    let sum = 0;
-    for (const p of basePorts) {
-      const r = ratings.of(p.id);
-      n += r.n || 0;
-      sum += r.sum || 0;
-    }
-    return n ? sum / n : 0;
-  }
-
-  // A country's maps, best and most popular first: EarthCiv editions, your links, maps that open inside, maps on their
-  // own site, code; dedicated country maps before multi-country or regional maps, then ratings, GitHub stars and order.
+  // A country's maps, best first: EarthCiv editions, your links, maps that open inside, maps on their own site, code;
+  // maps of the country alone before maps of several countries or of a part of it; then the visitors' score, as in
+  // World Rankings' Ratings tab, from a map's first rating; then more ratings, GitHub stars and the catalog's order.
   function portsFor(iso, list = allPorts()) {
     return rankCountryPorts(
       list.filter((p) => (p.countries || []).includes(iso)),
-      { ratingOf: (id) => ratings.of(id), globalMean: globalRatingMean(), catalogOrder: allPorts() },
+      { ratingOf: (id) => ratings.of(id), catalogOrder: allPorts() },
     );
+  }
+
+  // The maps a country's card lists, in its order: the map whose pin was clicked first, then portsFor's order.
+  function cardPorts(iso) {
+    const list = portsFor(iso);
+    if (ui.pickedPortId) {
+      const k = list.findIndex((p) => p.id === ui.pickedPortId);
+      if (k > 0) list.unshift(...list.splice(k, 1));
+    }
+    return list;
   }
 
   function bestKind(list) {
@@ -1349,8 +1351,7 @@ export function install(app) {
   }
 
   function openPrimary() {
-    const list = portsFor(ui.selected);
-    activatePort((ui.pickedPortId && list.find((x) => x.id === ui.pickedPortId)) || list[0]);
+    activatePort(cardPorts(ui.selected)[0]);
   }
 
   // --- the list of makers ------------------------------------------------------------------------------------------
@@ -1495,6 +1496,17 @@ export function install(app) {
     if (keep) {
       (overlay.querySelector(keep) || overlay.querySelector(".wv-backlink"))?.focus({ preventScroll: true });
     }
+  }
+
+  // A country's card lists its maps in the order of their ratings (portsFor), and the ratings can arrive after the
+  // card is drawn: it is then drawn again, once, if that changes its maps' order. A rating given while the card is
+  // open moves none of its maps (the next map would slide under the visitor's pointer): the card shows the new order
+  // the next time it is drawn.
+  function syncCardOrder() {
+    if (!map || !ui.selected || cardRated || !ratings.loaded) return;
+    cardRated = true;
+    const drawn = [...sideEl.querySelectorAll(".wv-cards .port-card")].map((el) => el.dataset.portId);
+    if (drawn.join("\n") !== cardPorts(ui.selected).map((p) => p.id).join("\n")) rerenderCard();
   }
 
   function rankingsViewHtml() {
@@ -1693,6 +1705,7 @@ export function install(app) {
     sideEl.setAttribute("aria-label", ui.selected ? countryName(ui.selected) : ui.rankings ? "World Rankings" : ui.makers ? "Map makers" : "Countries");
     overlay.querySelector("#wv-side-content").innerHTML = view === "detail" ? detailHtml(ui.selected)
       : view === "rankings" ? rankingsViewHtml() : view === "makers" ? makersHtml() : listHtml();
+    if (view === "detail") cardRated = ratings.loaded;
     ratings.sync(sideEl, portById);
   }
 
@@ -1836,11 +1849,7 @@ export function install(app) {
 
   function detailHtml(iso) {
     const c = map.getCountry(iso) || { id: iso, name: iso };
-    const list = portsFor(iso);
-    if (ui.pickedPortId) {
-      const k = list.findIndex((p) => p.id === ui.pickedPortId);
-      if (k > 0) list.unshift(...list.splice(k, 1));
-    }
+    const list = cardPorts(iso);
     const n = list.length;
     const sub = [regionLabel(c.continent), n ? plural(n, "map") : "no map yet"].filter(Boolean).join(" · ");
     return `

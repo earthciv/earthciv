@@ -103,10 +103,19 @@ class MakersWiringTest(unittest.TestCase):
         self.index = read("web", "js", "ext", "ports", "index.js")
         self.makers = MAKERS_PATH.read_text(encoding="utf-8")
 
-    def test_rules_need_no_other_script(self):
-        # tests/js imports the file outside a browser, so it must not import the app's modules or touch the page.
-        self.assertNotRegex(self.makers, r"(?m)^\s*import\s")
+    def test_rules_import_only_the_ratings_score(self):
+        # tests/js imports the file outside a browser: it may import the Ratings tab's rules, whose score orders a
+        # country's maps (they import only the stars' own rules), and nothing of the app, and it must not touch the page.
+        imports = re.findall(r'(?m)^\s*import\b[^;]*?\bfrom\s+"([^"]+)"', self.makers)
+        self.assertEqual(imports, ["./rankingsRatings.js"])
         self.assertNotRegex(self.makers, r"\b(document|window|localStorage)\b")
+
+    def test_a_countrys_card_follows_ratings_that_arrive_after_it(self):
+        # A card drawn before the ratings arrived is drawn again in their order; one drawn with them is left alone.
+        self.assertIn('if (view === "detail") cardRated = ratings.loaded;', self.index)
+        self.assertIn("syncCardOrder(); //", self.index)
+        self.assertIn("const list = cardPorts(iso);", self.index)
+        self.assertIn("activatePort(cardPorts(ui.selected)[0]);", self.index)
 
     def test_world_view_names_the_maker_wherever_a_map_is_shown(self):
         self.assertRegex(self.index, r'import \{[^}]*\bmakerOf\b[^}]*\} from "\./makers\.js";')
