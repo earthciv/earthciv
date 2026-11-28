@@ -69,6 +69,7 @@
   "text": "text.json",
   "view": {
     "home_dock_band": 30,
+    "home_crop_north": 0.2,
     "banner_floor_scale": 0.12,
     "resource_groups": [
       {

@@ -275,15 +275,18 @@ async function main() {
     const [dx, dy] = cam.toScreen(vp.x0, vp.y0);
     ctx.drawImage(cache.cv, dx, dy, vp.cssW * k, vp.cssH * k);
 
+    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet). A plate
+    // set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px), and the capital and
+    // the plates that fill empty regions also stay below the top bar.
+    const d = isMobile() ? null : dockState();
+    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y0: topbarH, y1: cam.h - 56 };
+
     const s = cam.scale;
     ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (cam.w / 2 - cam.x * s), dpr * (cam.h / 2 - cam.y * s));
     drawOverlay(ctx, cam, w, state);
     if (state.highlight) drawHighlight(ctx, cam, w, state, { resourceHits: cache.hits.resources, items: resources?.items, cityById });
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMax: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet).
-    const d = isMobile() ? null : dockState();
-    state.bannerBounds = d && d.open ? { x0: d.l, x1: cam.w - d.r } : null;
     hits = drawBanners(ctx, cam, w, state, nation.yields, nation);
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMin: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -353,13 +356,19 @@ async function main() {
     if (!Number.isFinite(x0)) return { x0: HOME_M, y0: HOME_M, x1: world.width - HOME_M, y1: world.height - HOME_M };
     return { x0: x0 - g.R, y0: y0 - g.R, x1: x1 + g.R, y1: y1 + g.R };
   })();
+  // A tall country whose people live in its south opens on less of its far north (manifest view.home_crop_north: the
+  // share of the land's height, from its northern edge, that the home view leaves out; Canada: part of the Arctic
+  // islands), so its cities are not squeezed into a strip along the bottom. Zoom levels in links, and the furthest
+  // zoom-out, stay relative to the whole land's fit.
+  const HOME_CROP_NORTH = Math.min(0.5, Math.max(0, Number(VIEW.home_crop_north) || 0));
+  const homeBox = { ...landBox, y0: landBox.y0 + (landBox.y1 - landBox.y0) * HOME_CROP_NORTH };
   // Portrait phones: the whole country would be a thin strip between big bands of fog, so start closer in.
   const isPortraitPhone = () => cam.w <= 700 && cam.h > cam.w * 1.15;
   const PORTRAIT_ZOOM = 1.3; // the country fills the width (Maine and Washington crop a little; banners stay on screen)
-  // The scale that frames the whole land in the visible area (URL zoom levels are relative to it).
-  const fitIn = (a, padFrac = 0.1) => {
+  // The scale that frames the whole land (or `box`) in the visible area (URL zoom levels are relative to the land's).
+  const fitIn = (a, padFrac = 0.1, box = landBox) => {
     const padX = Math.min(HOME_PAD_X, (a.x1 - a.x0) * padFrac);
-    const s = Math.min((a.x1 - a.x0 - 2 * padX) / (landBox.x1 - landBox.x0), (a.y1 - a.y0 - 2 * HOME_PAD_Y) / (landBox.y1 - landBox.y0));
+    const s = Math.min((a.x1 - a.x0 - 2 * padX) / (box.x1 - box.x0), (a.y1 - a.y0 - 2 * HOME_PAD_Y) / (box.y1 - box.y0));
     return s > 0 && Number.isFinite(s) ? s : cam.scale || 1;
   };
   const fitScale = () => fitIn(visibleArea(false, false));
@@ -374,9 +383,14 @@ async function main() {
   // Centre and scale of the home view.
   function homeView() {
     const fs = fitScale();
-    const s = isPortraitPhone() ? fs * PORTRAIT_ZOOM : fs;
     const a = visibleArea(false, false);
-    const cx = (landBox.x0 + landBox.x1) / 2, cy = (landBox.y0 + landBox.y1) / 2;
+    const hs = HOME_CROP_NORTH ? fitIn(a, 0.1, homeBox) : fs;
+    const s = isPortraitPhone() ? hs * PORTRAIT_ZOOM : hs;
+    const cx = (landBox.x0 + landBox.x1) / 2;
+    let cy = (landBox.y0 + landBox.y1) / 2;
+    // Land taller than the frame (the home crop): keep its south in view and leave out only as much of its north.
+    const frameH = (a.y1 - a.y0 - 2 * HOME_PAD_Y) / s;
+    if (HOME_CROP_NORTH && landBox.y1 - landBox.y0 > frameH) cy = landBox.y1 - frameH / 2;
     // Put the land's centre in the middle of the visible area, not of the whole canvas.
     return { x: cx - ((a.x0 + a.x1) / 2 - cam.w / 2) / s, y: cy - ((a.y0 + a.y1) / 2 - cam.h / 2) / s, s, fs };
   }
@@ -773,7 +787,7 @@ async function main() {
     };
     snap.x = inside(cx, fw, world.width);
     snap.y = inside(cy - 14 / snap.scale, fh, world.height); // nudged up: banners stand above their cities
-    const shot = { ...state, hoverCell: -1 };
+    const shot = { ...state, hoverCell: -1, bannerBounds: null }; // the image has no docks: its plates use all of it
     const c = target.getContext("2d");
     c.fillStyle = OCEAN_BG;
     c.fillRect(0, 0, W, H);
