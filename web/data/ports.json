@@ -804,24 +804,6 @@
       "github_stars_checked": "2026-11-28"
     },
     {
-      "id": "lkciv-fernando",
-      "name": "Sri Lanka",
-      "emblem": "🇱🇰",
-      "status": "live",
-      "scope": "country",
-      "region": "Asia",
-      "countries": ["LK"],
-      "center": [80.6, 6.3],
-      "languages": ["en"],
-      "license": null,
-      "repo": null,
-      "author": "thekindofme",
-      "author_github": "thekindofme",
-      "url": "https://civ.yasithfernando.com/?country=lk",
-      "embed": true,
-      "description": "Sri Lanka's 9 provinces, 339 Divisional Secretariat divisions and 55 municipal and urban council towns on 3 km hexes, from the 2024 census, Central Bank provincial GDP, the Labour Force Survey, SLTDA, DesInventar and other public data."
-    },
-    {
       "id": "civmap",
       "name": "CivMap (China & US)",
       "emblem": "🇨🇳",
@@ -1091,24 +1073,6 @@
       "author_twitter_source": "https://github.com/earthciv/earthciv/issues/39",
       "github_stars": 0,
       "github_stars_checked": "2026-11-27"
-    },
-    {
-      "id": "auciv-fernando",
-      "name": "Australia",
-      "emblem": "🇦🇺",
-      "status": "live",
-      "scope": "country",
-      "region": "Oceania",
-      "countries": ["AU"],
-      "center": [147.0, -33.0],
-      "languages": ["en"],
-      "license": null,
-      "repo": null,
-      "author": "thekindofme",
-      "author_github": "thekindofme",
-      "url": "https://civ.yasithfernando.com/?country=au",
-      "embed": true,
-      "description": "Australia's 545 local government areas and 102 cities on a 25 km hex grid, from ABS Census 2021, State Accounts 2025-26, Geoscience Australia, BITRE, CAPAD and other public data."
     },
     {
       "id": "terra-a-vista",
