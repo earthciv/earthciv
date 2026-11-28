@@ -684,6 +684,27 @@
       "github_stars_checked": "2026-11-27"
     },
     {
+      "id": "rusciv",
+      "name": "Russia (rusciv)",
+      "emblem": "🇷🇺",
+      "status": "live",
+      "scope": "country",
+      "region": "Europe",
+      "countries": ["RU"],
+      "center": [37.6, 55.8],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "alexisakov/kybernetikalanding",
+      "author": "alexisakov",
+      "url": "https://kybernetika.ai/",
+      "embed": true,
+      "description": "Russia on a 25 km hex grid, built from Rosstat's Regions of Russia (2023–2024 figures) and other open data, with 28 lenses from wages and life expectancy to forest and tundra.",
+      "author_twitter": "x1skv",
+      "author_twitter_source": "https://github.com/earthciv/earthciv/issues/48",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-28"
+    },
+    {
       "id": "great-steppe",
       "name": "The Great Steppe (Kazakhstan)",
       "emblem": "🇰🇿",

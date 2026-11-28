@@ -380,6 +380,9 @@ highest, the average and the lowest of the countries ranked on the same year. Ea
 figure from another year than the ranked one shows that year and no rank. A measure's name opens its tab in World
 Rankings with the country's row in view, and a figure opens the World Bank's own chart of it. The country outlines are
 Natural Earth's 1:50m countries, simplified into `web/data/world-outlines.json` by `pipeline/build_world_outlines.py`.
+Natural Earth draws borders as they are held on the ground. The world map makes one exception: Crimea, Sevastopol
+included, is drawn as part of Ukraine, as the UN General Assembly recognises it. A community map draws its own
+borders, which are its maker's.
 
 **World Rankings** ([earthciv.org/#rankings=overall](https://earthciv.org/#rankings=overall), and the button at the top
 right of the world map) compares every country on ten measures from the same World Development Indicators, in five
