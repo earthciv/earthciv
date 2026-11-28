@@ -27,7 +27,7 @@
     {
       "id": "ca",
       "name": "Canada",
-      "emblem": "🍁",
+      "emblem": "🇨🇦",
       "status": "merged",
       "editionId": "ca",
       "scope": "country",
@@ -49,7 +49,7 @@
     {
       "id": "my",
       "name": "Malaysia",
-      "emblem": "🌺",
+      "emblem": "🇲🇾",
       "status": "merged",
       "editionId": "my",
       "scope": "country",

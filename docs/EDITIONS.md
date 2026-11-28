@@ -41,7 +41,7 @@ edition state in the hash (such as `/#city=35620`) open the default edition. Lin
   "default": "us",
   "editions": [
     {"id": "us", "name": "United States", "emblem": "★"},
-    {"id": "ca", "name": "Canada", "emblem": "🍁"}
+    {"id": "ca", "name": "Canada", "emblem": "🇨🇦"}
   ]
 }
 ```
@@ -51,8 +51,9 @@ lower case, the country's ISO 3166-1 alpha-2 code where there is one. `name` and
 the menu can be built without loading every manifest.
 
 `emblem` is drawn on the round badge of the edition's row on the world map and of its share images. Beside the
-edition's name, in the menu and in lists, an emblem that is an emoji (🍁) is the edition's icon. One that is not, such
-as the U.S. star, would read as no icon there, so the country's flag takes its place (`web/js/ui/mapPicker.js`).
+edition's name, in the menu and in lists, an emblem that is an emoji, such as a flag (🇨🇦, 🇲🇾), is the edition's
+icon. One that is not, such as the U.S. star, would read as no icon there, so the country's flag takes its place
+(`web/js/ui/mapPicker.js`).
 
 On the world map every edition has the same plain row, under "EarthCiv editions": its emblem and name, and its
 maker's picture and account. Nothing in this index dresses one edition's row differently from another's.
