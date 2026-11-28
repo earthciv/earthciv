@@ -7,6 +7,10 @@ Each country's `center` is where the world map draws its name and pans to. It is
 of the country's largest polygon, unless that point falls off the drawn country (Vietnam's is in Laos, Norway's in
 Sweden), when it is the point of the largest drawn ring farthest from its edges instead.
 
+Natural Earth draws borders as they are held on the ground. The world map makes one exception: Crimea, Sevastopol
+included, is drawn as part of Ukraine, as the UN General Assembly recognises it (resolution 68/262). Its polygon is
+taken out of Russia's outline and joined to Ukraine's along the border they share, so no line crosses the isthmus.
+
 Usage:
     uv run python -m pipeline.build_world_outlines
 """
@@ -28,6 +32,9 @@ EPS_DEG = 0.22
 MIN_RING_AREA = 0.04
 MIN_LAT = -60.0  # omit Antarctica for a balanced world atlas framing
 MAX_LAT = 84.0
+
+# Simferopol: the polygon holding it is Crimea's (see the module docstring).
+CRIMEA = (34.1, 44.95)
 
 
 def _perp_dist(px: float, py: float, x1: float, y1: float, x2: float, y2: float) -> float:
@@ -168,6 +175,83 @@ def _extract_polygons(geom: dict) -> list[list[tuple[float, float]]]:
     return rings
 
 
+def _polygons(geom: dict) -> list[list]:
+    """A Polygon's or a MultiPolygon's polygons, each a list of rings."""
+    if geom.get("type") == "Polygon":
+        return [geom["coordinates"]]
+    if geom.get("type") == "MultiPolygon":
+        return list(geom["coordinates"])
+    return []
+
+
+def _set_polygons(geom: dict, polys: list[list]) -> None:
+    if len(polys) == 1:
+        geom["type"], geom["coordinates"] = "Polygon", polys[0]
+    else:
+        geom["type"], geom["coordinates"] = "MultiPolygon", polys
+
+
+def _signed_area(pts: list[tuple[float, float]]) -> float:
+    return sum(pts[i][0] * pts[i - 1][1] - pts[i - 1][0] * pts[i][1] for i in range(len(pts))) * -0.5
+
+
+def _join_rings(a: list, b: list) -> list[list[float]]:
+    """One ring from two that share a stretch of border, both given as closed [lon, lat] rings. Each shared edge
+    runs one way in one ring and the other way in the other, so the shared edges cancel and the edges left make the
+    joined ring. Returns [] unless that is exactly one ring (no border in common, or a hole between the two)."""
+
+    def points(ring: list) -> list[tuple[float, float]]:
+        pts = [(float(p[0]), float(p[1])) for p in ring]
+        return pts[:-1] if len(pts) > 1 and pts[0] == pts[-1] else pts
+
+    pa, pb = points(a), points(b)
+    if (_signed_area(pa) > 0) != (_signed_area(pb) > 0):
+        pb.reverse()  # wind both the same way, so shared edges run in opposite directions
+    ea = [(pa[i], pa[(i + 1) % len(pa)]) for i in range(len(pa))]
+    eb = [(pb[i], pb[(i + 1) % len(pb)]) for i in range(len(pb))]
+    sa, sb = set(ea), set(eb)
+    left = [e for e in ea if (e[1], e[0]) not in sb] + [e for e in eb if (e[1], e[0]) not in sa]
+    if len(left) == len(ea) + len(eb):
+        return []
+    following: dict[tuple[float, float], tuple[float, float]] = {}
+    for u, v in left:
+        if u in following:
+            return []  # the outline would pass a point twice
+        following[u] = v
+    start = left[0][0]
+    ring = [start]
+    p = following[start]
+    while p != start and len(ring) <= len(left):
+        ring.append(p)
+        p = following.get(p, start)
+    if len(ring) != len(left):
+        return []
+    return [[x, y] for x, y in ring + [start]]
+
+
+def _crimea_to_ukraine(features: list[dict]) -> None:
+    """Move the polygon holding Crimea from Russia's outline to Ukraine's, joined to the mainland (module docstring)."""
+    by_code = {_country_code(f.get("properties") or {}): f for f in features}
+    ru, ua = by_code.get("RU"), by_code.get("UA")
+    if not ru or not ua:
+        return
+    ru_polys = _polygons(ru.get("geometry") or {})
+    crimea = [p for p in ru_polys if p and _in_ring(*CRIMEA, [v for pt in p[0] for v in pt[:2]])]
+    if not crimea:
+        return  # Natural Earth already has it in Ukraine
+    ua_polys = _polygons(ua.get("geometry") or {})
+    for poly in crimea:
+        for k, mainland in enumerate(ua_polys):
+            joined = _join_rings(mainland[0], poly[0])
+            if joined:
+                ua_polys[k] = [joined] + mainland[1:] + poly[1:]
+                break
+        else:
+            ua_polys.append(poly)  # no shared border found: still Ukraine's, as a polygon of its own
+    _set_polygons(ru["geometry"], [p for p in ru_polys if not any(p is c for c in crimea)])
+    _set_polygons(ua["geometry"], ua_polys)
+
+
 def _clean_ring(pts: list[tuple[float, float]]) -> list[float]:
     if len(pts) >= 2 and pts[0] == pts[-1]:
         pts = pts[:-1]
@@ -191,6 +275,7 @@ def _clean_ring(pts: list[tuple[float, float]]) -> list[float]:
 
 def build(src: Path = SRC, out: Path = OUT) -> dict:
     raw = json.loads(src.read_text(encoding="utf-8"))
+    _crimea_to_ukraine(raw.get("features", []))
     by_code: dict[str, dict] = {}
     for feat in raw.get("features", []):
         props = feat.get("properties") or {}
