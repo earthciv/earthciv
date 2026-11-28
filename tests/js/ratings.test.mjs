@@ -66,8 +66,8 @@ const ASSETS = {
   fetch: async (url) => (new URL(url).pathname === "/data/ports.json" ? Response.json(CATALOG) : new Response("not found", { status: 404 })),
 };
 
-function site({ salt = "test-salt", closed = false, db = fakeD1() } = {}) {
-  const env = { ASSETS };
+function site({ salt = "test-salt", closed = false, db = fakeD1(), assets = ASSETS, handle = onRequest } = {}) {
+  const env = { ASSETS: assets };
   if (db) env.RATINGS_DB = db;
   if (salt) env.RATINGS_SALT = salt;
   if (closed) env.RATINGS_CLOSED = closed === true ? "1" : closed;
@@ -80,7 +80,7 @@ function site({ salt = "test-salt", closed = false, db = fakeD1() } = {}) {
       if (!h.has("content-type")) h.set("content-type", "application/json");
       if (!h.has("origin")) h.set("origin", SITE);
     }
-    const res = await onRequest({
+    const res = await handle({
       request: new Request(ENDPOINT, init),
       env,
       next: async () => new Response(STATIC_FILE, { headers: { "content-type": "application/json", "x-static": "1" } }),
@@ -169,6 +169,18 @@ test("a map that can no longer be rated keeps its ratings, and they are not repo
   assert.deepEqual((await s.get()).json.ratings, { deciv: [1, 4] });
   const kept = s.db.sqlite.prepare("SELECT port_id, n, sum FROM totals ORDER BY port_id").all().map((r) => ({ ...r }));
   assert.deepEqual(kept, [{ port_id: "deciv", n: 1, sum: 4 }, { port_id: "gone", n: 1, sum: 3 }, { port_id: "vnciv", n: 1, sum: 5 }]);
+});
+
+test("without a usable catalog, ratings close until eligibility can be checked", async () => {
+  const { db, rate } = site();
+  await rate("deciv", 4);
+  // Load a fresh Function instance without the shared in-memory catalog.
+  const { onRequest: handle } = await import("../../functions/data/ratings.json.js?cold-catalog");
+  const assets = { fetch: async () => Response.json({}) };
+  const unavailable = site({ db, assets, handle });
+  assert.deepEqual((await unavailable.get()).json, JSON.parse(STATIC_FILE));
+  assert.deepEqual((await unavailable.rate("deciv", 5)).json, { ok: false, error: "no_catalog" });
+  assert.deepEqual((await site({ db, handle }).get()).json.ratings, { deciv: [1, 4] });
 });
 
 test("a rating that is not a rating is refused", async () => {

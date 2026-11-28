@@ -172,7 +172,7 @@ answers `"open": false`, its `"reason"` says what is missing:
 
 | `"reason"` | What it means |
 | --- | --- |
-| `"static"` | The static file answered. No database is bound (the `[[d1_databases]]` block), or the Function was not uploaded (the deploy was not run in the project's root folder). |
+| `"static"` | The static file answered. The Function was not uploaded, the database was unavailable, or the Function did not have a usable map catalog to check rating eligibility. |
 | `"no_secret"` | The Function and its database are there, but `RATINGS_SALT` is not set, or was set after the last deployment. Set it and deploy again. |
 | `"closed"` | `RATINGS_CLOSED` is set ([Looking after it](#looking-after-it)). |
 

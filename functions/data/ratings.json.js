@@ -101,7 +101,8 @@ async function rateableIds(env, requestUrl) {
     const res = await env.ASSETS.fetch(new URL("ports.json", requestUrl));
     if (!res.ok) throw new Error(`ports.json: HTTP ${res.status}`);
     const doc = await res.json();
-    catalog = { at: Date.now(), ids: new Set((doc.ports || []).filter(rateable).map((p) => p.id)) };
+    if (!Array.isArray(doc.ports)) throw new Error("ports.json: missing ports list");
+    catalog = { at: Date.now(), ids: new Set(doc.ports.filter(rateable).map((p) => p.id)) };
   } catch (err) {
     console.error("ratings: could not read the catalog", err);
   }
@@ -180,8 +181,10 @@ async function totalsOf(db, port) {
 async function summary(context) {
   const { request, env } = context;
   const db = env.RATINGS_DB;
-  // Without the database, or when it cannot be read, the static file answers: "open": false and no ratings.
+  // Without the database or a usable catalog, the static file answers: "open": false and no ratings.
   if (!db) return context.next();
+  const ids = await rateableIds(env, request.url);
+  if (!ids) return context.next();
   let rows;
   try {
     rows = (await withSchema(db, () => db.prepare("SELECT port_id, n, sum FROM totals WHERE n > 0 ORDER BY port_id").all())).results;
@@ -190,11 +193,9 @@ async function summary(context) {
     return context.next();
   }
   // A map that can no longer be rated (it opens only in a new tab now, or left the catalog) keeps its ratings in the
-  // database, but they are not reported, so nothing shows a rating it cannot take. They count again if it can be
-  // rated again. Without the catalog every total is reported, and the page still offers stars only where they work.
-  const ids = await rateableIds(env, request.url);
+  // database. They count again if it can be rated again.
   const ratings = {};
-  for (const r of rows) if (!ids || ids.has(r.port_id)) ratings[r.port_id] = [r.n, r.sum];
+  for (const r of rows) if (ids.has(r.port_id)) ratings[r.port_id] = [r.n, r.sum];
   const reason = whyNot(env);
   const body = { version: 1, open: !reason, ...(reason ? { reason } : {}), scale: SCALE, ratings };
   // The totals are public figures, so any page may read them.
