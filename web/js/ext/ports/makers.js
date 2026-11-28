@@ -30,7 +30,7 @@ const DAY_MS = 86_400_000;
 
 const login = (value) => (typeof value === "string" && LOGIN.test(value) ? value : null);
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-/** A map that can be opened: an EarthCiv edition, or a community map with a site (as ./ratings.js rateable()). */
+/** A map that can be opened: an EarthCiv edition, or a community map with a site, inside EarthCiv or in a new tab. */
 const opens = (port) => port.status === "merged" || (port.status === "live" && !!port.url);
 
 /** A map's repository star count when its repository belongs to the credited maker, or null otherwise. */

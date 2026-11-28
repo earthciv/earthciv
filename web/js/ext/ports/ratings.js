@@ -6,8 +6,8 @@
 //     ratings are not open, and the world view then shows no stars at all.
 //   * The server counts one rating per map from each network and never sees a name or an account. Which stars this
 //     visitor picked is remembered in this browser (localStorage), only to show them again.
-//   * A map can be rated when it can be opened: an EarthCiv edition or a community map with a site. Source code
-//     alone, and a link a visitor added for themselves, cannot.
+//   * A map can be rated here when it opens here: an EarthCiv edition, or a community map shown inside EarthCiv. A
+//     map that opens only in a new tab cannot, nor can source code alone or a link a visitor added for themselves.
 //   * Shown inside another site's frame, the page offers no stars to click (the averages stay): that site could cover
 //     the frame and steer its visitors' clicks onto a star.
 //
@@ -21,9 +21,9 @@ const STAR_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="t
 
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
-/** A map can be rated when it can be opened (the same rule as functions/data/ratings.json.js). */
+/** A map can be rated when it opens inside EarthCiv (the same rule as functions/data/ratings.json.js). */
 export function rateable(port) {
-  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url));
+  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url && port.embed === true));
 }
 
 /** A map's [number of ratings, sum of stars] after one visitor's rating goes from `was` to `now` stars (0: none). */

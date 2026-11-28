@@ -1,6 +1,7 @@
 // Ratings of the maps in the world view's catalog (web/data/ports.json): one to five stars each.
 //
-//   GET  /data/ratings.json                              every rated map's [number of ratings, sum of their stars]
+//   GET  /data/ratings.json                              every rated map's [number of ratings, sum of their stars],
+//                                                        for the maps that can be rated (rateable below)
 //   POST /data/ratings.json  {"port": "<id>", "stars": 1-5}   give or change a rating; "stars": 0 takes it back
 //
 // This is a Cloudflare Pages Function, and it answers at the address of the static file web/data/ratings.json. That
@@ -86,9 +87,10 @@ function json(body, status = 200, headers = {}) {
 
 const refuse = (status, error, headers) => json({ ok: false, error }, status, headers);
 
-/** A map can be rated when it can be opened: an EarthCiv edition or a community map with a site, not source code alone. */
+/** A map can be rated when it opens inside EarthCiv: an EarthCiv edition or a community map shown in its frame. A map
+ *  that opens only in a new tab cannot, nor can source code alone. */
 export function rateable(port) {
-  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url));
+  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url && port.embed === true));
 }
 
 // The ids that can be rated, from the catalog this deployment serves. Kept for a minute in this isolate.
@@ -187,8 +189,12 @@ async function summary(context) {
     console.error("ratings: could not read the totals", err);
     return context.next();
   }
+  // A map that can no longer be rated (it opens only in a new tab now, or left the catalog) keeps its ratings in the
+  // database, but they are not reported, so nothing shows a rating it cannot take. They count again if it can be
+  // rated again. Without the catalog every total is reported, and the page still offers stars only where they work.
+  const ids = await rateableIds(env, request.url);
   const ratings = {};
-  for (const r of rows) ratings[r.port_id] = [r.n, r.sum];
+  for (const r of rows) if (!ids || ids.has(r.port_id)) ratings[r.port_id] = [r.n, r.sum];
   const reason = whyNot(env);
   const body = { version: 1, open: !reason, ...(reason ? { reason } : {}), scale: SCALE, ratings };
   // The totals are public figures, so any page may read them.
