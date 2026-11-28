@@ -509,7 +509,8 @@ def build_lenses(props, shapes, pop, year, county, econ, pct, owners):
          "values": spread(growth)},
     ]
     for bands, id, name, emoji, ramp, words in AGE_LENSES:
-        people = [sum(population(age=b)[0][k][year] for b in bands) for k in keys]
+        by_band = [population(age=b)[0] for b in bands]  # one read of the table per band, not per district
+        people = [sum(band[k][year] for band in by_band) for k in keys]
         lenses.append({
             "id": id, "group": "people", "name": name, "icon": "l-people", "emoji": emoji, "unit": "share of residents",
             "format": "pct", "scale": "linear", "higher_is": "neutral", "source": "dosm_population", "ramp": ramp,
