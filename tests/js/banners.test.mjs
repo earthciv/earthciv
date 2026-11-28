@@ -52,14 +52,14 @@ function cities(rows, capital = "Ottawa") {
 }
 
 /** The banners drawn over `list`: [{name, x, y, w, h}] in screen px, in the order they were placed. */
-function banners(list, { selected = null } = {}) {
+function banners(list, { selected = null, bannerBounds = null } = {}) {
   const w = {
     grid: { R: 25, cx: (cell) => list[cell].x, cy: (cell) => list[cell].y },
     stateColor: [],
     raw: { owner: [] },
   };
   const cam = { w: 1280, h: 800, scale: 0.14, toScreen: (x, y) => [x, y] };
-  const state = { cities: list, selectedCity: selected, hoverCell: -1 };
+  const state = { cities: list, selectedCity: selected, hoverCell: -1, bannerBounds };
   return drawBanners(fakeContext(), cam, w, state, [], null).map((h) => ({ name: h.city.name, x: h.x, y: h.y, w: h.w, h: h.h }));
 }
 
@@ -73,6 +73,15 @@ test("the capital has a banner, though Montréal's would cover the spot above it
 test("the capital's banner leaves every bigger city its own", () => {
   const shown = names(banners(cities(CANADA)));
   for (const name of ["Toronto", "Montréal", "Vancouver", "Calgary"]) assert.ok(shown.includes(name), `${name}: ${shown.join(", ")}`);
+});
+
+test("the capital's label stays visible just below the top bar", () => {
+  const list = cities([["Ottawa", 1700014, 640, 87]]);
+  for (const selected of [null, list[0]]) {
+    const hits = banners(list, { selected, bannerBounds: { y0: 80, y1: 744 } });
+    assert.equal(hits[0]?.name, "Ottawa");
+    assert.ok(hits[0].y > 87, "the label fits below the city");
+  }
 });
 
 test("only being the capital puts Ottawa's banner on that crowded spot", () => {

@@ -643,7 +643,8 @@ function nearestFree(placed, x0, lo, hi, W, r0, r1) {
  * above the plate (the hit rect includes it).
  * bannerBounds (optional {x0, x1, y0, y1} css px): plates of cities near or just past the side edges (default: the
  * screen) are slid inside them, with the pointer still aimed at the city; a plate below its city ends above y1, and
- * one that fills an empty region (under the population floor) sits between y0 and y1.
+ * one that fills an empty region (under the population floor) sits between y0 and y1. The capital's plate
+ * also stays below y0 when its city is in the visible map.
  *
  * The national capital (world.js isCapital) is placed right after the selected city and skips the population floor.
  * Its plate takes the first of its spots (SPOTS_CAPITAL) after which every city bigger than it still gets a plate,
@@ -686,6 +687,7 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
         const dot = cityIsDot(city, Rpx);
         c = {
           sx, sy, m: measure(ctx, city, yields, nation, L),
+          keepVisible: (city === cap0 || (city === sel && isCapital(city))) && sy >= by0 && sy < by1,
           // Full city tiles (towers, the capitol dome) stand taller than a dot: lift the plate clear of them, and a
           // plate below the city clears the bottom of its hex.
           up: Math.max(10, Rpx * (dot ? 0.55 : 0.75)), down: Math.max(10, Rpx * (dot ? 0.55 : 0.85)),
@@ -708,6 +710,7 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
     const tab = tiered && c.badge0 ? TAB_H : 0;
     const y = below ? Math.round(sy + c.down) : Math.round(sy - c.up - height);
     if (below && y + height + GAP_Y > by1) return null; // under the lens dock, or off the screen
+    if (!below && c.keepVisible && y - tab < by0) return null; // the capital's plate would sit under the top bar
     const r0 = below ? y - POINTER - GAP_Y : y - GAP_Y - tab;
     const rh = height + POINTER + 2 * GAP_Y + tab;
     const mid = Math.round(sx - width / 2);
@@ -749,7 +752,7 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
       const tierOk = pinned || city === hov || (focus != null ? c.focused : tiers < tierMax);
       const tiered = showYields && c.m.parts.length > 0 && tierOk;
       const capSpots = typeof capSpot === "number" ? [SPOTS_CAPITAL[capSpot]] : SPOTS_CAPITAL;
-      const spots = pinned ? SPOTS_PINNED : isCap ? capSpots : SPOTS;
+      const spots = isCap ? capSpots : pinned && !c.keepVisible ? SPOTS_PINNED : SPOTS;
       let p = tiered && spots[0] === ABOVE ? fit(c, placed, true, ABOVE) : null;
       for (let i = 0; !p && i < spots.length; i++) p = fit(c, placed, false, spots[i]);
       const bigger = capital && !pinned && !isCap && city.population > capital.population;

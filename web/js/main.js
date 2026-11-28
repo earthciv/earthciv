@@ -275,17 +275,18 @@ async function main() {
     const [dx, dy] = cam.toScreen(vp.x0, vp.y0);
     ctx.drawImage(cache.cv, dx, dy, vp.cssW * k, vp.cssH * k);
 
+    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet). A plate
+    // set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px), and the capital and
+    // the plates that fill empty regions also stay below the top bar.
+    const d = isMobile() ? null : dockState();
+    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y0: topbarH, y1: cam.h - 56 };
+
     const s = cam.scale;
     ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (cam.w / 2 - cam.x * s), dpr * (cam.h / 2 - cam.y * s));
     drawOverlay(ctx, cam, w, state);
     if (state.highlight) drawHighlight(ctx, cam, w, state, { resourceHits: cache.hits.resources, items: resources?.items, cityById });
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMax: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet). A plate
-    // set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px), and the plates that
-    // fill empty regions also stay below the top bar.
-    const d = isMobile() ? null : dockState();
-    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y0: topbarH, y1: cam.h - 56 };
     hits = drawBanners(ctx, cam, w, state, nation.yields, nation);
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMin: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

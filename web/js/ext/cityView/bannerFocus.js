@@ -44,8 +44,10 @@ export function createBannerFocus(app) {
     const t = typeof ctx.getTransform === "function" ? ctx.getTransform() : null;
     const k = t && t.a > 0 ? t.a : 1;
     pctx.setTransform(k, 0, 0, k, 0, 0);
-    const st = { cities: [], selectedCity: model.city, bannerFocus: model.city, hoverCell: -1, nation: app.data.nation, cityBadges: app.state.cityBadges };
-    const h = drawBanners(pctx, cam, app.w, st, app.data.nation?.yields || [], app.data.nation)[0];
+    const { nation } = app.data;
+    const { cityBadges, bannerBounds } = app.state;
+    const st = { cities: [], selectedCity: model.city, bannerFocus: model.city, hoverCell: -1, nation, cityBadges, bannerBounds };
+    const h = drawBanners(pctx, cam, app.w, st, nation?.yields || [], nation)[0];
     return h ? { x: h.x, y: h.y, w: h.w, h: h.h } : null;
   }
 
