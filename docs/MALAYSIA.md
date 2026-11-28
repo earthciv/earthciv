@@ -48,7 +48,8 @@ Thailand, Singapore, Brunei, Indonesia and the Philippines are drawn as neighbou
 was carved from, found from the fall in that parent's population between 2024 and 2025; Membakut is split between
 Beaufort and Papar in proportion to their falls.
 
-**People lenses.** Density, growth (2021 to the latest year) and non-citizens (share of residents). Ethnicity lenses
+**People lenses.** Density, growth (2021 to the latest year), non-citizens (share of residents), and children (under
+15) and older people (60 and over) as shares of residents, from DOSM's five-year age bands. Ethnicity lenses
 give each DOSM group as a share of **citizens** (latest mid-year estimate); religion lenses give each group as a share
 of **all residents** (Census 2020, Kawasanku area profiles). Every ethnicity and religion lens uses the same neutral
 colour scale on a fixed 0-100% domain. There is no "largest group" lens, and nothing else in the edition (yields,
@@ -173,7 +174,7 @@ mean of its members' medians (an approximation); Gini, poverty and mean income a
 city carries no Gini.
 
 **Lenses added** (group Prosperity): Income (median monthly household income), Poverty, Inequality (Gini), Unemployment,
-GDP per resident; (group Land): Tree cover, Cropland, Built-up. The land-cover map counts rubber and other tree crops as
+Labour force participation (labour force ÷ residents aged 15–64, Labour Force Survey 2024), GDP per resident; (group Land): Tree cover, Cropland, Built-up. The land-cover map counts rubber and other tree crops as
 trees (oil palm is moved to cropland: see Resources and land), so "Tree cover" is not natural forest (renamed from
 Canada's "Forest" for that reason).
 
@@ -182,7 +183,7 @@ spending, poverty, Gini, unemployment, the four worker estimates, the city the d
 representative hex. Worker columns are estimates, as above.
 
 **Gaps.** No district-level workers by industry (estimated), no nominal GDP by state or district, no GDP after 2020 by
-district, no median age or education lenses yet, and no rent or home-value figures (left empty). Poverty and Gini are
+district, no median age (age shares instead) or education lenses yet, and no rent or home-value figures (left empty). Poverty and Gini are
 empty for a handful of districts as described above.
 
 ## Resources and land (`resources.json`; states' `energy`, `land`, `forest_reserve`)

@@ -323,7 +323,8 @@ class Economy:
         rows = {}
         for r in read_csv("lfs_district.csv"):  # the 2025 districts have empty 2024 rows
             if int(r["date"][:4]) == LFS_DISTRICT_YEAR and number(r["lf"]) is not None:
-                rows[(r["state"], r["district"])] = {"lf": number(r["lf"]) * 1000, "unemployed": number(r["lf_unemployed"]) * 1000}
+                rows[(r["state"], r["district"])] = {"lf": number(r["lf"]) * 1000, "unemployed": number(r["lf_unemployed"]) * 1000,
+                                                     "outside": number(r["lf_outside"]) * 1000}
         self.labour = fold_counts(rows, self.new_districts)
         # The state table runs a year past the district one: states and Malaysia take its last year, and its row for
         # the district year stands in for the areas that are one district.
@@ -332,7 +333,8 @@ class Economy:
             year = int(r["date"][:4])
             if r["sex"] == "both" and year in (LFS_DISTRICT_YEAR, LFS_STATE_YEAR):
                 by_year[year][r["state"]] = {"lf": number(r["lf"]) * 1000,
-                                             "unemployed": number(r["lf_unemployed"]) * 1000}
+                                             "unemployed": number(r["lf_unemployed"]) * 1000,
+                                             "outside": number(r["lf_outside"]) * 1000}
         self.state_labour, self.state_labour_district_year = by_year[LFS_STATE_YEAR], by_year[LFS_DISTRICT_YEAR]
         for year, table in by_year.items():
             if set(self.by_state) - set(table):
@@ -543,6 +545,7 @@ def add_ranks(states, places):
 # ---------------------------------------------------------------------------------------------------- lenses
 INCOME_RAMP = ["#3a1c0b", "#7a4413", "#b8781f", "#e3b23c", "#f6e27f", "#fffbe0"]
 POVERTY_RAMP = ["#03051a", "#4c1d4b", "#a11a5b", "#e83f3f", "#f69c73", "#faebdd"]
+PARTICIPATION_RAMP = ["#0f1a2e", "#1f3d63", "#2f6b8f", "#4f9fa8", "#93cfb4", "#e6f5d0"]
 GINI_RAMP = ["#0b1f2a", "#1d4f63", "#2f8a8a", "#8cc7a1", "#e6e29a", "#fff6d0"]
 LAND_RAMPS = {
     "forest": ["#0b1f0f", "#14401c", "#1f6b2b", "#3a9443", "#7fc07a", "#d5efcd"],
@@ -596,6 +599,13 @@ def lenses(econ, spread, pct, owners, year, domain):
              "publishes by district) in the district that covers most of the hex. Perlis, Kuala Lumpur, Labuan and "
              "Putrajaya show their state's rate.",
              [d["unemployment"] for d in ds], source="dosm_lfs"),
+        lens("participation", "Labour force participation", "l-income", "👷", "labour force ÷ working-age residents",
+             "pct", "neutral", PARTICIPATION_RAMP,
+             f"People working or looking for work ÷ all residents aged 15–64 in {LFS_DISTRICT_YEAR} (Labour Force Survey; "
+             "the latest year DOSM publishes by district) in the district that covers most of the hex. Perlis, Kuala "
+             "Lumpur, Labuan and Putrajaya show their state's rate.",
+             [round(lab["lf"] / (lab["lf"] + lab["outside"]), 4) for lab in (econ.labour[k] for k in econ.keys)],
+             source="dosm_lfs"),
         lens("gdp_pc", "GDP per resident", "l-income", "🏭", f"{GDP_UNIT}, per resident", "usd", "good", INCOME_RAMP,
              f"District GDP in {econ.gdp_year} at constant 2015 prices ÷ its residents that year, for the district that "
              "covers most of the hex. Output is counted where it is produced, so districts with big industry or "
