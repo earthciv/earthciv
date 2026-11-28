@@ -78,8 +78,10 @@ scale.
   are the U.S. floors scaled by Canada's share of the U.S. population (12%), so a city gets its banner at the zoom
   where a U.S. city of the same share would; zoom in for more. The capital, Ottawa, always has a banner, as
   Washington does: the capital's banner is placed right after a selected city's, in the spot that leaves room for
-  the bigger cities' banners, and a banner with no room above its city slides sideways or sits below it. The map
-  menu at the top left is the U.S. edition's, naming Canada.
+  the bigger cities' banners, and a banner with no room above its city slides sideways or sits below it. Where no
+  banner is near, towns under the floor get one too, so the north is not left blank: Whitehorse, Yellowknife,
+  Prince George, Thompson, Thunder Bay and Sept-Îles in a 1280×800 window. Nunavut has no census agglomeration, so
+  no banner. The map menu at the top left is the U.S. edition's, naming Canada.
 - **City View.** The U.S. City View with Canadian data. Districts use the U.S. catalog and rule (location quotient of
   at least 1.25, specialities at 3, up to five, ranked by workers above the national norm) on 2021 Census counts of
   employed residents by detailed NAICS 2017 industry, so workers are counted where they live, not where the jobs are;

@@ -281,10 +281,11 @@ async function main() {
     if (state.highlight) drawHighlight(ctx, cam, w, state, { resourceHits: cache.hits.resources, items: resources?.items, cityById });
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMax: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet), and a
-    // plate set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px).
+    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet). A plate
+    // set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px), and the plates that
+    // fill empty regions also stay below the top bar.
     const d = isMobile() ? null : dockState();
-    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y1: cam.h - 56 };
+    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y0: topbarH, y1: cam.h - 56 };
     hits = drawBanners(ctx, cam, w, state, nation.yields, nation);
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMin: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

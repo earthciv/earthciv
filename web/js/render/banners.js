@@ -15,7 +15,8 @@
 // population floor that falls with zoom and a count budget that scales with the screen area. A plate takes the
 // first free spot of: centred above its city; above, slid sideways with its pointer still on the city; below the
 // city, pointing up. The capital takes the spot that leaves room for the most cities bigger than it, so it is
-// labelled wherever it is in view without pushing a bigger city off the map. Only the biggest few cities in view
+// labelled wherever it is in view without pushing a bigger city off the map. Room left over goes to cities under the
+// floor where no other banner is near, so a sparse region still has names. Only the biggest few cities in view
 // (plus the selected and hovered ones and the capital) get the yield tier. Plates keep a margin from each other,
 // so they never sit edge to edge. state.bannerFocus fades every other banner (see drawBanners).
 //
@@ -55,6 +56,9 @@ const TIER_AREA = 250000; // ...and one per this many square px of screen, so a 
 const GAP_X = 5, GAP_Y = 4; // collision margin on each side, so placed plates stay 10px / 8px apart
 const EDGE = 8; // plates of on-screen cities stay this far inside the screen edges
 const PTR_IN = 9; // a pointer stays this far inside its plate's ends (clear of the rounded corner)
+// Room to spare: a city under the population floor still gets its banner where no other banner is within this many
+// px of it, sideways and up or down, on top of the usual margin (the far north, the open prairie).
+const ROOM_X = 24, ROOM_Y = 14;
 const FOCUS_FADE = 0.35; // alpha of the other banners while state.bannerFocus is set
 
 // Frame metals: [top, middle, bottom]
@@ -597,8 +601,9 @@ function capitalOf(cities) {
 // stands to that side of the city. Only the first spot, ABOVE, takes a tiered plate (with the yield row); a city
 // whose tiered plate does not fit there tries the one-line plate in every spot.
 const ABOVE = { below: false, slide: "pref" };
+const BELOW = { below: true, slide: "pref" };
 const SPOTS_PINNED = [ABOVE];
-const SPOTS = [ABOVE, { below: false, slide: "near" }, { below: true, slide: "pref" }, { below: true, slide: "near" }];
+const SPOTS = [ABOVE, { below: false, slide: "near" }, BELOW, { below: true, slide: "near" }];
 // The capital's spots, every one of which drawBanners tries (see there) before it settles on one.
 const SPOTS_CAPITAL = [
   ABOVE, { below: false, slide: "left" }, { below: false, slide: "right" },
@@ -636,8 +641,9 @@ function nearestFree(placed, x0, lo, hi, W, r0, r1) {
  * the yield tier, for the City View). A tiered banner that would collide falls back to the one-line plate.
  * cityBadges (optional Map id → {label, color "#rrggbb"}): a tiered banner of such a city carries its city-type tab
  * above the plate (the hit rect includes it).
- * bannerBounds (optional {x0, x1, y1} css px): plates of cities near or just past the side edges (default: the
- * screen) are slid inside them, with the pointer still aimed at the city; a plate below its city ends above y1.
+ * bannerBounds (optional {x0, x1, y0, y1} css px): plates of cities near or just past the side edges (default: the
+ * screen) are slid inside them, with the pointer still aimed at the city; a plate below its city ends above y1, and
+ * one that fills an empty region (under the population floor) sits between y0 and y1.
  *
  * The national capital (world.js isCapital) is placed right after the selected city and skips the population floor.
  * Its plate takes the first of its spots (SPOTS_CAPITAL) after which every city bigger than it still gets a plate,
@@ -662,7 +668,7 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
   // Horizontal room for plates: the screen, or state.bannerBounds {x0, x1} (css px) beside an open dock. A plate set
   // below its city ends above bannerBounds.y1 (the lens dock or a phone's bottom bar), else the screen's bottom.
   const bx0 = state.bannerBounds?.x0 ?? 0, bx1 = state.bannerBounds?.x1 ?? cam.w;
-  const by1 = state.bannerBounds?.y1 ?? cam.h;
+  const by0 = state.bannerBounds?.y0 ?? 0, by1 = state.bannerBounds?.y1 ?? cam.h;
   const badges = state.cityBadges || null; // Map id → {label, color}: the city-type tab on tiered banners
   const cap0 = capitalOf(cities);
   const capital = cap0 && cap0 !== sel && cap0.cell != null ? cap0 : null;
@@ -762,7 +768,7 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
       }
       out.push({ city, c, p });
     }
-    return { out, score };
+    return { out, score, placed, shown };
   };
 
   let plan = null;
@@ -783,6 +789,32 @@ export function drawBanners(ctx, cam, w, state, yields, nation = state.nation) {
     plan = plan || best;
   }
   plan = plan || layout(null);
+
+  // Room left over: a city under the population floor still gets its banner where no other banner is near (ROOM_X,
+  // ROOM_Y), biggest first, up to the count budget, so a sparse region is not left without a name. Every such city
+  // tries the spot centred above it before any tries the one below, so none loses its usual spot to a neighbour's
+  // banner set below. These plates stay clear of the top bar and the lens dock, and never slide away from their city.
+  if (plan.shown < budget && minPop > 0) {
+    const done = new Set(plan.out.map((e) => e.city));
+    const roomy = (r) => !plan.placed.some((p) => r.x - ROOM_X < p.x + p.w && p.x < r.x + r.w + ROOM_X &&
+      r.y - ROOM_Y < p.y + p.h && p.y < r.y + r.h + ROOM_Y);
+    for (const spot of [ABOVE, BELOW]) {
+      for (const city of cities) {
+        if (plan.shown >= budget) break;
+        if (city.population >= minPop || done.has(city)) continue;
+        const c = prep(city);
+        if (!c || c.sx < 0 || c.sx > cam.w) continue;
+        const p = fit(c, plan.placed, false, spot);
+        if (!p || !roomy(p.rect)) continue;
+        const top = p.below ? p.y - POINTER : p.y, bottom = p.y + p.height + (p.below ? 0 : POINTER);
+        if (top < by0 || bottom > by1) continue;
+        plan.placed.push(p.rect);
+        plan.out.push({ city, c, p });
+        plan.shown++;
+        done.add(city);
+      }
+    }
+  }
 
   const hits = [];
   for (const { city, c, p } of plan.out) {

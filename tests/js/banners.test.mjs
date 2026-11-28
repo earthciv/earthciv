@@ -108,6 +108,15 @@ test("a selected city goes first, and the capital still has its banner", () => {
   assert.ok(names(hits).includes("Ottawa"));
 });
 
+test("a town under the population floor has a banner where no other banner is near, and not beside a big city", () => {
+  // At this zoom a city needs 240,000 people for its banner. Whitehorse sits alone in the north; Guelph next to
+  // Toronto, Hamilton and Kitchener.
+  const list = cities([...CANADA, ["Guelph", 183134, 790, 705], ["Whitehorse", 39584, 240, 300]]);
+  const shown = names(banners(list));
+  assert.ok(shown.includes("Whitehorse"), shown.join(", "));
+  assert.ok(!shown.includes("Guelph"), shown.join(", "));
+});
+
 test("the U.S. capital is found by its metro id when cities carry no capital flag", () => {
   // New York's banner would cover Washington's spot; Washington is CBSA 47900 (world.js isCapital).
   const list = [
