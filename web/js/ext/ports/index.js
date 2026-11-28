@@ -1115,10 +1115,6 @@ export function install(app) {
       if (cur?.url) loadIframeForPort(cur);
       return;
     }
-    if (act === "dismiss-notice") {
-      overlay.querySelector("#ports-vnotice").hidden = true;
-      return;
-    }
     if (d.kind !== undefined) return setKind(!d.kind || d.kind === ui.kind ? null : d.kind);
     if (d.removeCustom) {
       customPorts = customPorts.filter((x) => x.id !== d.removeCustom);
@@ -2051,14 +2047,10 @@ export function install(app) {
     loadingBy.innerHTML = maker ? `${avatarHtml(maker)}<span>a map by <b>${esc(maker.name)}</b></span>` : "";
     loadingExt.href = parsed.href;
     loading.hidden = false;
-    notice.hidden = false;
-    notice.innerHTML = `${maker
-      ? `<span class="ports-vnotice-by">${avatarHtml(maker)}<span><b>${esc(port.name)}</b> is a map by ${makerNameHtml(maker)}, shown here from <b>${esc(parsed.host)}</b>. It is their work, not EarthCiv's.</span></span>`
-      : `<span>A map from <b>${esc(parsed.host)}</b>, shown inside EarthCiv. It is not part of EarthCiv.</span>`}
-      <div class="ports-vnotice-actions">
-        <a class="ports-btn" href="${esc(parsed.href)}" target="_blank" rel="noopener noreferrer">Open it in a new tab ${EXT_SVG}</a>
-        <button type="button" class="ports-btn ports-btn-ghost" data-act="dismiss-notice" aria-label="Dismiss notice">✕</button>
-      </div>`;
+    // Nothing lies over a map once it shows: many keep their own buttons along the bottom edge, and the bar above
+    // already names the map and its maker and opens it in a new tab. The note is for a map that cannot show here.
+    notice.hidden = true;
+    notice.replaceChildren();
     iframe.title = `${port.name} (community map)`;
     iframe.src = parsed.href;
   }

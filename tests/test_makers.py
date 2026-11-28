@@ -110,17 +110,26 @@ class MakersWiringTest(unittest.TestCase):
 
     def test_world_view_names_the_maker_wherever_a_map_is_shown(self):
         self.assertRegex(self.index, r'import \{[^}]*\bmakerOf\b[^}]*\} from "\./makers\.js";')
-        # On a map's card, in both map bars, on its loading screen and in the note under it.
+        # On a map's card, in both map bars and on its loading screen.
         self.assertIn('<div class="pc-by">by ${makerNameHtml(maker)}</div>', self.index)
         self.assertIn("renderTopbarMaker(editionMaker,", self.index)
         self.assertIn('renderTopbarMaker(overlay.querySelector(".ports-vbar .map-maker"), port);', self.index)
         self.assertIn('id="ports-vloading-by"', self.index)
-        self.assertIn('class="ports-vnotice-by"', self.index)
         # The big button names the maker before anything else.
         self.assertIn("const by = maker ? `by ${maker.name} · ` : \"\";", self.index)
         css = read("web", "css", "ports.css")
         for cls in (".mk-av", ".mk-pic", ".mk-name", ".pc-by", ".map-maker-chip", ".wv-makers", ".mk-row", ".mk-map"):
             self.assertIn(cls, css)
+
+    def test_nothing_lies_over_a_map_that_shows(self):
+        # The viewer's bar names the open map and its maker, so no note covers the map, whose own buttons are often
+        # along its bottom edge. The one note stands in for a map the browser will not show here (plain HTTP).
+        load = re.search(r"\n  function loadIframeForPort\(port\) \{\n(.*?)\n  \}\n", self.index, re.S)
+        self.assertIsNotNone(load, "loadIframeForPort not found in web/js/ext/ports/index.js")
+        self.assertEqual(load.group(1).count("notice.hidden = false;"), 1)
+        self.assertIn("uses plain HTTP, which browsers do not show inside an HTTPS page.", load.group(1))
+        self.assertIn("notice.hidden = true;", load.group(1))
+        self.assertNotIn("dismiss-notice", self.index)
 
     def test_an_editions_row_names_its_maker_as_the_map_bars_do(self):
         # On the country list every edition has the same plain row: its emblem and name, its maker's face and
