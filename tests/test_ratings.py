@@ -66,7 +66,9 @@ class RatingsFilesTest(unittest.TestCase):
         # entry in the list of maps, kept up to date with the cards, and answering a click on a star.
         index = (ROOT / "web" / "js" / "ext" / "ports" / "index.js").read_text(encoding="utf-8")
         self.assertIn('editionRating.className = "rt rt-bar";', index)
-        self.assertIn("switcher.append(editionMaker, editionKind, editionRating);", index)
+        # with the edition's Share button after it (tests/test_map_pages.py)
+        self.assertIn("editionActs.append(editionRating);", index)
+        self.assertIn("switcher.append(editionMaker, editionKind, editionActs);", index)
         self.assertIn("editionRating.dataset.ratingOf = editionPort.id;", index)
         self.assertIn("ratings.sync(editionRating?.parentElement, portById);", index)
         self.assertIn(

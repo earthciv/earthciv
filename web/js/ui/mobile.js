@@ -3,7 +3,8 @@
 // Help, Almanac and any extension buttons) on top, the national yields below. This wires the parts CSS cannot:
 //  * the menu button and closing the menu;
 //  * the search field's close button (the field opens over the first row while it has focus);
-//  * dropping the word "World" and the map count, then the maker's name, when the first row is too narrow for them;
+//  * dropping the word "World" and the map count, then the maker's name, when the first row is too narrow for them
+//    (and the map's star button, which keeps its size);
 //  * the map's Home button;
 //  * on iOS, stopping Safari from zooming the page into a text field or menu whose font is under 16 px.
 import { icon } from "./icon.js";
@@ -94,9 +95,16 @@ export function initMobile({ app } = {}) {
     let rest = gap; // the spacer between the switcher and Search takes a gap of its own
     for (const el of [searchBox, menuBtn]) if (el) rest += el.offsetWidth + gap;
     if (!world) return;
+    // Anything else the row shows keeps its size: the map's star button (ext/ports), which a phone shows in place of
+    // the stars.
+    let fixed = 0;
+    for (const el of switcher.children) {
+      if (el.contains(mapMenu) || el === world || el.classList.contains("map-maker") || !el.offsetWidth) continue;
+      fixed += el.offsetWidth + inner;
+    }
     // World gives up its word and its map count together. Then the maker's name is cut short, and where less than
     // MAKER_MIN would be left of the chip, it shows the maker's picture alone.
-    const room = avail - rest - menuWidth - inner; // for World and the maker after it
+    const room = avail - rest - menuWidth - inner - fixed; // for World and the maker after it
     const makerNeeds = makerWidth ? inner + makerWidth : 0;
     if (world.offsetWidth + makerNeeds > room) bar.classList.add("tb-tight", "tb-tight-count");
     const makerRoom = room - world.offsetWidth - inner; // World measured again, as it now shows

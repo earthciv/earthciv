@@ -7,6 +7,8 @@ body:
       value: |
         Thank you for building a map. The [world map](https://earthciv.org/) at earthciv.org lists the maps made in the style of usaciv, each with its author's name and picture and, where its code is on GitHub, a link to its repository. It only points to your map: your code and data stay in your repository, under your licence.
 
+        Once it is listed, your map has a page of its own to share, `earthciv.org/map/<id>/`, which previews as your map and opens it on EarthCiv with stars to rate it. The Share button beside your map gives the link.
+
         Look for your map there first, because it may already be listed. The search box at the top of the world map finds a map by its name, its author or its repository's name (`owner/name`, not the full address). The world map's own "Add its link" saves a link in your browser only: this form is what lists a map for everyone.
 
         To add a map, give its repository or its live address, and the places it covers. To correct or remove a listing, fill in the first two fields and whatever should change.

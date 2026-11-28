@@ -871,14 +871,14 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
   if (canvas.parentElement) ro?.observe(canvas.parentElement);
   resize();
 
-  // Zoom and centre for a country: its main parts fill about half the area left uncovered by panels.
-  function countryView(c) {
+  // Zoom and centre for a country: its main parts fill about half the area left uncovered by panels (`fill` of it).
+  function countryView(c, fill = 0.55) {
     const visW = Math.max(60, cssW - insets.right);
     const visH = Math.max(60, cssH - insets.bottom);
     const bw = Math.max(1e-4, c.mbox[2] - c.mbox[0]);
     const bh = Math.max(1e-4, c.mbox[3] - c.mbox[1]);
     const s1 = baseScale();
-    let zoom = Math.min((visW * 0.55) / (bw * s1), (visH * 0.55) / (bh * s1));
+    let zoom = Math.min((visW * fill) / (bw * s1), (visH * fill) / (bh * s1));
     zoom = Math.max(1.4, Math.min(c.size * s1 < 4 ? 7 : 10, zoom));
     const s = s1 * zoom;
     const midX = (c.mbox[0] + c.mbox[2]) / 2;
@@ -925,6 +925,17 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
       const c = countryById.get(iso);
       if (!c) return;
       flyTo(countryView(c), animate ? 560 : 0);
+    },
+    /**
+     * The same for several countries (a map of several): their main parts together fill `fill` of it, about half
+     * unless asked otherwise (the picture of a map's own page fills more, dev/social-cards.js).
+     */
+    focusCountries(isos, { animate = true, fill = 0.55 } = {}) {
+      const cs = (isos || []).map((iso) => countryById.get(iso)).filter(Boolean);
+      if (cs.length < 2) return cs.length ? flyTo(countryView(cs[0], fill), animate ? 560 : 0) : undefined;
+      const mbox = [0, 1, 2, 3].map((i) => (i < 2 ? Math.min : Math.max)(...cs.map((c) => c.mbox[i])));
+      const mid = { cx: (mbox[0] + mbox[2]) / 2, cy: (mbox[1] + mbox[3]) / 2 };
+      flyTo(countryView({ mbox, ...mid, size: Math.max(...cs.map((c) => c.size)) }, fill), animate ? 560 : 0);
     },
     /** Pan (without zooming) so the country's label point sits inside the uncovered area, if it is not already. */
     revealCountry(iso) {

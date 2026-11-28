@@ -2,7 +2,8 @@
 site, ready to upload as /usaciv/. (dist/usaciv/ is the same folder unzipped, kept for local testing.)
 
 The site gets a copy of the source code as usaciv-source.zip, linked from the in-app help, so anyone can download,
-run and remix it. Archive entries are sorted and given fixed timestamps. Social cards are rendered with headless Chromium.
+run and remix it. Archive entries are sorted and given fixed timestamps. Social cards are rendered with headless Chromium,
+for the share pages and for each map's own page (/map/<id>/, pipeline/share_pages.py).
 robots.txt and sitemap.xml are written from the site's address (index.html's og:url) and the edition index.
 """
 
@@ -92,10 +93,11 @@ def cmd_package() -> None:
             shutil.copy2(f, dst)
         scripts = _version_scripts(stage)
         index = stage / "index.html"
-        page = index.read_text(encoding="utf-8").replace("<html ", "<html data-share-pages ", 1)
+        # The share pages and every map's own page (/map/<id>/) are built below: the page links to them from now on.
+        page = index.read_text(encoding="utf-8").replace("<html ", "<html data-share-pages data-map-pages ", 1)
         page = page.replace('src="js/boot.js"', f'src="{scripts}/boot.js"', 1)
         index.write_text(page, encoding="utf-8")
-        share_count = build_share_pages(WEB, stage, scripts)
+        share_count, map_count = build_share_pages(WEB, stage, scripts)
         page_count = build_crawler_files(WEB, stage)
         n_site = sum(1 for _ in _files(stage, ["."]))
 
@@ -113,6 +115,6 @@ def cmd_package() -> None:
 
     mb = lambda b: f"{b / 1e6:.1f} MB"
     print(f"{bundle.name}  ({mb(site_size)})  ← upload this: it unzips to {NAME}/ ({n_site} site files + {SOURCE_ZIP})")
-    print(f"  {share_count} share pages with preview images")
+    print(f"  {share_count} share pages and {map_count} maps' own pages, with preview images")
     print(f"  robots.txt and sitemap.xml ({page_count} pages)")
     print(f"  {SOURCE_ZIP}: {len(src_files)} files, {mb(src_size)}")
