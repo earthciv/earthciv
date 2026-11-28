@@ -1,6 +1,7 @@
 // Ratings of the maps in the world view's catalog (web/data/ports.json): one to five stars each.
 //
-//   GET  /data/ratings.json                              every rated map's [number of ratings, sum of their stars]
+//   GET  /data/ratings.json                              every rated map's [number of ratings, sum of their stars],
+//                                                        for the maps that can be rated (rateable below)
 //   POST /data/ratings.json  {"port": "<id>", "stars": 1-5}   give or change a rating; "stars": 0 takes it back
 //
 // This is a Cloudflare Pages Function, and it answers at the address of the static file web/data/ratings.json. That
@@ -86,9 +87,10 @@ function json(body, status = 200, headers = {}) {
 
 const refuse = (status, error, headers) => json({ ok: false, error }, status, headers);
 
-/** A map can be rated when it can be opened: an EarthCiv edition or a community map with a site, not source code alone. */
+/** A map can be rated when it opens inside EarthCiv: an EarthCiv edition or a community map shown in its frame. A map
+ *  that opens only in a new tab cannot, nor can source code alone. */
 export function rateable(port) {
-  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url));
+  return !!port && (port.status === "merged" || (port.status === "live" && !!port.url && port.embed === true));
 }
 
 // The ids that can be rated, from the catalog this deployment serves. Kept for a minute in this isolate.
@@ -99,7 +101,8 @@ async function rateableIds(env, requestUrl) {
     const res = await env.ASSETS.fetch(new URL("ports.json", requestUrl));
     if (!res.ok) throw new Error(`ports.json: HTTP ${res.status}`);
     const doc = await res.json();
-    catalog = { at: Date.now(), ids: new Set((doc.ports || []).filter(rateable).map((p) => p.id)) };
+    if (!Array.isArray(doc.ports)) throw new Error("ports.json: missing ports list");
+    catalog = { at: Date.now(), ids: new Set(doc.ports.filter(rateable).map((p) => p.id)) };
   } catch (err) {
     console.error("ratings: could not read the catalog", err);
   }
@@ -178,8 +181,10 @@ async function totalsOf(db, port) {
 async function summary(context) {
   const { request, env } = context;
   const db = env.RATINGS_DB;
-  // Without the database, or when it cannot be read, the static file answers: "open": false and no ratings.
+  // Without the database or a usable catalog, the static file answers: "open": false and no ratings.
   if (!db) return context.next();
+  const ids = await rateableIds(env, request.url);
+  if (!ids) return context.next();
   let rows;
   try {
     rows = (await withSchema(db, () => db.prepare("SELECT port_id, n, sum FROM totals WHERE n > 0 ORDER BY port_id").all())).results;
@@ -187,8 +192,10 @@ async function summary(context) {
     console.error("ratings: could not read the totals", err);
     return context.next();
   }
+  // A map that can no longer be rated (it opens only in a new tab now, or left the catalog) keeps its ratings in the
+  // database. They count again if it can be rated again.
   const ratings = {};
-  for (const r of rows) ratings[r.port_id] = [r.n, r.sum];
+  for (const r of rows) if (ids.has(r.port_id)) ratings[r.port_id] = [r.n, r.sum];
   const reason = whyNot(env);
   const body = { version: 1, open: !reason, ...(reason ? { reason } : {}), scale: SCALE, ratings };
   // The totals are public figures, so any page may read them.

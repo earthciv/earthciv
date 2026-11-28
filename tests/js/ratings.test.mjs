@@ -20,7 +20,8 @@ const CATALOG = {
   ports: [
     { id: "us", status: "merged", editionId: "us", url: null },
     { id: "deciv", status: "live", url: "https://deciv.example/", embed: true },
-    { id: "frciv", status: "live", url: "https://frciv.example/", embed: false },
+    { id: "frciv", status: "live", url: "https://frciv.example/", embed: true },
+    { id: "vnciv", status: "live", url: "https://vnciv.example/", embed: false }, // opens only in a new tab
     { id: "jpciv", status: "repo", url: null, repo: "someone/jpciv" },
   ],
 };
@@ -65,8 +66,8 @@ const ASSETS = {
   fetch: async (url) => (new URL(url).pathname === "/data/ports.json" ? Response.json(CATALOG) : new Response("not found", { status: 404 })),
 };
 
-function site({ salt = "test-salt", closed = false, db = fakeD1() } = {}) {
-  const env = { ASSETS };
+function site({ salt = "test-salt", closed = false, db = fakeD1(), assets = ASSETS, handle = onRequest } = {}) {
+  const env = { ASSETS: assets };
   if (db) env.RATINGS_DB = db;
   if (salt) env.RATINGS_SALT = salt;
   if (closed) env.RATINGS_CLOSED = closed === true ? "1" : closed;
@@ -79,7 +80,7 @@ function site({ salt = "test-salt", closed = false, db = fakeD1() } = {}) {
       if (!h.has("content-type")) h.set("content-type", "application/json");
       if (!h.has("origin")) h.set("origin", SITE);
     }
-    const res = await onRequest({
+    const res = await handle({
       request: new Request(ENDPOINT, init),
       env,
       next: async () => new Response(STATIC_FILE, { headers: { "content-type": "application/json", "x-static": "1" } }),
@@ -148,13 +149,38 @@ test("one network counts once per map", async () => {
   assert.deepEqual((await s.get()).json.ratings, { deciv: [2, 10] });
 });
 
-test("only maps that can be opened can be rated", async () => {
+test("only maps that open inside EarthCiv can be rated", async () => {
   const s = site();
   assert.equal((await s.rate("jpciv", 4)).status, 404); // source code only
+  assert.equal((await s.rate("vnciv", 4)).status, 404); // opens only in a new tab
   assert.equal((await s.rate("nosuchmap", 4)).status, 404);
   assert.equal((await s.rate("us", 4)).status, 200);
   assert.equal((await s.rate("frciv", 4)).status, 200);
   assert.deepEqual(Object.keys((await s.get()).json.ratings).sort(), ["frciv", "us"]);
+});
+
+test("a map that can no longer be rated keeps its ratings, and they are not reported", async () => {
+  const s = site();
+  await s.rate("deciv", 4);
+  // Ratings given while each map could still be rated: vnciv opens only in a new tab now, and gone left the catalog.
+  const add = s.db.sqlite.prepare("INSERT INTO ratings (port_id, voter, stars, created_at, updated_at, day) VALUES (?, ?, ?, 0, 0, '2026-11-27')");
+  add.run("vnciv", "voter-a", 5);
+  add.run("gone", "voter-b", 3);
+  assert.deepEqual((await s.get()).json.ratings, { deciv: [1, 4] });
+  const kept = s.db.sqlite.prepare("SELECT port_id, n, sum FROM totals ORDER BY port_id").all().map((r) => ({ ...r }));
+  assert.deepEqual(kept, [{ port_id: "deciv", n: 1, sum: 4 }, { port_id: "gone", n: 1, sum: 3 }, { port_id: "vnciv", n: 1, sum: 5 }]);
+});
+
+test("without a usable catalog, ratings close until eligibility can be checked", async () => {
+  const { db, rate } = site();
+  await rate("deciv", 4);
+  // Load a fresh Function instance without the shared in-memory catalog.
+  const { onRequest: handle } = await import("../../functions/data/ratings.json.js?cold-catalog");
+  const assets = { fetch: async () => Response.json({}) };
+  const unavailable = site({ db, assets, handle });
+  assert.deepEqual((await unavailable.get()).json, JSON.parse(STATIC_FILE));
+  assert.deepEqual((await unavailable.rate("deciv", 5)).json, { ok: false, error: "no_catalog" });
+  assert.deepEqual((await site({ db, handle }).get()).json.ratings, { deciv: [1, 4] });
 });
 
 test("a rating that is not a rating is refused", async () => {
@@ -374,12 +400,16 @@ test("networkOf: an IPv4 address, or an IPv6 address's /64", () => {
 test("the page and the server agree on which maps can be rated", () => {
   const real = JSON.parse(readFileSync(new URL("web/data/ports.json", ROOT), "utf8")).ports;
   const custom = { id: "custom-abc", status: "custom", url: "https://my.example/", embed: true };
-  const cases = [...real, ...CATALOG.ports, custom, { id: "x", status: "live", url: null }, { id: "y", status: "live", url: "" }, null, undefined];
+  const newTab = { id: "z", status: "live", url: "https://z.example/", embed: false };
+  const unsaid = { id: "w", status: "live", url: "https://w.example/" }; // no "embed": not shown inside, so not rated
+  const cases = [...real, ...CATALOG.ports, custom, newTab, unsaid, { id: "x", status: "live", url: null }, { id: "y", status: "live", url: "" }, null, undefined];
   for (const port of cases) assert.equal(clientRateable(port), serverRateable(port), JSON.stringify(port?.id));
   assert.equal(clientRateable(custom), false);
+  assert.equal(clientRateable(newTab), false);
+  assert.equal(clientRateable(unsaid), false);
   const open = real.filter(clientRateable);
   assert.ok(open.length >= 30);
-  assert.ok(open.every((p) => p.status !== "repo"));
+  assert.ok(open.every((p) => p.status === "merged" || (p.status === "live" && p.embed === true)));
   assert.ok(open.some((p) => p.status === "merged"));
 });
 

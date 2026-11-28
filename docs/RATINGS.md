@@ -6,8 +6,11 @@ the same star again takes it back. A map that is open has the same stars in the 
 opened inside EarthCiv in its bar, an EarthCiv edition at the end of its top bar's first row. A phone's bar has no
 room for them: there a map is rated on its card.
 
-A map can be rated when it can be opened: an EarthCiv edition, or a community map with a site. A map that is source
-code only cannot, and neither can a link a visitor added for themselves.
+A map can be rated here when it opens here: an EarthCiv edition, or a community map shown inside EarthCiv. A map
+that opens only in a new tab cannot, nor can a map that is source code only, nor a link a visitor added for
+themselves. Every listed map is meant to open inside EarthCiv ([Add your map](../README.md#add-your-map)), and the
+stars are part of that visit. A map that stops opening inside keeps its ratings in the database, but they are not
+shown or counted anywhere on the site, and they come back if it opens inside again.
 
 There is no sign-in. One network counts once per map, which is close to, but not the same as, one person
 ([What is stored](#what-is-stored)).
@@ -37,7 +40,8 @@ POST /data/ratings.json     {"port": "<map id>", "stars": 4}        ("stars": 0 
 
 `"open"` says whether ratings can be given; when it is `false`, `"reason"` says why
 ([Setting it up](#setting-it-up) lists the reasons). The map ids are those of `web/data/ports.json`, which the
-Function reads from the deployed site to decide what can be rated. `"changed"` is `false` when the request stored
+Function reads from the deployed site to decide what can be rated, and `"ratings"` lists only maps that can be.
+`"changed"` is `false` when the request stored
 nothing: the rating was already that, or there was no rating from this network to take back. A refused POST answers
 `{"ok": false, "error": "<reason>"}` with status 400 (not a rating), 403 (sent from another site), 404 (not a map
 that can be rated), 413, 415, 429 (changed too often today) or 503 (closed, or the database failed).
@@ -54,9 +58,9 @@ which ranks the maps themselves by their ratings, each beside its maker (`#ranki
 browser from the same totals as the stars, so it needs nothing more from the server, and it follows a rating as
 soon as it is given.
 
-- **Which maps are listed.** Every map that can be rated: an EarthCiv edition or a community map with a site,
-  whether it is of one country, of a part of one, or of several. In the catalog of 2026-11-27 that is 60 of the 73
-  maps; the other 13 are source code only.
+- **Which maps are listed.** Every map that can be rated: an EarthCiv edition or a community map that opens inside
+  EarthCiv, whether it is of one country, of a part of one, or of several. In the catalog of 2026-11-28 that is 60
+  of the 75 maps: of the other 15, 12 are source code only and 3 open only in a new tab.
 - **A map's score** starts in the middle of the scale, at 3 of 5, and its ratings pull it from there: with `n`
   ratings whose stars add up to `sum`, it is `(3 × 3 + sum) / (3 + n)`, rounded to two decimals. That is the average
   of the ratings, counted as if the map also had three ratings of 3 stars.
@@ -122,7 +126,7 @@ Three things follow from keying a rating by network:
   stay), so that site cannot cover the frame and steer clicks onto them.
 - One rating per map from each network, changed at most 10 times in one UTC day. The answer to a change says
   whether it was stored, also when several arrive at once.
-- Only maps in the catalog that can be opened. The request can be at most 512 bytes.
+- Only maps in the catalog that open inside EarthCiv. The request can be at most 512 bytes.
 
 With no sign-in, these stop accidents and casual ballot-stuffing. They do not stop someone who has many addresses,
 and that takes little: a home IPv6 connection is often given hundreds of /64 networks, and a VPN or a phone hands
@@ -168,7 +172,7 @@ answers `"open": false`, its `"reason"` says what is missing:
 
 | `"reason"` | What it means |
 | --- | --- |
-| `"static"` | The static file answered. No database is bound (the `[[d1_databases]]` block), or the Function was not uploaded (the deploy was not run in the project's root folder). |
+| `"static"` | The static file answered. The Function was not uploaded, the database was unavailable, or the Function did not have a usable map catalog to check rating eligibility. |
 | `"no_secret"` | The Function and its database are there, but `RATINGS_SALT` is not set, or was set after the last deployment. Set it and deploy again. |
 | `"closed"` | `RATINGS_CLOSED` is set ([Looking after it](#looking-after-it)). |
 

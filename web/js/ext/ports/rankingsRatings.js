@@ -2,8 +2,8 @@
 // star ratings they give (./ratings.js). The other tabs rank the countries on the World Bank's figures
 // (./rankings.js); this one ranks the maps, each beside its maker. The screen is ./rankingsView.js.
 //
-//   * Every map that can be rated is listed (an EarthCiv edition, or a community map with a site), whether it is of
-//     one country, of a part of one, or of several.
+//   * Every map that can be rated is listed (an EarthCiv edition, or a community map that opens inside EarthCiv),
+//     whether it is of one country, of a part of one, or of several.
 //   * A map's score starts in the middle of the scale, at 3 of 5, and its ratings pull it from there: it is their
 //     average, counted as if the map also had three ratings of 3 stars (scoreOf). One five-star rating makes 3.50,
 //     ten make 4.54 and a hundred 4.94. So a map is ranked from its first rating, a single rating does not outrank
