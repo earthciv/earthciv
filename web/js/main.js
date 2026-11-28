@@ -281,9 +281,10 @@ async function main() {
     if (state.highlight) drawHighlight(ctx, cam, w, state, { resourceHits: cache.hits.resources, items: resources?.items, cityById });
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMax: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet).
+    // Plates of cities beside an open dock stay clear of it (desktop docks only; phones use a bottom sheet), and a
+    // plate set below its city ends above the lens dock (12 + 39 px) or a phone's bottom bar (56 px).
     const d = isMobile() ? null : dockState();
-    state.bannerBounds = d && d.open ? { x0: d.l, x1: cam.w - d.r } : null;
+    state.bannerBounds = { ...(d && d.open ? { x0: d.l, x1: cam.w - d.r } : null), y1: cam.h - 56 };
     hits = drawBanners(ctx, cam, w, state, nation.yields, nation);
     if (overlays.length) drawOverlays(ctx, cam, overlays, app, { dpr, zMin: 100 });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -773,7 +774,7 @@ async function main() {
     };
     snap.x = inside(cx, fw, world.width);
     snap.y = inside(cy - 14 / snap.scale, fh, world.height); // nudged up: banners stand above their cities
-    const shot = { ...state, hoverCell: -1 };
+    const shot = { ...state, hoverCell: -1, bannerBounds: null }; // the image has no docks: its plates use all of it
     const c = target.getContext("2d");
     c.fillStyle = OCEAN_BG;
     c.fillRect(0, 0, W, H);
