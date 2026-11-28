@@ -90,6 +90,16 @@ class PortsCatalogTest(unittest.TestCase):
                 val = p.get(field) or ""
                 self.assertIsNone(HTML_RE.search(val), f"HTML found in {pid}.{field}")
 
+    def test_live_maps_open_inside_earthciv(self):
+        # A map opened inside EarthCiv keeps its visitor on earthciv.org, where they can rate it, open another map or
+        # go back to the world map. A new tab takes them away from all of that, so a live map is listed only when its
+        # site lets EarthCiv show it in a frame (README, "Add your map"). These three were listed before that rule and
+        # their makers were asked to allow the frame; one leaves this set once its map opens inside.
+        listed_before = {"vietnam-civilization", "id-civilization", "argenciv"}
+        for p in self.ports_doc["ports"]:
+            if p["status"] == "live" and p["id"] not in listed_before:
+                self.assertIs(p.get("embed"), True, f'{p["id"]} should open inside EarthCiv: "embed": true')
+
     def test_launch_pill_count_matches_the_catalog(self):
         # The top-bar pill shows this count until ports.json loads, then the catalog's own length.
         js = (ROOT / "web" / "js" / "ext" / "ports" / "index.js").read_text(encoding="utf-8")

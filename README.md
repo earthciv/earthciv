@@ -50,6 +50,14 @@ its repository's name (`owner/name`, not the full address).
 
 EarthCiv only points to your map. Your code and data stay in your repository, under your name and your licence.
 
+A map with a live address opens inside EarthCiv, under a bar that names the map and its maker and links to its
+site. Visitors stay on the world map: from there they can rate the map, open another one or go back to the world. A
+map that opens in a new tab takes them away from all of that and makes for a poorer visit, so the world map lists a
+live map only when its site lets EarthCiv show it in a frame. Most hosts do as they are. If yours sends
+`X-Frame-Options`, drop it and allow earthciv.org instead, for example with
+`Content-Security-Policy: frame-ancestors 'self' https://earthciv.org`. A map that runs on EarthCiv's own code comes
+in as an [edition](docs/EDITIONS.md) instead, since in a frame it would show its own map bar under EarthCiv's.
+
 <details>
 <summary>The fields of an entry in the list</summary>
 
@@ -76,9 +84,9 @@ EarthCiv only points to your map. Your code and data stay in your repository, un
 - `id` is unique: lowercase letters, digits and hyphens.
 - `status` is `"live"` for a map with a public `https` address in `url`, and `"repo"` (with `"url": null`) for a map
   that has only source code. The two EarthCiv editions' own entries use `"merged"`, with an `editionId`.
-- `embed` says whether EarthCiv may show your site in a frame on its own page. Use `false` to have your site open
-  in a new tab instead, or if your host does not allow framing. A map shown in a frame is also listed in the map
-  menu at the top left of every edition and of every other map shown this way.
+- `embed` is `true`: EarthCiv shows your site in a frame on its own page ([above](#add-your-map)) and lists it in
+  the map menu at the top left of every edition and of every other map shown this way. A few maps listed before
+  that rule have `false` and open in a new tab until their sites allow the frame.
 - `scope` is `"country"`, `"multi"` (several countries) or `"region"` (part of a country, such as a region or a
   city).
 - `countries` holds the codes of the outlines the world map draws: each country's ISO 3166-1 alpha-2 code, in

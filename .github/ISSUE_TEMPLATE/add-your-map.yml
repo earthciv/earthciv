@@ -42,6 +42,14 @@ body:
       label: Live address
       description: The public https address where the map runs. Leave this empty if the map runs only from its source code. It is then listed with a link to its GitHub repository.
       placeholder: https://your-name.github.io/ptciv/
+  - type: markdown
+    attributes:
+      value: |
+        **A map with a live address opens inside EarthCiv.** Visitors who pick it stay on earthciv.org: your map opens under a bar that names it and you and links to your site, and from there they can rate it, open another map or go back to the world map. A map that opens in a new tab takes them away from all of that and makes for a poorer visit, so EarthCiv lists a live map only when it can open inside.
+
+        Most hosts allow this as they are, GitHub Pages and Cloudflare Pages among them. If your site sends `X-Frame-Options`, drop it and allow earthciv.org instead, for example with `Content-Security-Policy: frame-ancestors 'self' https://earthciv.org`. If it already sends `frame-ancestors`, add `https://earthciv.org` to it.
+
+        If your map runs on EarthCiv's own code, send your country as an [edition](https://github.com/earthciv/earthciv/blob/main/docs/EDITIONS.md) instead: in a frame it would show its own map bar under EarthCiv's.
   - type: input
     id: places
     attributes:
@@ -66,17 +74,6 @@ body:
       label: Licence
       description: The licence your repository states, such as MIT. Leave this empty if it states none.
       placeholder: MIT
-  - type: dropdown
-    id: embed
-    attributes:
-      label: May EarthCiv show your map on its own page?
-      description: >-
-        A map with a live address opens in a frame on earthciv.org, under a bar that names the map and links to its
-        own site. Choose "No, open my site in a new tab" if you would rather it opened there, or if your host does
-        not allow framing. If you leave this unanswered, the map is shown in a frame, as most listed maps are now.
-      options:
-        - Yes, show it in a frame
-        - No, open my site in a new tab
   - type: input
     id: twitter
     attributes:
