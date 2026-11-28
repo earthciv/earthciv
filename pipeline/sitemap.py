@@ -2,8 +2,8 @@
 
 One index.html serves every page: the world map at the site's address and each edition at ?country=<id>
 (web/js/app/home.js). The sitemap lists those addresses. They are built from index.html's og:url, the site's public
-address, and from data/editions.json, so a new edition is listed without editing this file. The /share/ pages stay
-out: they exist for link previews and send visitors on to the map.
+address, and from data/editions.json, so a new edition is listed without editing this file. The /share/ pages and
+the maps' own /map/<id>/ pages stay out: they exist for link previews and send visitors on to the map.
 """
 
 from __future__ import annotations

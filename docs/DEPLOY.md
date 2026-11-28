@@ -57,6 +57,10 @@ folder it is run in; from anywhere else the site would upload without its Functi
 - An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
 - **Share → Copy link** on a city or a lens creates a `/share/` URL. Its HTML has the matching title and preview
   image, and opening it in a browser restores the map view.
+- A map's own page, such as https://earthciv.org/map/deciv/, has its title and preview image
+  (`/map/deciv/preview.jpg`), and opening it in a browser opens that map inside the world view with its stars
+  pointed out. On the world map, a map's **Share** button copies a `/map/<id>/` link
+  ([RATINGS.md](RATINGS.md#asking-for-ratings)).
 - https://earthciv.org/usaciv-source.zip has the same SHA-256 as `dist/usaciv/usaciv-source.zip`.
 - https://earthciv.org/data/ratings.json answers `"open": true` once the ratings are set up, and a map's card on the
   world map shows its stars. With `"open": false` its `"reason"` says what is missing: `"static"` (no database is

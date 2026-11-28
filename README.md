@@ -58,6 +58,14 @@ live map only when its site lets EarthCiv show it in a frame. Most hosts do as t
 `Content-Security-Policy: frame-ancestors 'self' https://earthciv.org`. A map that runs on EarthCiv's own code comes
 in as an [edition](docs/EDITIONS.md) instead, since in a frame it would show its own map bar under EarthCiv's.
 
+**Asking for ratings.** Every listed map that opens inside EarthCiv, and every edition, has a page of its own:
+`https://earthciv.org/map/<id>/`, where `<id>` is its entry's `id` (`ptciv` below). Posted on X or in a chat, the
+link previews as your map: its name, yours and where it is on the world map, under five stars and "Rate it on
+EarthCiv". Whoever opens it lands on your map inside EarthCiv, with its stars pointed out. You don't need to work
+out the address: the **Share map** button after the stars above your map, and the share button on its card and
+beside it in Map makers, copy the link, write a post for X that tags you, or hand the link to your phone's share
+sheet. [docs/RATINGS.md](docs/RATINGS.md#asking-for-ratings) says how it works and how ratings are counted.
+
 <details>
 <summary>The fields of an entry in the list</summary>
 
@@ -501,7 +509,10 @@ earthciv.org has no sign-in and no ads, and its code sets no cookies. What it le
   ([docs/RATINGS.md](docs/RATINGS.md#what-is-stored)).
 - **A few settings stay in the browser** (`localStorage`): the lenses used last, panel settings, the stars the
   visitor gave, the links to maps they added for themselves and the country they picked as theirs in World Rankings.
-  They are not sent anywhere.
+  A map's own page (`/map/<id>/`) also notes which map the visitor came for, in that tab only (`sessionStorage`),
+  until the world view has pointed out its stars. None of this is sent anywhere.
+- **The Share button's "Post on X" opens X** with a post written for the visitor to edit or send. Nothing goes to
+  X unless they send it.
 - **A community map is its author's own site,** shown in a frame or opened in a new tab. That site sees the visit
   as it would any other.
 - **The pictures of the maps' authors come from GitHub** (`avatars.githubusercontent.com`), for each author who

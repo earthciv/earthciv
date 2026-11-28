@@ -4,7 +4,10 @@ Visitors can give each map in the world view one to five stars. A map's card sho
 rated it, with five stars beside them. Picking a star rates the map, picking another changes the rating, and picking
 the same star again takes it back. A map that is open has the same stars in the bar above it: a community map
 opened inside EarthCiv in its bar, an EarthCiv edition at the end of its top bar's first row. A phone's bar has no
-room for them: there a map is rated on its card.
+room for them: there a star button in the bar opens them, and the map's card has them too.
+
+Every map that can be rated also has a Share button and a page of its own, so that its maker can ask for ratings
+with one link ([Asking for ratings](#asking-for-ratings)).
 
 A map can be rated here when it opens here: an EarthCiv edition, or a community map shown inside EarthCiv. A map
 that opens only in a new tab cannot, nor can a map that is source code only, nor a link a visitor added for
@@ -24,6 +27,8 @@ There is no sign-in. One network counts once per map, which is close to, but not
 | `web/js/ext/ports/ratings.js` | The world view's side: reads the ratings, draws the stars, sends a visitor's rating. |
 | `web/js/ext/ports/rankingsRatings.js` | World Rankings' Ratings tab: the maps in order of their ratings ([below](#the-ratings-tab-of-world-rankings)). |
 | `web/js/ext/ports/makers.js` | `rankCountryPorts`: a country's maps in order, the best rated of each kind first ([below](#a-countrys-maps)). |
+| `web/js/ext/ports/mapShare.js` | A map's Share button and its popover: the link to the map's own page, a post for X, the map's ratings so far ([below](#asking-for-ratings)). |
+| `pipeline/share_pages.py` | Builds each map's own page, `/map/<id>/`, with its preview picture, when the site is packaged. |
 
 On a host with no Function (any static host, `python -m pipeline serve`), the browser gets the static file, and the
 world view shows no stars. The Function also hands a request to that file while it has no database. So a copy of
@@ -125,6 +130,41 @@ visitor's pointer; the new order shows the next time the card is drawn.
 While maps have few ratings, one rating decides: a single rating of 5 stars puts a map ahead of the maps nobody has
 rated, and a single rating of 1 star puts it behind them.
 
+## Asking for ratings
+
+A map gets ratings when people open it, and most people who open it come from a link someone posted. So each map
+that can be rated has a page of its own, `/map/<id>/` (`<id>` is its entry's id in `web/data/ports.json`), and a
+Share button that gives its link: [earthciv.org/map/deciv/](https://earthciv.org/map/deciv/), for example.
+
+- **The page** is built with the site (`pipeline package`, `build_share_pages` in `pipeline/share_pages.py`), one
+  for every map that can be rated: the EarthCiv editions and the community maps that open inside EarthCiv. It holds
+  the tags a link preview reads and a picture, 1200 × 630, drawn by `web/dev/social-cards.js` (`?maps`): the world
+  map around the map's countries, lit as when the map is picked, under its name, its maker (their X handle where
+  the list has one) and five empty stars with the words "Rate it on EarthCiv". The stars never show a rating: the
+  picture is made when the site is built, and ratings change after that. Opened in a browser, the page sends the
+  visitor straight on to the map: a community map in the world view (`/#ports=<id>`), an edition at its own address
+  (`/?country=<id>`).
+- **The visitor who arrives** from that page has the map's stars pointed out once: they glow for a few seconds in
+  the bar above the map, or on a phone the star button that holds them does. Nothing is put over the map itself. The
+  page leaves a note for this in the tab's `sessionStorage` (`earthciv.arrivedFor.v1`: the map's id and the time),
+  which the world view reads once and removes; a note older than two minutes is ignored, and a visitor who has rated
+  the map already is not asked again.
+- **The Share button** is on the map's card, beside its line in Map makers, and in the bar above the open map ("Share
+  map", after the stars; an edition's bar has a Share button of its own, for the view on screen). Its popover copies
+  the link, opens X with a post written ("Rate Deutschland (deciv) by @TheJol on EarthCiv", with the link), or hands
+  the link to the system's share sheet where the browser has one. Under them it says what the map's ratings are so
+  far and where the map stands in [the Ratings tab](#the-ratings-tab-of-world-rankings). A rating given anywhere
+  lights the map's Share buttons for a few seconds, since passing the map on is the next thing to do.
+- **On a phone** a map's bar has a star button in place of the stars and Share map. Its popover has the stars on top,
+  then the ways to share. A rating given there is answered in the popover, which says to pass the map on, rather
+  than in a toast over the map. An edition on a phone reads the ratings only when its star button is pressed, as
+  before: its first row had no stars, so it read none ([Limits](#limits)).
+
+Anyone can press Share, not only a map's maker: the site has no sign-in, so it cannot tell them apart, and a visitor
+who liked a map can ask their friends to rate it too. Where the site was built without the maps' pages (a copy
+served by `python -m pipeline serve`, which does not package; packaging marks the page with `data-map-pages`),
+the button gives the map's own address on the site instead.
+
 ## What is stored
 
 - **In the database:** the map's id, a key that stands for the visitor's network, the stars, when the rating was
@@ -132,7 +172,8 @@ rated, and a single rating of 1 star puts it behind them.
   IP address (for IPv6, its /64 prefix), keyed with the secret `RATINGS_SALT` and cut to 128 bits. The address
   itself is not stored and not logged, and the secret is not in the database.
 - **In the visitor's browser:** the stars they picked (`localStorage`, key `earthciv.portRatings.v1`), only to show
-  them again.
+  them again; and for a visitor who came from a map's own page, which map that was, for a moment
+  ([Asking for ratings](#asking-for-ratings)).
 
 Three things follow from keying a rating by network:
 

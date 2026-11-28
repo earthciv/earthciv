@@ -578,13 +578,16 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 }
 /* The menu is as wide as the open map's name. In a bar too narrow for that, index.js (fitViewerBar) makes room a
    step at a time, as an edition's top bar does on the narrowest phones: World drops its word (data-tight="1"), then
-   its count (2), then the menu gives up some padding and its letter spacing (3). After that the name is cut short. */
+   its count (2), then the menu gives up some padding and its letter spacing (3), then the maker's chip shows their
+   picture without their name (4). After that the name is cut short. */
 .ports-vbar .country-switcher, .ports-vbar .brand { flex: 0 1 auto; min-width: 0; }
 .ports-vbar .country-switcher { height: auto; max-width: none; } /* a phone's top bar sets both for its own first row */
 .ports-vbar[data-tight] .ports-launch-lbl { display: none !important; }
-.ports-vbar[data-tight="2"] .ports-launch-count, .ports-vbar[data-tight="3"] .ports-launch-count { display: none; }
-.ports-vbar[data-tight="3"] .brand { letter-spacing: 0; }
-.ports-vbar[data-tight="3"] .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
+.ports-vbar:is([data-tight="2"], [data-tight="3"], [data-tight="4"]) .ports-launch-count { display: none; }
+.ports-vbar:is([data-tight="3"], [data-tight="4"]) .brand { letter-spacing: 0; }
+.ports-vbar:is([data-tight="3"], [data-tight="4"]) .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
+.ports-vbar[data-tight="4"] .map-maker-chip { width: 34px; justify-content: center; padding: 0; }
+.ports-vbar[data-tight="4"] .map-maker-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
 .ports-vkind { flex: none; }
 .ports-vactions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
 
@@ -997,4 +1000,75 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   /* Phones: the map key is in the sheet, but a lens's key stays on the map, at its top left. */
   .ports-legend.is-lens { display: block; top: 10px; bottom: auto; left: 10px; width: 236px; max-width: calc(100% - 70px); }
   .has-lens .wv-hint { display: none; }
+}
+
+/* ---------- a map's Share button and its popover (ext/ports/mapShare.js) ---------- */
+/* After the stars in a map's bar (the viewer's, an edition's first row), on its card and beside its line in Map
+   makers. On a phone a map's bar has no room for the stars: a star button stands in for them and for Share, and its
+   popover holds both. */
+#topbar .map-acts { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+#topbar .map-acts[hidden] { display: none; }
+.ms-bar-share .icon, .pc-share .icon { width: 14px; height: 14px; }
+.ms-bar-rate { display: none; }
+.ms-bar-rate svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.ms-bar-rate.is-mine { color: #7ae2c5; } /* rated by this visitor: their stars' colour (.rt-star.on) */
+.ms-bar-rate.is-mine svg { fill: currentColor; }
+#topbar .ms-bar-share { height: 28px; padding: 0 10px; }
+@media (max-width: 1240px) {
+  .ports-vbar .ms-lbl { display: none; }
+  .ports-vbar .ms-bar-share { padding: 0 8px; }
+}
+@media (max-width: 700px) {
+  .ms-bar-share { display: none; }
+  .ms-bar-rate {
+    display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px; min-width: 34px; padding: 0;
+    color: var(--gold-bright);
+  }
+  #topbar .map-acts { margin-left: 0; }
+}
+
+/* On a card, after its buttons; in Map makers, beside the line that opens the map. */
+.pc-share { margin-left: auto; padding: 4px 8px; }
+.mk-map-row { display: flex; align-items: stretch; gap: 4px; }
+.mk-map-row .mk-map { flex: 1; min-width: 0; width: auto; }
+.mk-map-share {
+  flex: none; display: grid; place-items: center; width: 34px; padding: 0; border-radius: 7px; cursor: pointer;
+  color: var(--ink-dim); background: rgba(255, 255, 255, .045); border: 1px solid rgba(201, 164, 92, .26);
+}
+.mk-map-share .icon { width: 13px; height: 13px; }
+.mk-map-share:hover, .mk-map-share:focus-visible, .mk-map-share[aria-expanded="true"] { color: var(--gold-bright); border-color: var(--gold-bright); background: rgba(201, 164, 92, .14); }
+.ms-btn[aria-expanded="true"] { color: var(--gold-bright); border-color: var(--gold-bright); }
+@media (max-width: 700px) {
+  .mk-map-share { width: 42px; }
+}
+
+/* A visitor who came from the map's own page: its stars, or its star button, glow for a few seconds. After a rating,
+   the map's Share buttons glow the same way. */
+@keyframes ms-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 208, 142, 0); }
+  50% { box-shadow: 0 0 0 2px rgba(236, 208, 142, .75), 0 0 16px rgba(236, 208, 142, .55); }
+}
+.ms-asking .rt-stars, .ms-asking .ms-bar-rate { border-radius: 8px; animation: ms-glow 1.5s ease-in-out 5; }
+.ms-btn.ms-nudge { color: var(--gold-bright); border-color: var(--gold-bright); animation: ms-glow 1.4s ease-in-out 4; }
+@media (prefers-reduced-motion: reduce) {
+  .ms-asking .rt-stars, .ms-asking .ms-bar-rate, .ms-btn.ms-nudge { animation: none; box-shadow: 0 0 0 2px rgba(236, 208, 142, .8); }
+}
+
+/* The popover: under its button (index.js places it; --ms-top), across the screen on a phone. */
+.share-pop.ms-pop { top: var(--ms-top, calc(var(--topbar-h) + 8px)) !important; width: 310px; }
+.ms-pop a.sp-item { box-sizing: border-box; text-decoration: none; }
+.ms-item-text { display: flex; flex-direction: column; min-width: 0; }
+.ms-link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--ink-dim); }
+.ms-sum { margin: 0 6px 6px; font-size: 12px; line-height: 1.4; color: var(--ink-dim); }
+.ms-sum[hidden] { display: none; }
+.ms-rate { padding: 0 2px 6px; }
+.ms-rate[hidden] { display: none; }
+.rt-pop { margin: 0; padding: 0; border: 0; }
+.rt-pop .rt-avg { display: none; } /* the line under the stars says it */
+.rt-pop .rt-give { margin-left: 0; }
+.rt-pop .rt-lbl { font-size: 12px; }
+.rt-pop .rt-star { width: 42px; height: 42px; }
+.rt-pop .rt-star svg { width: 28px; height: 28px; }
+@media (max-width: 700px) {
+  .share-pop.ms-pop { width: auto; }
 }

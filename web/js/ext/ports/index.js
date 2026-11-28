@@ -11,7 +11,12 @@
 //     ./makers.js rankCountryPorts), its Demographics (where it stands on World Rankings' measures) and every other
 //     map of it. A country nobody has mapped yet says so and links to how EarthCiv is built.
 //   * A map that can be opened also shows its star rating, and five stars to rate it with (./ratings.js): on its
-//     card, in the bar above a community map open here, and in an edition's own top bar.
+//     card, in the bar above a community map open here, and in an edition's own top bar. A phone's bar has no room
+//     for the stars: there a star button beside the map's name holds them.
+//   * The same maps have a Share button (./mapShare.js): on the card, on the map's line in Map makers and in both
+//     bars. It shares a link to the map's own page (/map/<id>/), which previews as that map and asks people to rate
+//     it, so a map's maker can ask for ratings with one post. A visitor who comes in from that page has the map's
+//     stars pointed out once, and a rating given lights the map's Share button.
 //   * Every map names its maker, with their picture, wherever it is shown: on its card, on the button that opens it,
 //     and in the bar and the note of a community map that is open here. "Map makers" lists everyone who made one
 //     (./makers.js).
@@ -39,21 +44,28 @@ import { editionUrl } from "../../app/home.js";
 // from before this rewrite fetches new ones; see ./home.js.
 import { createWorldMap, portKind } from "./worldMap.js";
 import { createRatings } from "./ratings.js";
+import { createMapShare, mapLink, ratingSummary, sharable, takeArrival } from "./mapShare.js";
 import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "./makers.js";
 import { NO_DATA, OVERALL, measureOf, tabOf } from "./rankings.js";
-import { RATING, namesRatings, tallyRatings, tallySignature, withRatings } from "./rankingsRatings.js";
+import { RATING, namesRatings, placeOf, tallyRatings, tallySignature, withRatings } from "./rankingsRatings.js";
 import { RANKINGS_ADVISOR, demographicsHtml, lensFills, lensLegendHtml, lensTip, mapStandingHtml, rankingsHtml } from "./rankingsView.js";
 // The advisors' medallions, which the World Rankings' tabs share (no edition is loaded with them).
 import { emblem } from "../advisors/core/emblems.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261128b", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261128c", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
 const CATALOG_PORT_COUNT = 75; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 const RATING_BAR = "(min-width: 701px)"; // where a map's bar has room for its stars (css/ports.css hides .rt-bar below)
+// The site's own address (where index.html is), and whether it was built with each map's own page (/map/<id>/,
+// pipeline/share_pages.py): the link a Share button gives (./mapShare.js).
+const SITE_ROOT = new URL("../../../", import.meta.url).href;
+const MAP_PAGES = typeof document !== "undefined" && document.documentElement.hasAttribute("data-map-pages");
+const ASK_MS = 9000; // how long a visitor who came from a map's page has its stars pointed out
+const NUDGE_MS = 7000; // how long a map's Share button stays lit after a rating
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
 // The account this site's own editions are credited to (the catalog's "repo" of an EarthCiv edition).
@@ -69,6 +81,8 @@ const RATINGS_DOC_URL = `${REPO_URL}/blob/main/docs/RATINGS.md`;
 const GLOBE_SVG = `<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5a14.5 14.5 0 0 1 0 19M12 2.5a14.5 14.5 0 0 0 0 19"/></svg>`;
 const EXT_SVG = `<svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 4h6v6M10 14 20 4M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></svg>`;
 const PLAY_SVG = `<svg class="icon" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M7 4.6v14.8a1 1 0 0 0 1.52.86l12.2-7.4a1 1 0 0 0 0-1.72L8.52 3.74A1 1 0 0 0 7 4.6z"/></svg>`;
+const SHARE_ICON = icon("share", "⤴", { size: 14 });
+const STAR_ICON = `<svg class="icon" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z"/></svg>`;
 const SEARCH_SVG = `<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>`;
 
 // How the world view names each kind of map (worldMap.portKind), in cards, the map key and tooltips.
@@ -228,11 +242,25 @@ export function install(app) {
     onChange: () => {
       ratings.sync(overlay, portById);
       ratings.sync(editionRating?.parentElement, portById);
+      mapShare.sync(); // the popover's stars, and its line about the ratings
+      syncRateButtons();
       syncMakers(); // the makers' order follows the ratings
       syncRatingsRanking(); // and so does World Rankings' Ratings tab
       syncCardOrder(); // and the order of an open country's maps, if it was drawn before the ratings arrived
     },
   });
+  // A map's Share button opens this popover (./mapShare.js): the map's link, the ways to pass it on, its ratings so
+  // far and, opened from a phone's star button, the stars themselves.
+  const mapShare = createMapShare({
+    linkOf: (p) => mapLink(p, { root: SITE_ROOT, pages: MAP_PAGES }),
+    makerOf: (p) => creditOf(p),
+    summaryOf: (p) => shareSummary(p),
+    syncStars: (root) => ratings.sync(root, portById),
+    loadStars: () => ratings.load(),
+    rate: (id, stars, say) => ratePort(id, stars, say),
+  });
+  // The map a visitor came for from its own page, until its stars have been pointed out (askToRate).
+  let arrivedFor = takeArrival(sessionStore());
   let map = null;
   let worldUnseen = false; // the world map was built while a community map covered it (see closeViewer)
   let tipEl = null;
@@ -267,6 +295,7 @@ export function install(app) {
   let editionMaker = null;
   let editionKind = null;
   let editionRating = null;
+  let editionActs = null; // the row's far end: the edition's rating, then its Share button (a star button on a phone)
   const EDITION_ID = home ? null : picker?.value || DEFAULT_EDITION;
   const editionUnder = EDITIONS.find((e) => e.id === EDITION_ID);
   const editionName = editionUnder?.name || "the map";
@@ -378,7 +407,12 @@ export function install(app) {
       editionKind.textContent = KIND.merged.label;
       editionKind.hidden = true;
       // At the row's far end, the edition's rating, as the bar above a community map has that map's: the average,
-      // and five stars to give a rating with. It is named for the edition's entry once the list of maps is here.
+      // and five stars to give a rating with, then its Share button. A phone's row has no room for the stars: there
+      // one star button holds them and the ways to share. All are named for the edition's entry once the list of maps
+      // is here.
+      editionActs = document.createElement("div");
+      editionActs.className = "map-acts";
+      editionActs.hidden = true;
       editionRating = document.createElement("div");
       editionRating.className = "rt rt-bar";
       editionRating.hidden = true;
@@ -387,7 +421,12 @@ export function install(app) {
         // The second click of a double-click is not a second choice (it would take the rating straight back).
         if (star?.dataset.rate && e.detail <= 1) ratePort(star.dataset.rate, Number(star.dataset.stars));
       });
-      switcher.append(editionMaker, editionKind, editionRating);
+      editionActs.append(editionRating);
+      editionActs.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-share-map]");
+        if (btn) openShare(btn);
+      });
+      switcher.append(editionMaker, editionKind, editionActs);
     }
 
     if (picker) {
@@ -430,6 +469,12 @@ export function install(app) {
         if (editionRating && editionPort) {
           editionRating.dataset.ratingOf = editionPort.id;
           ratings.sync(editionRating.parentElement, portById);
+        }
+        if (editionActs && editionPort && sharable(editionPort) && !editionActs.querySelector("[data-share-map]")) {
+          editionActs.insertAdjacentHTML("beforeend", barButtonsHtml(editionPort));
+          editionActs.hidden = false;
+          syncRateButtons();
+          askToRate(editionPort.id, editionActs);
         }
         syncLaunchCount();
         syncMenus();
@@ -664,7 +709,10 @@ export function install(app) {
         <span class="mk-map-name">${esc(p.name)}</span>${note}
         <span class="mk-map-go ${KIND[k].cls}" aria-hidden="true">${a.href ? EXT_SVG : PLAY_SVG}</span>`;
     const stars = repoStarsHtml(p);
-    return `<li>${openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`)}${stars ? `<div class="mk-map-stars">${stars}</div>` : ""}</li>`;
+    const opener = openerHtml(p, "mk-map", inner, `data-port-id="${esc(p.id)}"${iso ? ` data-hover="${esc(iso)}"` : ""} title="${esc(a.title)}"`);
+    // Its Share button sits beside the line, not in it: the line itself is the button that opens the map.
+    const share = shareButtonHtml(p, "mk-map-share");
+    return `<li>${share ? `<div class="mk-map-row">${opener}${share}</div>` : opener}${stars ? `<div class="mk-map-stars">${stars}</div>` : ""}</li>`;
   }
 
   function featuredCreatorHtml(makers) {
@@ -1072,6 +1120,7 @@ export function install(app) {
       }
       return;
     }
+    if (d.shareMap) return openShare(el); // a map's Share button: on its card, its line in Map makers or the bar
     if (el.classList.contains("rt") || el.classList.contains("pc-repo-stars")) return; // a click beside stars must not open the card's map
     // A star: the second click of a double-click is not a second choice (it would take the rating straight back).
     if (d.rate) return e.detail > 1 ? undefined : ratePort(d.rate, Number(d.stars));
@@ -1618,24 +1667,98 @@ export function install(app) {
     }
   }
 
-  // A click on one of a map's five stars gives that rating, or takes it back when it already is the visitor's.
-  async function ratePort(id, picked) {
+  // A click on one of a map's five stars gives that rating, or takes it back when it already is the visitor's. The
+  // answer is a toast, or for the stars in the Share popover a line in it (`say`). A rating given lights the map's
+  // Share buttons: passing the map on is the next thing to do.
+  async function ratePort(id, picked, say = (message) => app.ui.toast?.(message)) {
     const port = portById(id);
-    if (!port) return;
+    if (!port) return null;
     const res = await ratings.choose(id, picked);
     if (res.ok) {
-      app.ui.toast?.(
+      say(
         res.stars ? `You rated ${port.name} ${plural(res.stars, "star")}`
           : res.changed ? `Your rating of ${port.name} was removed`
             // Ratings count per network: one given from another network cannot be taken back from this one.
             : `No rating of ${port.name} from this network to remove`,
       );
+      if (res.stars) nudgeShare(id);
     } else if (res.error !== "ignored") {
-      app.ui.toast?.(
+      say(
         res.error === "too_many_changes" ? "That rating was changed too often today. Try again tomorrow."
           : res.error === "closed" ? "Ratings are closed at the moment."
             : "Your rating could not be saved. Please try again.",
       );
+    }
+    return res;
+  }
+
+  // --- sharing a map (./mapShare.js) -------------------------------------------------------------------------------
+  // A map's Share button: on its card, beside its line in Map makers, and after the stars in a map's bar. In a bar it
+  // says "Share map": an edition's bar has a Share button of its own, for the view on screen, and so do many
+  // community maps, in the frame under it.
+  function shareButtonHtml(p, cls, { label = false } = {}) {
+    if (!p || !sharable(p)) return "";
+    return `<button type="button" class="ms-btn ${cls}" data-share-map="${esc(p.id)}" aria-haspopup="dialog" aria-expanded="false"
+      aria-label="Share ${esc(p.name)}" title="${esc(`Share ${p.name}: a link that shows it and asks people to rate it`)}">${SHARE_ICON}${label ? `<span class="ms-lbl">Share map</span>` : ""}</button>`;
+  }
+
+  // What a map's bar ends with: Share after the stars, and on a phone, where the bar has no room for the stars, a
+  // star button whose popover holds them as well as the ways to share (css/ports.css shows one or the other).
+  function barButtonsHtml(p) {
+    if (!sharable(p)) return "";
+    return shareButtonHtml(p, "ports-btn ports-btn-ghost ms-bar-share", { label: true })
+      + `<button type="button" class="ms-btn ports-btn ms-bar-rate" data-share-map="${esc(p.id)}" data-share-stars aria-haspopup="dialog"
+        aria-expanded="false" aria-label="${esc(`Rate or share ${p.name}`)}">${STAR_ICON}</button>`;
+  }
+
+  function openShare(btn) {
+    const port = portById(btn.dataset.shareMap);
+    if (port) mapShare.toggle(btn, port, { stars: btn.hasAttribute("data-share-stars") });
+  }
+
+  // A star button is filled once the visitor has rated its map, as their own stars are.
+  function syncRateButtons() {
+    for (const btn of document.querySelectorAll("[data-share-stars]")) {
+      const port = portById(btn.dataset.shareMap);
+      const mine = port ? ratings.of(port.id).mine : 0;
+      btn.classList.toggle("is-mine", mine > 0);
+      btn.title = mine ? `Your rating: ${plural(mine, "star")}. Change it, or share ${port.name}` : "Rate it or share it";
+    }
+  }
+
+  // The line under the ways to share: the map's ratings so far, and its place among the rated maps.
+  function shareSummary(p) {
+    if (!ratings.loaded) return "";
+    const r = ratings.of(p.id);
+    const place = r.n ? placeOf(tallyRatings(basePorts, (id) => ratings.of(id), { day: dayNumber() }), p.id) : null;
+    return ratingSummary(r, place, { open: ratings.open });
+  }
+
+  function sessionStore() {
+    try {
+      return globalThis.sessionStorage || null;
+    } catch {
+      return null; // some sandboxes forbid storage
+    }
+  }
+
+  // A visitor who came from a map's own page has that map's stars pointed out once, in the bar that holds them (on a
+  // phone, its star button), unless they have rated it already. Nothing is put over the map itself.
+  function askToRate(id, holder) {
+    if (!holder || arrivedFor !== id) return;
+    arrivedFor = null;
+    if (ratings.of(id).mine) return;
+    holder.classList.add("ms-asking");
+    setTimeout(() => holder.classList.remove("ms-asking"), ASK_MS);
+  }
+
+  // After a rating, the map's Share buttons glow for a moment.
+  function nudgeShare(id) {
+    for (const btn of document.querySelectorAll(`[data-share-map="${CSS.escape(id)}"]:not([data-share-stars])`)) {
+      btn.classList.remove("ms-nudge");
+      void btn.offsetWidth; // start the glow again
+      btn.classList.add("ms-nudge");
+      setTimeout(() => btn.classList.remove("ms-nudge"), NUDGE_MS);
     }
   }
 
@@ -1843,6 +1966,7 @@ export function install(app) {
         <ol class="mk-list">${makers.map(row).join("")}</ol>
         <div class="wv-foot">
           <p>Makers with ${MIN_RATINGS} or more visitor ratings are ordered by their weighted rating. GitHub stars help order makers with equal scores, including those awaiting enough ratings. Remaining ties rotate daily.</p>
+          <p>Made one of these maps? Its Share button gives you a link to post: it shows your map and asks people to rate it.</p>
           <p>Make one of these maps? <a href="${MAP_FORM_URL}&amp;request=Correct%20my%20map%27s%20listing" target="_blank" rel="noopener noreferrer">Add or update your Twitter / X</a></p>
           <p>Built a map in this style? <a href="${MAP_FORM_URL}" target="_blank" rel="noopener noreferrer" title="The map form, on GitHub">Add it to the list</a></p>
         </div>
@@ -1934,6 +2058,7 @@ export function install(app) {
     if (repoUrl && k !== "merged") {
       actions += `<a class="ports-btn ports-btn-ghost" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer" title="${esc(p.repo)}">${k === "repo" ? "Source code" : "GitHub"} ${EXT_SVG}</a>`;
     }
+    actions += shareButtonHtml(p, "ports-btn ports-btn-ghost pc-share");
     if (k === "custom") {
       actions += `<button type="button" class="ports-btn ports-btn-ghost ports-rm" data-remove-custom="${esc(p.id)}" title="Remove this link" aria-label="Remove ${esc(p.name)}">✕</button>`;
     }
@@ -2025,7 +2150,7 @@ export function install(app) {
     const menu = overlay?.querySelector("#ports-vswitch");
     if (!bar || !ui.activePortId || overlay.hidden) return;
     delete bar.dataset.tight;
-    for (let step = 1; step <= 3; step++) {
+    for (let step = 1; step <= 4; step++) {
       const wanted = fitMenu(menu);
       if (menu.getBoundingClientRect().width >= wanted - 0.5) return;
       bar.dataset.tight = String(step);
@@ -2079,13 +2204,17 @@ export function install(app) {
     kind.textContent = KIND[k].label;
     renderTopbarMaker(overlay.querySelector(".ports-vbar .map-maker"), port);
     const repoUrl = port.repo ? `https://github.com/${encodeURI(port.repo)}` : null;
+    mapShare.close(false); // it was open for the map this bar showed
     overlay.querySelector("#ports-vactions").innerHTML = `
       <div class="rt rt-bar" data-rating-of="${esc(port.id)}" hidden></div>
+      ${barButtonsHtml(port)}
       <button type="button" class="ports-btn ports-btn-ghost" data-act="reload-frame" title="Reload" aria-label="Reload">↻</button>
       ${repoUrl ? `<a class="ports-btn ports-btn-ghost ports-vgh" href="${esc(repoUrl)}" target="_blank" rel="noopener noreferrer">GitHub ${EXT_SVG}</a>` : ""}
       <a class="ports-btn" href="${esc(port.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(port.name)} in a new tab" title="Open ${esc(port.name)} in a new tab"><span class="ports-vlbl">New tab</span> ${EXT_SVG}</a>
       ${home ? "" : `<button type="button" class="icon-btn" data-act="close" aria-label="Back to ${esc(editionName)}" title="Back to ${esc(editionName)}">${icon("close", "✕", { size: 12 })}</button>`}`;
     ratings.sync(overlay.querySelector("#ports-viewer"), portById);
+    syncRateButtons();
+    askToRate(port.id, overlay.querySelector("#ports-vactions"));
     fillMenu(overlay.querySelector("#ports-vswitch"), port.id);
     overlay.querySelector(".ports-atlas").hidden = true;
     overlay.querySelector(".wv-bar").hidden = true;
@@ -2099,6 +2228,7 @@ export function install(app) {
   function closeViewer() {
     if (!overlay || !ui.activePortId) return false;
     ui.activePortId = null;
+    mapShare.close(false);
     const iframe = overlay.querySelector("#ports-iframe");
     if (iframe) iframe.src = "about:blank";
     overlay.querySelector("#ports-viewer").hidden = true;
@@ -2163,7 +2293,7 @@ export function install(app) {
       return;
     }
     for (const el of document.body.children) {
-      if (el === overlay || el.inert || el.id === "toast" || el.id === "announce" || el.tagName === "SCRIPT") continue;
+      if (el === overlay || el.inert || el.id === "toast" || el.id === "announce" || el.id === "map-share-pop" || el.tagName === "SCRIPT") continue;
       el.inert = true;
       madeInert.add(el);
     }
@@ -2181,6 +2311,7 @@ export function install(app) {
   app.registerMode(MODE, {
     async enter(params = {}) {
       const tok = ++mountToken;
+      mapShare.close(false);
       const wanted = params?.id && params.id !== "all" ? params.id : null;
       if (wanted && !map) pending.port = wanted;
       ensureOverlay();
@@ -2252,6 +2383,7 @@ export function install(app) {
     },
     exit() {
       mountToken++;
+      mapShare.close(false);
       if (!overlay) return;
       ui.activePortId = null;
       const iframe = overlay.querySelector("#ports-iframe");
