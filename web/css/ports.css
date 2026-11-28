@@ -705,7 +705,7 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .repo-stars { display: inline-block; color: var(--gold-bright); font: 500 11px/1.5 var(--sans); text-decoration: none; padding: 2px 0; }
 .repo-stars:hover { text-decoration: underline; text-underline-offset: 2px; }
 .pc-repo-stars { margin-top: 4px; cursor: default; }
-.rt[hidden] + .pc-repo-stars { margin-top: 9px; padding-top: 6px; border-top: 1px solid rgba(201, 164, 92, .18); }
+.rt[hidden] ~ .pc-repo-stars { margin-top: 9px; padding-top: 6px; border-top: 1px solid rgba(201, 164, 92, .18); }
 .mk-map-stars { padding: 2px 0 2px 8px; }
 .featured-creator { padding: 11px 10px; border-bottom: 1px solid rgba(201, 164, 92, .3); background: rgba(201, 164, 92, .08); }
 .featured-creator-heading { display: flex; gap: 10px; align-items: center; }
@@ -762,7 +762,9 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .rk-tab .adv-emblem { border-radius: 50%; opacity: .6; filter: saturate(.55); transition: opacity .15s, filter .15s, box-shadow .15s; }
 .rk-tab:hover .adv-emblem { opacity: .92; filter: none; }
 .rk-tab[aria-pressed="true"] .adv-emblem { opacity: 1; filter: none; box-shadow: 0 0 0 2px var(--adv), 0 0 12px var(--adv); }
-.rk-tab-lbl { max-width: 100%; overflow: hidden; font: 600 8.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
+/* With seven tabs the longest names are a little wider than a tab: they run a few pixels past it on each side, into
+   the room that the shorter names beside them leave. */
+.rk-tab-lbl { font: 600 8px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
 .rk-tab[aria-pressed="true"] .rk-tab-lbl { color: var(--gold-bright); }
 .rk-tab:focus-visible { outline-offset: -1px; }
 
@@ -897,9 +899,39 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
 .rk-missing b { color: var(--ink); font-weight: 600; }
 .rk-src { margin-top: 12px; }
 
-@container wvside (max-width: 352px) {
+/* The Ratings tab (rankingsRatings.js), whose rows are maps. An entry is the button that opens the map's card (its
+   place, emblem, name and score, and under them the ratings behind the score), then the map's maker, whose name and
+   account are links of their own, then the score as a bar. */
+.rk-star { color: var(--gold-bright); }
+.rk-none { margin: 12px 0 0; padding: 0 8px; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }
+.rk-map { position: relative; padding-bottom: 11px; border-bottom: 1px solid rgba(255, 255, 255, .045); }
+.rk-others .rk-map { padding-bottom: 7px; } /* no bar under a map without a rating */
+.rk-map .rk-row { min-height: 0; padding-bottom: 2px; border-bottom: 0; }
+.rk-by { display: flex; align-items: center; gap: 6px; padding: 1px 8px 0 41px; font-size: 11.5px; line-height: 1.5; color: var(--ink-dim); }
+.rk-by .mk-av { width: 18px; height: 18px; font-size: 8px; border-width: 0; }
+.rk-by-text { min-width: 0; overflow-wrap: anywhere; }
+.rk-map.is-me { border-radius: 8px; background: rgba(201, 164, 92, .1); box-shadow: inset 0 0 0 1.5px var(--gold-bright); }
+.rk-map.is-found { animation: rk-found 1.8s ease-out; }
+/* On a rated map's card, under its stars: where the map stands in the tab. */
+.pc-rank:empty { display: none; }
+.pc-rank { margin-top: 7px; cursor: default; }
+.rk-standing {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 5px; border-radius: 8px;
+  cursor: pointer; text-align: left; color: var(--ink-dim); font: 11.5px/1.35 var(--sans);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--adv) 20%, transparent), rgba(0, 0, 0, .22));
+  border: 1px solid color-mix(in srgb, var(--adv) 50%, transparent);
+}
+.rk-standing:hover, .rk-standing:focus-visible {
+  border-color: var(--gold-bright); background: linear-gradient(90deg, color-mix(in srgb, var(--adv) 30%, transparent), rgba(0, 0, 0, .18));
+}
+.rk-standing-text { flex: 1; min-width: 0; }
+.rk-standing-text b { font: normal 13.5px var(--serif); letter-spacing: .02em; color: var(--gold-bright); }
+
+@container wvside (max-width: 372px) {
   .rk-tabs { gap: 0; margin: 12px -10px; }
-  .rk-tab-lbl { font-size: 8px; letter-spacing: 0; }
+  .rk-tab-lbl { font-size: 7.5px; letter-spacing: 0; }
+}
+@container wvside (max-width: 352px) {
   .rk-mine-at { display: none; }
 }
 @media (max-width: 700px) {
@@ -907,10 +939,12 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .wv-rank-btn .adv-emblem { width: 28px; height: 28px; }
   .wv-rank-lbl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .rk-row { min-height: 46px; }
+  .rk-map .rk-row { min-height: 40px; } /* a map's entry is taller by its maker's line */
+  .rk-by { padding-top: 3px; padding-bottom: 2px; }
   .rk-close { width: 34px; height: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rk-row.is-found { animation: none; background: rgba(236, 208, 142, .22); } /* lit without the fade */
+  .rk-row.is-found, .rk-map.is-found { animation: none; background: rgba(236, 208, 142, .22); } /* lit without the fade */
   .rk-tab .adv-emblem, .rk-fold svg { transition: none; }
 }
 

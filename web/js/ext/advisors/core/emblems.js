@@ -56,6 +56,9 @@ const GLYPHS = {
     <path d="M29.5 35.5h5v6h-5z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.3"/>
     <path d="M24 41.5h16l1.5 4.5h-19z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.3" stroke-linejoin="round"/>
     <path d="M20 46h24v4.5H20z" fill="#e0b54c" stroke="#2a1d08" stroke-width="1.3"/>`,
+  // World Rankings' Ratings tab, what the visitors say: a speech bubble holding a star
+  ratings: `<path d="M17 14.5h30a5 5 0 0 1 5 5V38a5 5 0 0 1-5 5H33.5L24 51.5V43h-7a5 5 0 0 1-5-5V19.5a5 5 0 0 1 5-5z" fill="#fff4d2" stroke="#2a1d08" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M32 18.6l2.6 7 7.5.3-5.8 4.7 1.9 7.2-6.2-4.1-6.2 4.1 1.9-7.2-5.8-4.7 7.5-.3z" fill="#e0b54c" stroke="#2a1d08" stroke-width="1.2" stroke-linejoin="round"/>`,
 };
 
 function wreath() {

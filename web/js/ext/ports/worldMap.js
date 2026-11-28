@@ -971,6 +971,21 @@ export function createWorldMap({ canvas, outlines, onHover, onSelectCountry, onO
     getCountryCoverage() {
       return countryPorts.size;
     },
+    /**
+     * The country a map's pin picks where no pointer says which (a list's row for the map): the map's own, or for a
+     * map of several countries the one its pin stands in; its first, where the pin stands in none of them.
+     */
+    countryOfPort(port) {
+      const isos = (port?.countries || []).filter((iso) => countryById.has(iso));
+      if (isos.length > 1 && Array.isArray(port.center) && port.center.length === 2) {
+        const [wx, y] = projectRaw(port.center[0], port.center[1]);
+        const wy = -y;
+        const under = countries.find((c) => wx >= c.box[0] && wx <= c.box[2] && wy >= c.box[1] && wy <= c.box[3]
+          && c.rings.some((ring) => pointInRing(wx, wy, ring)));
+        if (under && isos.includes(under.id)) return under.id;
+      }
+      return isos[0] || null;
+    },
     /** Where a country's label point is, in css px from the canvas's top left (for tests and the console). */
     pointOf(iso) {
       const c = countryById.get(iso);

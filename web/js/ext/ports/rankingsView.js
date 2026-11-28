@@ -7,29 +7,43 @@
 //     flags in order.
 //   * A tab: the advisor's note on the measure, every country ranked on the measure's year, then the countries whose
 //     figure is from another year (with that year, never ranked), then the places with no figure at all.
+//   * The Ratings tab, where the maps' star ratings are kept (./rankingsRatings.js): not the countries but the maps
+//     themselves, in order of their visitors' score, each with the ratings behind it and its maker; then the maps
+//     nobody has rated yet, unranked. A rated map's card says where the map stands (mapStandingHtml).
 //   * Demographics, on a country's card: where it stands on every measure, beside the highest, the average and the
 //     lowest, after a strategy game's demographics screen (demographicsHtml).
 //   * The map as a lens while a tab is open: each ranked country in the tab's colours (lensFills), with its key
 //     (lensLegendHtml) and a line for the hover tip (lensTip).
 //
 // This module only writes HTML: the data rules are ./rankings.js, and ./index.js wires the clicks. A row is a button
-// with data-select (its country's card opens) and data-hover (the map outlines the country).
+// with data-select (its country's card opens) and data-hover (the map outlines the country). A map's row also names
+// its map (data-map): the card opens with that map first.
 
 import { esc } from "../../app/escape.js";
 import { emblem } from "../advisors/core/emblems.js";
 import { ROSTER } from "../advisors/core/roster.js";
 import { NO_DATA, OVERALL, RAMPS, cellOf, formatValue, groupOf, lensScale, listWords, measureOf, ordinal, rampColor, rankOf, ranking, standing, summary, tabOf } from "./rankings.js";
+import { RATING, RATINGS, formatScore, mapsOf, placeOf } from "./rankingsRatings.js";
 
 /** The medallion of the Overall tab and of the screen itself. */
 export const RANKINGS_ADVISOR = { id: "rankings", name: "World Rankings", role: "Every tab at once", color: "#c9a45c", dark: "#3a2f15" };
-const ADVISOR = new Map(ROSTER.map((a) => [a.id, a]));
+/** The Ratings tab's: it speaks for the visitors, as the other tabs' advisors speak for their figures. */
+export const RATINGS_ADVISOR = { id: RATINGS, name: "Ratings", role: "Tribune of the People", color: "#a784e0", dark: "#22143f" };
+const ADVISOR = new Map([...ROSTER, RATINGS_ADVISOR].map((a) => [a.id, a]));
 const advisorOf = (key) => ADVISOR.get(key) || RANKINGS_ADVISOR;
 const SHOWN = 7; // flags on an Overall card (one line in the panel)
+const NAMED = 3; // how many maps that share the lead the Ratings tab's card names before it counts them
 const CHEVRON = `<svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true" focusable="false"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const advStyle = (adv) => `--adv:${adv.color};--adv-dark:${adv.dark}`;
+const plural = (n, one, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
-/** The whole screen. `ctx`: {tab, mine, details, about, failed, nameOf(iso), flag(iso) → HTML, countries: [{id, name}]}. */
+/**
+ * The whole screen. `ctx`: {tab, mine, details, about, failed, nameOf(iso), flag(iso) → HTML, countries: [{id, name}]}.
+ * For the Ratings tab, whose rows are maps (the catalog's entries), also: {canRate: whether ratings can be given here,
+ * ratingsUrl: where they are explained, icon(map) → HTML of its emblem, makerName(map) → who made it, maker(map) →
+ * HTML of that maker's picture, name and links, home(map) → the country whose card the map's row opens}.
+ */
 export function rankingsHtml(doc, ctx) {
   const head = `<div class="rk-banner">
       <h2 class="rk-title" id="wv-rankings-title" tabindex="-1">World Rankings</h2>
@@ -43,8 +57,8 @@ export function rankingsHtml(doc, ctx) {
     return `<div class="rk">${head}${body}</div>`;
   }
   const tab = tabOf(doc, ctx.tab);
-  return `<div class="rk" data-tab="${esc(tab)}">${head}${tabsHtml(doc, tab)}${mineHtml(doc, tab, ctx)}${
-    tab === OVERALL ? overallHtml(doc, ctx) : measureHtml(doc, tab, ctx)}</div>`;
+  const body = tab === OVERALL ? overallHtml(doc, ctx) : measureOf(doc, tab).live ? ratingsHtml(doc, tab, ctx) : measureHtml(doc, tab, ctx);
+  return `<div class="rk" data-tab="${esc(tab)}">${head}${tabsHtml(doc, tab)}${mineHtml(doc, tab, ctx)}${body}</div>`;
 }
 
 function tabsHtml(doc, tab) {
@@ -61,7 +75,13 @@ function tabsHtml(doc, tab) {
 function mineHtml(doc, tab, { mine, countries, nameOf, flag }) {
   const options = countries.map((c) => `<option value="${esc(c.id)}"${c.id === mine ? " selected" : ""}>${esc(c.name)}</option>`).join("");
   let at = "";
-  if (tab !== OVERALL && mine) {
+  if (tab !== OVERALL && mine && measureOf(doc, tab).live) {
+    // The Ratings tab lists maps: here, where the best placed of the country's maps stands.
+    const best = mapsOf(doc.tally, mine)[0];
+    const where = !best ? "No map to rate" : best.rank == null ? "No ratings yet"
+      : `Top map <b>${ordinal(best.rank)}</b> of ${doc.tally.rows.length}${best.tied ? " (tied)" : ""}`;
+    at = `<span class="rk-mine-at">${where}</span>${best ? `<button type="button" class="rk-find" data-act="rankings-find">Show</button>` : ""}`;
+  } else if (tab !== OVERALL && mine) {
     const m = measureOf(doc, tab);
     const cell = cellOf(doc, tab, mine);
     const r = cell?.ranked ? rankOf(doc, tab, mine) : null;
@@ -79,10 +99,15 @@ function mineHtml(doc, tab, { mine, countries, nameOf, flag }) {
 
 // --- Overall -------------------------------------------------------------------------------------------------------------
 function overallHtml(doc, ctx) {
-  return `<p class="rk-lede">Where every country stands on the World Bank's newest figures. Each card is one tab's first
-      measure; open it for every country in order.</p>
-    <ul class="rk-cards">${doc.groups.map((g) => cardHtml(doc, g, ctx)).join("")}</ul>
-    ${sourceHtml(doc, null)}`;
+  const isRatings = (g) => !!measureOf(doc, g.lead)?.live;
+  const rated = doc.groups.some(isRatings);
+  const lede = rated
+    ? "Where every country stands on the World Bank's newest figures, and how this site's visitors rate the maps. Each card is one tab's first measure; open it for the whole list in order."
+    : `Where every country stands on the World Bank's newest figures. Each card is one tab's first
+      measure; open it for every country in order.`;
+  return `<p class="rk-lede">${lede}</p>
+    <ul class="rk-cards">${doc.groups.map((g) => (isRatings(g) ? ratingsCardHtml(doc, g, ctx) : cardHtml(doc, g, ctx))).join("")}</ul>
+    ${sourceHtml(doc, null, rated ? " Ratings: this site's visitors." : "")}`;
 }
 
 function cardHtml(doc, g, { mine, nameOf, flag }) {
@@ -152,13 +177,7 @@ function measureHtml(doc, key, ctx) {
   const listed = new Set([...r.rows, ...r.others].map((x) => x.iso));
   const missing = countries.filter((c) => !listed.has(c.id)).map((c) => c.name);
   return `<section class="rk-body" style="${advStyle(adv)}" aria-label="${esc(`${g.label}: ${m.label}`)}">
-      <div class="rk-adv">
-        ${emblem(adv, 52)}
-        <div class="rk-adv-text"><small>${esc(adv.role)}</small><h3>${esc(g.label)}</h3></div>
-        <button type="button" class="rk-fold" data-act="rankings-about" aria-expanded="${about}" aria-controls="rk-about"
-          title="${about ? "Hide" : "Show"} the ${esc(adv.role.toLowerCase())}'s note">${CHEVRON}</button>
-      </div>
-      <p class="rk-bubble" id="rk-about"${about ? "" : " hidden"}>${note}</p>
+      ${advisorHtml(adv, g, about, note)}
       <div class="rk-tools">${seg}${check}</div>
       <div class="rk-cols" aria-hidden="true"><span>Civilization</span><span title="Each bar is the figure as a share of the highest">${esc(m.label)} · ${m.year}</span></div>
       <ul class="rk-rows">${r.rows.map(row).join("")}</ul>
@@ -167,6 +186,17 @@ function measureHtml(doc, key, ctx) {
       ${missing.length ? `<p class="rk-missing"><b>No figure since ${esc(doc.first_year ?? "")}:</b> ${esc(missing.join(", "))}.</p>` : ""}
       ${sourceHtml(doc, m)}
     </section>`;
+}
+
+// The top of a tab: its advisor, the tab's name and the advisor's note, which folds away.
+function advisorHtml(adv, g, about, note) {
+  return `<div class="rk-adv">
+        ${emblem(adv, 52)}
+        <div class="rk-adv-text"><small>${esc(adv.role)}</small><h3>${esc(g.label)}</h3></div>
+        <button type="button" class="rk-fold" data-act="rankings-about" aria-expanded="${about}" aria-controls="rk-about"
+          title="${about ? "Hide" : "Show"} the ${esc(adv.role.toLowerCase())}'s note">${CHEVRON}</button>
+      </div>
+      <p class="rk-bubble" id="rk-about"${about ? "" : " hidden"}>${note}</p>`;
 }
 
 function rowHtml(doc, x, { m, other, details, top, mine, nameOf, flag }) {
@@ -191,13 +221,136 @@ function rowHtml(doc, x, { m, other, details, top, mine, nameOf, flag }) {
     </button></li>`;
 }
 
-function sourceHtml(doc, m) {
+// `after` follows the World Bank's line: on Overall, where the Ratings tab's card is from.
+function sourceHtml(doc, m, after = "") {
   const src = doc.source || {};
   const wdi = /^https:\/\//.test(src.url || "") ? `<a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer">${esc(src.title || "World Development Indicators")}</a>` : esc(src.title || "");
   const what = m && /^[A-Z0-9.]+$/i.test(m.indicator || "")
     ? `<a href="https://data.worldbank.org/indicator/${esc(m.indicator)}" target="_blank" rel="noopener noreferrer">${esc(m.label)}</a>, from ${esc(m.origin)}. `
     : "";
-  return `<p class="wv-src rk-src">${what}${esc(src.publisher || "World Bank")}, ${wdi}${src.license ? ` (${esc(src.license)})` : ""}${src.updated ? `, <span class="wv-nowrap">updated ${esc(src.updated)}</span>` : ""}.</p>`;
+  return `<p class="wv-src rk-src">${what}${esc(src.publisher || "World Bank")}, ${wdi}${src.license ? ` (${esc(src.license)})` : ""}${src.updated ? `, <span class="wv-nowrap">updated ${esc(src.updated)}</span>` : ""}.${after}</p>`;
+}
+
+// --- the Ratings tab: the maps, by what visitors think of them -----------------------------------------------------------
+// Its card on Overall: the map that leads and who made it, how many maps are ranked, and the first maps' emblems in
+// order. With a country picked as the visitor's own, where the best placed of that country's maps stands.
+function ratingsCardHtml(doc, g, { mine, nameOf, icon, makerName }) {
+  const m = measureOf(doc, g.lead);
+  const adv = advisorOf(g.key);
+  const { rows, waiting, n } = doc.tally;
+  const leaders = rows.filter((x) => x.rank === 1);
+  let lead;
+  if (!rows.length) lead = "<b>No ratings yet</b>";
+  else if (leaders.length > NAMED) lead = `<b>${leaders.length} maps</b> share the lead`;
+  else if (leaders.length > 1) lead = `<b>${esc(listWords(leaders.map((x) => x.port.name)))}</b> share the lead`;
+  else {
+    const by = makerName(leaders[0].port);
+    lead = `<b>${esc(leaders[0].port.name)}</b>${by ? ` by ${esc(by)}` : ""} leading`;
+  }
+  const own = mine ? mapsOf(doc.tally, mine) : [];
+  let sub;
+  if (own[0]?.rank != null) sub = `The best-placed map of ${esc(nameOf(mine))} is ${ordinal(own[0].rank)} of ${rows.length}${own[0].tied ? " (tied)" : ""}`;
+  else if (own.length) sub = `Nobody has rated a map of ${esc(nameOf(mine))} yet`;
+  else if (mine) sub = `No map of ${esc(nameOf(mine))} can be rated yet`;
+  else if (rows.length) sub = `${plural(rows.length, "map")} ranked on ${plural(n, "rating")}`;
+  else sub = waiting.length ? "Rate a map to put it on the board" : "No map can be rated yet";
+
+  const covers = (x) => !!mine && (x.port.countries || []).includes(mine);
+  const shown = rows.slice(0, SHOWN);
+  const chips = shown.map((x) => `<span class="rk-em${leaders.length === 1 && x.rank === 1 ? " is-lead" : ""}${covers(x) ? " is-me" : ""}" title="${esc(`${ordinal(x.rank)}: ${x.port.name}`)}">${icon(x.port)}</span>`).join("")
+    + (rows.length > shown.length ? `<span class="rk-more">+${rows.length - shown.length}</span>` : "");
+  const label = `${g.label}, ${m.label} now: ${strip(lead)}. ${strip(sub)}. Open the ${g.label} tab.`;
+  return `<li><button type="button" class="rk-card" data-rank-tab="${esc(g.lead)}" style="${advStyle(adv)}" aria-label="${esc(label)}">
+      <span class="rk-banner-flag" aria-hidden="true">${emblem(adv, 30)}</span>
+      <span class="rk-card-body" aria-hidden="true">
+        <span class="rk-card-title">${esc(g.label)} <small>${esc(m.label)} · now</small></span>
+        <span class="rk-card-lead">${lead}</span>
+        <span class="rk-card-sub">${sub}</span>
+        ${chips ? `<span class="rk-flags">${chips}</span>` : ""}
+      </span>
+    </button></li>`;
+}
+
+// The tab itself. Every rated map in order of its visitors' score; then the maps nobody has rated yet, unranked;
+// then how many maps cannot be rated at all (./rankingsRatings.js has the rules).
+function ratingsHtml(doc, key, ctx) {
+  const { about, canRate = false, ratingsUrl = null } = ctx;
+  const g = groupOf(doc, key);
+  const m = measureOf(doc, key);
+  const adv = advisorOf(g.key);
+  const { rows, waiting, n, unlisted } = doc.tally;
+  const counted = rows.length
+    ? `<b>${rows.length}</b> ${rows.length === 1 ? "map is" : "maps are"} ranked on <b>${n.toLocaleString("en-US")}</b> ${n === 1 ? "rating" : "ratings"}.`
+    : "Nobody has rated a map yet, so none is ranked.";
+  const turns = waiting.length > 1 ? ", a different one first each day" : "";
+  const wait = !waiting.length ? ""
+    : rows.length ? ` <b>${waiting.length}</b> more ${waiting.length === 1 ? "has no rating yet: it follows" : "have no rating yet: they follow"}, unranked${turns}.`
+      : ` <b>${waiting.length}</b> ${waiting.length === 1 ? "map can be rated: it follows" : "maps can be rated: they follow"}${turns}.`;
+  const note = `${esc(m.about)} ${counted}${wait}${canRate ? " Open a map's card to rate it." : ""}`;
+  const row = (x) => mapRowHtml(x, m, ctx);
+  const how = /^https:\/\//.test(ratingsUrl || "")
+    ? ` <a href="${esc(ratingsUrl)}" target="_blank" rel="noopener noreferrer">How ratings are kept</a>.` : "";
+  return `<section class="rk-body" style="${advStyle(adv)}" aria-label="${esc(`${g.label}: ${m.label}`)}">
+      ${advisorHtml(adv, g, about, note)}
+      <div class="rk-cols" aria-hidden="true"><span>Map and maker</span><span title="${esc(`Each bar is the score as a share of ${m.top}`)}">${esc(m.label)} · now</span></div>
+      ${rows.length ? `<ul class="rk-rows">${rows.map(row).join("")}</ul>` : `<p class="rk-none">No map is ranked yet.${canRate ? " Be the first to rate one." : ""}</p>`}
+      ${waiting.length ? `<h4 class="wv-group rk-group">No ratings yet <span>${waiting.length} · not ranked</span></h4>
+        <ul class="rk-rows rk-others">${waiting.map(row).join("")}</ul>` : ""}
+      ${unlisted > 0 ? `<p class="rk-missing"><b>Not listed:</b> ${unlisted === 1 ? "1 map that is" : `${unlisted} maps that are`} source code only.
+        A map can be rated once it can be opened.</p>` : ""}
+      <p class="wv-src rk-src">Star ratings by this site's visitors: anonymous, one for each map from each network.${how}</p>
+    </section>`;
+}
+
+// A map's entry: a button that opens its card (its place, its emblem, its name, its score and the ratings behind
+// it), then its maker, whose name and account are links of their own, then the score as a bar. The whole entry
+// carries the map's id, so the world map shows where the map is while the pointer is over it.
+function mapRowHtml(x, m, { mine, canRate = false, icon, maker, home }) {
+  const p = x.port;
+  const ranked = x.rank != null;
+  const countries = p.countries || [];
+  const me = !!mine && countries.includes(mine);
+  const iso = home(p);
+  // Its card is its country's; a map with no country on the world map opens itself.
+  const opens = iso ? `data-select="${esc(iso)}" data-map="${esc(p.id)}"` : `data-open-port="${esc(p.id)}" data-map="${esc(p.id)}"`;
+  const title = !iso ? `Open ${p.name}` : `${p.name}: open its card${!canRate ? "" : ranked ? ", with its stars" : " to rate it"}`;
+  const rank = ranked ? `<span class="rk-rank${x.rank <= 3 ? " is-top" : ""}"${x.tied ? ` title="Tied for ${ordinal(x.rank)}"` : ""}>${x.rank}</span>`
+    : `<span class="rk-rank is-none" title="Not ranked">–</span>`;
+  const by = maker(p);
+  return `<li class="rk-map${me ? " is-me" : ""}" data-port-id="${esc(p.id)}"${countries.length === 1 && iso ? ` data-hover="${esc(iso)}"` : ""}>
+      <button type="button" class="rk-row" ${opens} title="${esc(title)}">
+        ${rank}<span class="rk-em" aria-hidden="true">${icon(p)}</span>
+        <span class="rk-name">${esc(p.name)}</span>
+        ${ranked ? `<span class="rk-val">${formatScore(x.score)}</span><span class="rk-detail">${ratedHtml(x)}</span>` : ""}
+      </button>
+      ${by ? `<div class="rk-by">${by}</div>` : ""}
+      ${ranked ? `<i class="rk-bar" style="--t:${Math.max(0, Math.min(1, x.score / m.top)).toFixed(3)}" aria-hidden="true"></i>` : ""}
+    </li>`;
+}
+
+// The ratings behind a score: their plain average, as a map's card writes its own, and how many there are.
+function ratedHtml(x) {
+  return `<span class="wv-nowrap"><span class="rk-star" aria-hidden="true">★</span> <b>${x.average.toFixed(1)}</b> from ${plural(x.n, "rating")}</span>`;
+}
+
+/**
+ * Where a rated map stands in the Ratings tab, for its card: its place and its score. It is a button that opens the
+ * tab (data-rank-tab) with the map's row in view (data-rank-map). "" for a map without a rating, and where there is
+ * no Ratings tab.
+ */
+export function mapStandingHtml(doc, id) {
+  const m = measureOf(doc, RATING);
+  const at = m?.live ? placeOf(doc.tally, id) : null;
+  if (!at) return "";
+  const adv = advisorOf(RATINGS);
+  const place = `${ordinal(at.rank)} of ${at.of}${at.tied ? " (tied)" : ""}`;
+  const score = formatScore(at.score);
+  return `<button type="button" class="rk-standing" data-rank-tab="${RATING}" data-rank-map="${esc(id)}" style="${advStyle(adv)}"
+      title="${esc(`${at.port.name}: ${place} among the maps in World Rankings, with a ${m.label.toLowerCase()} of ${score}. Open the Ratings tab.`)}">
+      ${emblem(adv, 22)}
+      <span class="rk-standing-text"><b>${place}</b> in World Rankings <span class="wv-nowrap">· score ${score}</span></span>
+      <span class="wv-chev" aria-hidden="true">›</span>
+    </button>`;
 }
 
 // --- Demographics, on a country's card ---------------------------------------------------------------------------------
@@ -205,13 +358,14 @@ function sourceHtml(doc, m) {
 const UNIT = { usd: "US$", years: "years", pct: "% of people", km2: "km²", tonnes: "tonnes" };
 
 /**
- * Where a country stands on every measure: its rank and figure, and the highest, the average and the lowest of the
- * countries ranked on the same year. A figure from another year shows that year and no rank. A measure's name opens
- * its tab in World Rankings; a figure opens the World Bank's own chart of it for this country.
+ * Where a country stands on every measure of the World Bank's: its rank and figure, and the highest, the average and
+ * the lowest of the countries ranked on the same year. A figure from another year shows that year and no rank. A
+ * measure's name opens its tab in World Rankings; a figure opens the World Bank's own chart of it for this country.
+ * (The Ratings tab's measure is of maps, not of countries, so it has no row here.)
  */
 export function demographicsHtml(doc, iso, { nameOf, flag }) {
   const name = nameOf(iso);
-  const rows = standing(doc, iso);
+  const rows = standing(doc, iso).filter((r) => !r.measure.live);
   if (!rows.some((r) => r.cell)) return `<p class="wv-nofacts">The World Bank publishes no figures for ${esc(name)}.</p>`;
   return `<section class="dm" aria-labelledby="wv-dm-title">
       <h3 class="wv-group dm-head" id="wv-dm-title">Demographics <span>where ${esc(name)} stands</span></h3>

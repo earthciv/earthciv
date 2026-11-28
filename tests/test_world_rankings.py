@@ -1,6 +1,7 @@
 """Tests for World Rankings on the world map: its figures (web/data/world-rankings.json, built by
-pipeline/build_world_rankings.py) and the screen's wiring (web/js/ext/ports/rankings.js, rankingsView.js, index.js).
-The screen's rules are tested in tests/js/rankings.test.mjs, run through Node; this file runs it too."""
+pipeline/build_world_rankings.py) and the screen's wiring (web/js/ext/ports/rankings.js, rankingsRatings.js,
+rankingsView.js, index.js). The screen's rules are tested in tests/js/rankings.test.mjs and, for the Ratings tab,
+tests/js/rankingsRatings.test.mjs, run through Node; this file runs them too."""
 
 import json
 import os
@@ -18,7 +19,7 @@ NODE_NEEDED = 20  # node:test with ES modules
 RANKINGS_PATH = ROOT / "web" / "data" / "world-rankings.json"
 OUTLINES_PATH = ROOT / "web" / "data" / "world-outlines.json"
 JS = ROOT / "web" / "js"
-JS_TESTS = ROOT / "tests" / "js" / "rankings.test.mjs"
+JS_TESTS = [ROOT / "tests" / "js" / "rankings.test.mjs", ROOT / "tests" / "js" / "rankingsRatings.test.mjs"]
 
 
 def read(*parts):
@@ -240,12 +241,113 @@ class RankingsWiringTest(unittest.TestCase):
             self.assertIn(cls, css)
 
 
+class RatingsTabWiringTest(unittest.TestCase):
+    """World Rankings' Ratings tab: the maps by their star ratings, each with its maker (docs/RATINGS.md)."""
+
+    def setUp(self):
+        self.index = read("web", "js", "ext", "ports", "index.js")
+        self.rules = read("web", "js", "ext", "ports", "rankingsRatings.js")
+        self.view = read("web", "js", "ext", "ports", "rankingsView.js")
+        self.stars = read("web", "js", "ext", "ports", "ratings.js")
+
+    def test_rules_import_only_what_says_which_maps_can_be_rated(self):
+        # tests/js imports the file outside a browser: it may import the stars' own rules and nothing of the app.
+        imports = re.findall(r'(?m)^\s*import\b[^;]*?\bfrom\s+"([^"]+)"', self.rules)
+        self.assertEqual(imports, ["./ratings.js"])
+        self.assertNotRegex(self.rules, r"\b(document|window|localStorage)\b")
+        self.assertIn("import { SCALE, rateable } from \"./ratings.js\";", self.rules)
+
+    def test_the_world_map_still_loads_no_edition(self):
+        loaded = {p.relative_to(JS).as_posix() for p in static_closure(JS / "ext" / "ports" / "home.js")}
+        self.assertIn("ext/ports/rankingsRatings.js", loaded)
+        for edition_only in ("app/edition.js", "app/text.js", "format.js", "main.js"):
+            self.assertNotIn(edition_only, loaded)
+
+    def test_the_tab_is_made_from_the_maps_ratings(self):
+        # Every map of the catalog that can be rated, by turns of the day where nothing else orders two of them.
+        self.assertIn("tallyRatings(basePorts, (id) => ratings.of(id), { day: dayNumber() })", self.index)
+        self.assertIn("const listed = (ports || []).filter(rateable);", self.rules)
+        # It is there when ratings can be given or some have been, as a map's stars are.
+        self.assertIn("rankShown = tally && (ratings.open || tally.n > 0) ? withRatings(rankDoc, tally) : rankDoc;", self.index)
+        self.assertIn("get loaded() {", self.stars)
+        # No second read of the ratings, and no second address for them.
+        self.assertEqual(self.index.count('new URL("ratings.json", DATA_URL)'), 1)
+        self.assertNotIn("fetch", self.rules)
+
+    def test_the_tab_follows_a_rating_as_it_is_given(self):
+        self.assertIn("syncRatingsRanking(); // and so does World Rankings' Ratings tab", self.index)
+        self.assertIn("ratings.load().then(ratingsSettled);", self.index)
+
+    def test_a_maps_row_names_its_maker_and_opens_its_card(self):
+        # The maker: their picture, then their name and account as links, as on the map's card.
+        self.assertIn("icon: mapIconHtml, makerName: (p) => makerOf(p)?.name || \"\", maker: rankMakerHtml, home: homeOf,", self.index)
+        self.assertIn('return maker ? `${avatarHtml(maker)}<span class="rk-by-text">by ${makerNameHtml(maker)}</span>` : "";', self.index)
+        # Links cannot be inside the button that opens the card, so they follow it.
+        self.assertRegex(self.view, r'</button>\s*\$\{by \? `<div class="rk-by">\$\{by\}</div>` : ""\}')
+        # The row opens the card of the map's country with that map first, as the map's pin does.
+        self.assertIn("port: d.map ? portById(d.map) : null", self.index)
+        self.assertIn("map.countryOfPort(p)", self.index)
+        self.assertIn("    countryOfPort(port) {", read("web", "js", "ext", "ports", "worldMap.js"))
+
+    def test_the_maps_pins_stay_on_the_world_map_under_the_tab(self):
+        # The tab ranks maps, not countries: its measure is not in the World Bank's file, which the lens is made from.
+        self.assertIn("measureOf(rankDoc, ui.rankings) ? ui.rankings : null;", self.index)
+        self.assertIn("lensTip(rankDoc, lensKey, iso)", self.index)
+        doc = json.loads(RANKINGS_PATH.read_text(encoding="utf-8"))
+        self.assertNotIn("rating", [x["key"] for x in doc["measures"]])
+        self.assertNotRegex(read("web", "js", "ext", "ports", "rankings.js"), r"(?m)^  ratings: \[")  # no colours of its own
+
+    def test_a_rated_maps_card_says_where_the_map_stands(self):
+        # Under its stars; drawn again on its own when a rating changes.
+        self.assertIn('<div class="pc-rank" data-rank-of="${esc(p.id)}">${standingHtml(p.id)}</div>', self.index)
+        self.assertIn("return mapStandingHtml(rankView(), id);", self.index)
+        self.assertIn('sideEl?.querySelectorAll("[data-rank-of]")', self.index)
+        # Its click opens the tab with the map's row in view.
+        self.assertIn('openRankings(d.rankTab, { reveal: { map: d.rankMap } })', self.index)
+        # Demographics stays the World Bank's table, whatever file it is given.
+        self.assertIn("demographicsHtml(rankDoc, iso,", self.index)
+        self.assertIn("standing(doc, iso).filter((r) => !r.measure.live)", self.view)
+
+    def test_the_tab_has_its_own_medallion_and_styles(self):
+        m = re.search(r'export const RATINGS = "([a-z]+)";', self.rules)
+        self.assertIsNotNone(m, "RATINGS is missing from rankingsRatings.js")
+        key = m.group(1)
+        # Not an advisor of the editions: the tab's medallion is its own.
+        roster = re.findall(r'\{ id: "([a-z]+)"', read("web", "js", "ext", "advisors", "core", "roster.js"))
+        self.assertNotIn(key, roster)
+        self.assertIn("export const RATINGS_ADVISOR = { id: RATINGS,", self.view)
+        self.assertRegex(read("web", "js", "ext", "advisors", "core", "emblems.js"), r"(?m)^  %s: `<path" % key)
+        # The file's own tabs never take the name.
+        doc = json.loads(RANKINGS_PATH.read_text(encoding="utf-8"))
+        self.assertNotIn(key, [g["key"] for g in doc["groups"]])
+        css = read("web", "css", "ports.css")
+        for cls in (".rk-map", ".rk-by", ".rk-standing", ".pc-rank", ".rk-star", ".rk-none"):
+            self.assertIn(cls, css)
+        # The stars' own rule for a card without them still reaches the GitHub stars, past the new line between them.
+        self.assertIn(".rt[hidden] ~ .pc-repo-stars {", css)
+
+    def test_the_score_starts_in_the_middle_of_the_stars_scale(self):
+        self.assertIn("export const START = (1 + SCALE) / 2;", self.rules)
+        self.assertIn("export const START_RATINGS = 3;", self.rules)
+
+    def test_readme_and_ratings_doc_describe_the_tab(self):
+        readme = read("README.md")
+        self.assertIn("https://earthciv.org/#rankings=ratings", readme)
+        self.assertIn("web/js/ext/ports/rankingsRatings.js", readme)
+        self.assertIn("**The Ratings tab is a poll of this site's visitors, not a statistic.**", readme)
+        doc = read("docs", "RATINGS.md")
+        self.assertIn("## The Ratings tab of World Rankings", doc)
+        self.assertIn("(#the-ratings-tab-of-world-rankings)", doc)
+        self.assertIn("`(3 × 3 + sum) / (3 + n)`", doc)
+        self.assertIn("docs/RATINGS.md", self.index)  # the tab links to how ratings are kept
+
+
 class RankingsJavaScriptTest(unittest.TestCase):
     def test_ranks_ties_years_and_wording(self):
         node = find_node()
         if node is None:
             self.skipTest("needs Node.js %d or newer" % NODE_NEEDED)
-        command = [str(node), "--test", str(JS_TESTS.relative_to(ROOT))]
+        command = [str(node), "--test", *(str(path.relative_to(ROOT)) for path in JS_TESTS)]
         run = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=300)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
