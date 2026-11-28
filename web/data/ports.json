@@ -764,6 +764,25 @@
       "github_stars_checked": "2026-11-27"
     },
     {
+      "id": "nepalciv",
+      "name": "Nepal (nepalciv)",
+      "emblem": "🇳🇵",
+      "status": "live",
+      "scope": "country",
+      "region": "Asia",
+      "countries": ["NP"],
+      "center": [87.3, 27.0],
+      "languages": ["en"],
+      "license": "MIT",
+      "repo": "Sumpy1/nepalciv",
+      "author": "Sumpy1",
+      "url": "https://sumpy1.github.io/nepalciv/",
+      "embed": true,
+      "description": "Nepal on a 5 km hex grid, from the Terai to the High Himalaya, built from the 2021 census and other public data: 22 lenses, 19 airports, 17 hydropower plants and Nepal's eight peaks over 8,000 m.",
+      "github_stars": 0,
+      "github_stars_checked": "2026-11-28"
+    },
+    {
       "id": "civmap",
       "name": "CivMap (China & US)",
       "emblem": "🇨🇳",
