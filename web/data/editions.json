@@ -2,8 +2,8 @@
   "contract": 3,
   "default": "us",
   "editions": [
-    {"id": "us", "name": "United States", "emblem": "★", "home_pictures": true},
-    {"id": "ca", "name": "Canada", "emblem": "🍁", "home_pictures": true},
+    {"id": "us", "name": "United States", "emblem": "★"},
+    {"id": "ca", "name": "Canada", "emblem": "🍁"},
     {"id": "my", "name": "Malaysia", "emblem": "🌺"}
   ]
 }

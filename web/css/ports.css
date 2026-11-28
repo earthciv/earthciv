@@ -237,48 +237,35 @@ body.ports-open #topbar { visibility: hidden; }
 .wv-h:focus { outline: none; }
 .wv-lede { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }
 
-.wv-tiles { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 14px 0 2px; }
-.wv-tile { /* a link to the edition (index.js editionLink) */
-  display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 0 9px; border-radius: 9px; overflow: hidden;
+/* The editions, under the intro: one quiet block with a plain row for each, all of them alike (index.js tile): the
+   edition's emblem and name, its maker's face and account, and the round button that every map's row ends with,
+   in the editions' gold. A row is one link to its edition. The block is dressed as the makers' block below it is,
+   so that this site's own maps do not shout over everyone else's. */
+.wv-tiles {
+  margin: 14px 0 0; border-radius: 9px; overflow: hidden;
+  background: rgba(0, 0, 0, .26); border: 1px solid rgba(201, 164, 92, .32);
+}
+.wv-tiles-lbl { margin: 0; padding: 9px 10px 3px; font: 600 9.5px/1.4 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.wv-tile {
+  display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 48px; padding: 6px 9px 6px 10px;
   cursor: pointer; text-align: left; color: var(--ink); text-decoration: none;
-  border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(158, 124, 54, .32), rgba(60, 45, 18, .4));
-  box-shadow: inset 0 1px 0 rgba(255, 240, 200, .12);
 }
+.wv-tile + .wv-tile { border-top: 1px solid rgba(201, 164, 92, .22); }
+.wv-tile:hover, .wv-tile:focus-visible { background: rgba(201, 164, 92, .12); }
+.wv-tile:focus-visible { outline-offset: -2px; }
 .wv-tile-emblem {
-  flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
-  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 13px;
+  flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
+  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 14px;
 }
-.wv-tile-text { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 8px 0; }
-.wv-tile-text b { font: normal 14px var(--serif); color: var(--gold-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wv-tile-text small { font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wv-play {
-  flex: none; align-self: stretch; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px;
-  border-left: 1px solid rgba(236, 208, 142, .4);
-  background: linear-gradient(180deg, #e6c47a, #b68d3e); color: #1a1208; font: 700 12.5px var(--sans);
-}
-.wv-tile:hover .wv-play { background: linear-gradient(180deg, #f5d995, #c99d48); }
-/* A picture card: a piece of the edition's own map above its row, all of it the one link. */
-.wv-tiles-pictured { gap: 10px; }
-.wv-tile-pictured { display: block; padding: 0; }
-.wv-tile-pic { position: relative; display: block; line-height: 0; background: #0d2a47; border-bottom: 1px solid rgba(236, 208, 142, .5); }
-.wv-tile-pic img { display: block; width: 100%; height: auto; aspect-ratio: 716 / 208; object-fit: cover; } /* the whole picture at any width */
-.wv-tile-pic::after { /* a soft edge, so the row below reads as part of the same card */
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 240, 200, .08), inset 0 -22px 20px -16px rgba(8, 14, 20, .6);
-}
-.wv-tile:hover .wv-tile-pic img { filter: brightness(1.1) saturate(1.05); }
-.wv-tile-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 9px; }
-/* Whose map an edition began as, on its picture. */
-.wv-tile-by {
-  position: absolute; left: 7px; bottom: 7px; z-index: 1; display: inline-flex; align-items: center; gap: 6px;
-  max-width: calc(100% - 14px); padding: 2px 9px 2px 2px; border-radius: 13px;
-  background: rgba(10, 18, 28, .84); border: 1px solid rgba(236, 208, 142, .5);
-  color: #f3ead2; font: 600 11.5px/1.2 var(--sans); white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
-}
-.wv-tile-by .mk-av { width: 20px; height: 20px; font-size: 9px; border-width: 0; }
-.wv-tile-pic .mk-pic { width: 100%; height: 100%; aspect-ratio: auto; } /* not the map picture's shape (above) */
-.wv-tile-by > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wv-tile-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wv-tile-text b { font: normal 15px/1.25 var(--serif); letter-spacing: .02em; color: var(--gold-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-tile-text small { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 11.5px; line-height: 1.35; color: var(--ink-dim); white-space: nowrap; }
+/* Whose map the edition began as: the maker's face and account. */
+.wv-tile-by { flex: none; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; color: var(--ink); font-weight: 500; }
+.wv-tile-by .mk-av { width: 16px; height: 16px; font-size: 8px; border-width: 0; }
+.wv-tile-by > span:last-child, .wv-tile-here { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wv-tile .mk-map-go { width: 30px; height: 30px; }
+.wv-tile .mk-map-go .icon { width: 13px; height: 13px; }
 
 /* ---------- the makers: a picture and a name wherever a map is shown, and the list of everyone who made one ---------- */
 /* A maker's picture: their initials, and over them the picture from their GitHub account once it has loaded. */
@@ -697,25 +684,10 @@ a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1);
   .rt-bar { display: none; } /* no room in a phone's bar: a map is rated on its card */
   .mk-map { min-height: 42px; font-size: 14px; }
 }
-/* Picture cards where room is short (the sheet on phones and tablets, a laptop's low window): side by side, with
-   just the name and Play under each picture, so the list of countries keeps its place. */
+/* Where room is short (the sheet on phones and tablets, a laptop's low window) the intro is its heading and one line. */
 @media (max-width: 900px), (max-height: 760px) {
   .wv-lede-what { display: none; } /* the heading already says it */
-  .wv-tiles-pictured { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .wv-tiles-pictured .wv-tile:not(.wv-tile-pictured) { grid-column: 1 / -1; } /* no picture: a row of its own */
-  .wv-tile-pictured .wv-tile-emblem, .wv-tile-pictured .wv-tile-text small { display: none; }
-  .wv-tile-pictured .wv-tile-text b { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; } /* a long name wraps */
-  .wv-tile-pictured .wv-play { padding: 0 10px; }
-}
-/* Where those cards are narrow (a phone, or two side by side in the panel) they show the squarer picture.
-   index.js picks home-small.jpg on this same condition (<source media>): change the two together. */
-@media (max-width: 600px), (min-width: 901px) and (max-height: 760px) {
-  .wv-tile-pic img { aspect-ratio: 519 / 288; }
-}
-@media (max-width: 379px) {
-  /* Narrow phones: a picture card's name needs the room, and the arrow alone says Play (the card keeps its label). */
-  .wv-tile-pictured .wv-play span { display: none; }
-  .wv-tile-pictured .wv-play { padding: 0 12px; }
+  .wv-tiles { margin-top: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ports-side, .wv-primary, .ports-launch { transition: none; }

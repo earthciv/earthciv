@@ -122,6 +122,20 @@ class MakersWiringTest(unittest.TestCase):
         for cls in (".mk-av", ".mk-pic", ".mk-name", ".pc-by", ".map-maker-chip", ".wv-makers", ".mk-row", ".mk-map"):
             self.assertIn(cls, css)
 
+    def test_an_editions_row_names_its_maker_as_the_map_bars_do(self):
+        # On the country list every edition has the same plain row: its emblem and name, its maker's face and
+        # account, and the round button that the other maps' rows end with. The account is the one name both map
+        # bars show: the maker's X handle where the catalog has it, else their name.
+        self.assertIn("const accountOf = (maker) => (maker.twitter ? `@${maker.twitter}` : maker.name);", self.index)
+        self.assertIn("const label = accountOf(maker);", self.index)
+        tile = re.search(r"\n    const tile = \(p\) => \{\n(.*?)\n    \};\n", self.index, re.S)
+        self.assertIsNotNone(tile, "the edition's row (tile) not found in web/js/ext/ports/index.js")
+        self.assertIn("${avatarHtml(maker)}<span>${esc(accountOf(maker))}</span>", tile.group(1))
+        self.assertIn('<span class="mk-map-go ${KIND.merged.cls}" aria-hidden="true">${PLAY_SVG}</span>', tile.group(1))
+        css = read("web", "css", "ports.css")
+        for cls in (".wv-tiles", ".wv-tile", ".wv-tile-by", ".wv-tile-here"):
+            self.assertIn(cls, css)
+
     def test_the_country_list_puts_the_makers_forward(self):
         # Under the editions: today's map, a different maker's each day, and the way to the list of makers.
         strip = re.search(r"\n  function makersStripHtml\(makers\) \{\n(.*?)\n  \}\n", self.index, re.S)
@@ -161,7 +175,7 @@ class MakersWiringTest(unittest.TestCase):
         self.assertIn('referrerpolicy="no-referrer"', img.group(0))
         self.assertIn('loading="lazy"', img.group(0))
         self.assertIn('alt=""', img.group(0))
-        self.assertEqual(len(re.findall(r"<img\b", self.index)), 2)  # that one, and an edition's picture of its map
+        self.assertEqual(len(re.findall(r"<img\b", self.index)), 1)  # that one is the only picture the world view loads
 
     def test_readme_says_where_the_pictures_come_from(self):
         # README's Privacy section is the site's statement of what a visit reaches: it names the picture host.

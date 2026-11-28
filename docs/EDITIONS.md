@@ -11,7 +11,6 @@ web/data/
     edition.json         the manifest: names, terms, currency, display hints, which files exist
     text.json            the text pack: every sentence that differs between editions
     world.json …         the data files the manifest lists
-    home.jpg, home-small.jpg   optional: pictures of its map for its card on the world map
 ```
 
 ## The one rule
@@ -41,8 +40,8 @@ edition state in the hash (such as `/#city=35620`) open the default edition. Lin
   "contract": 3,
   "default": "us",
   "editions": [
-    {"id": "us", "name": "United States", "emblem": "★", "home_pictures": true},
-    {"id": "ca", "name": "Canada", "emblem": "🍁", "home_pictures": true}
+    {"id": "us", "name": "United States", "emblem": "★"},
+    {"id": "ca", "name": "Canada", "emblem": "🍁"}
   ]
 }
 ```
@@ -51,14 +50,12 @@ The map menu at the top left lists the editions in this order, before the commun
 lower case, the country's ISO 3166-1 alpha-2 code where there is one. `name` and `emblem` repeat the manifest's, so
 the menu can be built without loading every manifest.
 
-`emblem` is drawn on the round badge of the edition's card on the world map and of its share images. Beside the
+`emblem` is drawn on the round badge of the edition's row on the world map and of its share images. Beside the
 edition's name, in the menu and in lists, an emblem that is an emoji (🍁) is the edition's icon. One that is not, such
 as the U.S. star, would read as no icon there, so the country's flag takes its place (`web/js/ui/mapPicker.js`).
 
-`home_pictures` is optional. `true` says the edition's folder has two pictures of its own map, which the world map
-shows on the edition's card: `home.jpg` (716 × 208 px) where the card is wide, and `home-small.jpg` (519 × 288 px)
-where two cards sit side by side, on a phone or in a low window. Without it the card is a plain row, and the world
-map asks for no picture. `pipeline/home_pictures.py` makes both files from the running map.
+On the world map every edition has the same plain row, under "EarthCiv editions": its emblem and name, and its
+maker's picture and account. Nothing in this index dresses one edition's row differently from another's.
 
 ## edition.json
 
@@ -159,10 +156,7 @@ uv run python -m unittest discover -s tests
 uv run --group harness python -m harness record --edition <id>
 ```
 
-5. Optionally, give its card on the world map its pictures. Add the edition to `VIEWS` in
-   `pipeline/home_pictures.py` (where the map sits, and which part of the window each picture shows), make the two
-   files, look at them, and set `"home_pictures": true` in `editions.json`:
-
-```sh
-uv run --group harness python -m pipeline.home_pictures <id>
-```
+5. Give the edition its entry in `web/data/ports.json`, with `"status": "merged"` and its `editionId`
+   ([Add your map](../README.md#add-your-map) explains the fields). The world map takes the edition's pin from it,
+   and the maker its row names: `author`, with the picture of `author_github` and the X handle in `author_twitter`.
+   Without an entry the edition is still listed, with no pin and no maker.

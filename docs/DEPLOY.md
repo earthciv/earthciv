@@ -52,7 +52,8 @@ folder it is run in; from anywhere else the site would upload without its Functi
 
 - https://earthciv.org/ opens on the world map. Clicking a country opens its card; the Play buttons open the United
   States (`?country=us`) and Canada (`?country=ca`), and the World button in each edition brings the world map back.
-- The United States and Canada cards beside the world map each show a picture of their map.
+- Beside the world map, under "EarthCiv editions", every edition has the same row, with its maker's picture and
+  X handle. A row opens its edition.
 - An old link without `?country=`, such as https://earthciv.org/#city=35620, still opens the United States.
 - **Share → Copy link** on a city or a lens creates a `/share/` URL. Its HTML has the matching title and preview
   image, and opening it in a browser restores the map view.

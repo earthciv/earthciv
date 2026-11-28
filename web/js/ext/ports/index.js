@@ -43,15 +43,12 @@ import { emblem } from "../advisors/core/emblems.js";
 
 const MODE = "ports";
 const DATA_URL = new URL("../../../data/", import.meta.url);
-const CSS_HREF = new URL("../../../css/ports.css?v=20261127g", import.meta.url).href;
+const CSS_HREF = new URL("../../../css/ports.css?v=20261128a", import.meta.url).href;
 const CUSTOM_KEY = "earthciv.customPorts.v1";
 const MINE_KEY = "earthciv.myCountry.v1"; // the country a visitor picked as theirs in World Rankings ("none": none)
 const CATALOG_PORT_COUNT = 73; // maps in ports.json, shown on the World button before it loads (tests/test_ports.py)
 const WORLD_VALUE = "__ports__"; // the map menu's entry for the world map (no map has this id)
 const RATING_BAR = "(min-width: 701px)"; // where a map's bar has room for its stars (css/ports.css hides .rt-bar below)
-// Editions with pictures of their own map for their card here: home.jpg and home-small.jpg in the edition's folder,
-// declared by "home_pictures" in editions.json (docs/EDITIONS.md; pipeline/home_pictures.py makes them).
-const PICTURED = new Set(EDITIONS.filter((e) => e.home_pictures === true).map((e) => e.id));
 const REPO_URL = "https://github.com/earthciv/earthciv";
 const ORIGINAL_URL = "https://karpathy.ai/usaciv";
 // The account this site's own editions are credited to (the catalog's "repo" of an EarthCiv edition).
@@ -520,6 +517,8 @@ export function install(app) {
     const maker = makerOf(p);
     return maker && !isHouse(maker) ? maker : null;
   };
+  /** The account a maker goes by where there is room for one name: their X handle if the catalog has it, else their name. */
+  const accountOf = (maker) => (maker.twitter ? `@${maker.twitter}` : maker.name);
 
   /** Everyone who made a map, in the order the list of makers shows them, with their ratings. */
   function rankedMakers() {
@@ -551,7 +550,7 @@ export function install(app) {
       slot.replaceChildren();
       return;
     }
-    const label = maker.twitter ? `@${maker.twitter}` : maker.name;
+    const label = accountOf(maker);
     const href = maker.twitter ? `https://x.com/${maker.twitter}` : maker.url;
     const title = `Map maker: ${label}`;
     const content = `${avatarHtml(maker)}<span class="map-maker-label">${esc(label)}</span>`;
@@ -1597,27 +1596,21 @@ export function install(app) {
     const editions = allPorts().filter((p) => p.status === "merged" && p.editionId);
     const nMapped = new Set(allPorts().flatMap((p) => p.countries || [])).size;
 
-    // An edition's card is one link to it (editionLink). Where the edition has pictures (PICTURED) it shows a piece of
-    // its own map above the row that names it: the wide picture, or the squarer one where the cards are narrow.
-    // ports.css sizes the picture on the same media condition as the <source> here; the link's label names the card.
+    // The editions' rows are all alike, and plain: the edition's emblem and name, its maker's face and account, and
+    // the round button that every map's row here ends with. The whole row is one link to the edition (editionLink),
+    // and the link's label names it. (So the account is not a link of its own in this row: the edition's top bar
+    // and Map makers link to it.)
     const tile = (p) => {
-      const iso = (p.countries || [])[0] || "";
-      const current = !home && p.editionId === EDITION_ID;
-      const pic = PICTURED.has(p.editionId) ? esc(new URL(`${p.editionId}/home`, DATA_URL).href) : "";
-      // An edition that began as somebody's own map says whose: on its picture, or in its line where it has none.
-      // (The card is one link to the edition, so the name here is not a link of its own.)
+      const a = actionOf(p);
       const maker = creditOf(p);
-      const what = current ? "you came from here" : maker && !pic ? `by ${maker.name}` : "hex map from public data";
-      const row = `<span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
-        <span class="wv-tile-text"><b>${esc(p.name)}</b><small>EarthCiv edition · ${esc(what)}</small></span>
-        <span class="wv-play">${PLAY_SVG}<span>${current ? "Back" : "Play"}</span></span>`;
-      const body = !pic ? row : `<span class="wv-tile-pic"><picture>
-          <source media="(max-width: 600px), (min-width: 901px) and (max-height: 760px)" srcset="${pic}-small.jpg" width="519" height="288">
-          <img src="${pic}.jpg" alt="" width="716" height="208" decoding="async"></picture>
-          ${maker ? `<span class="wv-tile-by">${avatarHtml(maker)}<span>by ${esc(maker.name)}</span></span>` : ""}</span>
-        <span class="wv-tile-row">${row}</span>`;
-      return `<a class="wv-tile${pic ? " wv-tile-pictured" : ""}" ${editionLink(p.editionId)} data-hover="${esc(iso)}" aria-label="${current ? "Back to" : "Play"} ${esc(p.name)}${maker ? `, by ${esc(maker.name)}` : ""}">
-        ${body}
+      const sub = [
+        maker ? `<span class="wv-tile-by" title="Map maker: ${esc(maker.name)}">${avatarHtml(maker)}<span>${esc(accountOf(maker))}</span></span>` : "",
+        !home && p.editionId === EDITION_ID ? `<span class="wv-tile-here">you came from here</span>` : "",
+      ].filter(Boolean);
+      return `<a class="wv-tile" ${editionLink(p.editionId)} data-hover="${esc((p.countries || [])[0] || "")}" title="${esc(a.title)}" aria-label="${esc(a.title)}${maker ? `, by ${esc(maker.name)}` : ""}">
+        <span class="wv-tile-emblem" aria-hidden="true">${esc(p.emblem || "★")}</span>
+        <span class="wv-tile-text"><b>${esc(p.name)}</b>${sub.length ? `<small>${sub.join(`<span aria-hidden="true">·</span>`)}</small>` : ""}</span>
+        <span class="mk-map-go ${KIND.merged.cls}" aria-hidden="true">${PLAY_SVG}</span>
       </a>`;
     };
     const row = (r) => {
@@ -1635,7 +1628,8 @@ export function install(app) {
         <p class="wv-lede"><span class="wv-lede-what">Real countries as strategy-game maps, built from public data.</span>
           ${nMapped} mapped so far: pick one on the map, or start here.</p>
       </div>
-      ${editions.length ? `<div class="wv-tiles${editions.some((p) => PICTURED.has(p.editionId)) ? " wv-tiles-pictured" : ""}">${editions.map(tile).join("")}</div>` : ""}
+      ${editions.length ? `<section class="wv-tiles" aria-labelledby="wv-tiles-lbl">
+        <h3 class="wv-tiles-lbl" id="wv-tiles-lbl">EarthCiv editions</h3>${editions.map(tile).join("")}</section>` : ""}
       ${makersStripHtml(rankedMakers())}
       <button type="button" class="wv-rankings" data-act="rankings">
         <span class="wv-rankings-medal" aria-hidden="true">${emblem(RANKINGS_ADVISOR, 40)}</span>
