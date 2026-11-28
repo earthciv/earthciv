@@ -115,7 +115,9 @@ class MakersWiringTest(unittest.TestCase):
         self.assertIn('if (view === "detail") cardRated = ratings.loaded;', self.index)
         self.assertIn("syncCardOrder(); //", self.index)
         self.assertIn("const list = cardPorts(iso);", self.index)
-        self.assertIn("activatePort(cardPorts(ui.selected)[0]);", self.index)
+
+    def test_enter_opens_the_map_shown_first_on_the_country_card(self):
+        self.assertRegex(self.index, r'function openPrimary\(\) \{[^}]+sideEl\.querySelector\("\.wv-cards \.port-card"\)')
 
     def test_world_view_names_the_maker_wherever_a_map_is_shown(self):
         self.assertRegex(self.index, r'import \{[^}]*\bmakerOf\b[^}]*\} from "\./makers\.js";')

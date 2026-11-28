@@ -1351,7 +1351,9 @@ export function install(app) {
   }
 
   function openPrimary() {
-    activatePort(cardPorts(ui.selected)[0]);
+    // The visible order can stay fixed after a rating changes. Enter opens the map shown on the card.
+    const first = sideEl.querySelector(".wv-cards .port-card");
+    activatePort(portById(first?.dataset.portId));
   }
 
   // --- the list of makers ------------------------------------------------------------------------------------------
