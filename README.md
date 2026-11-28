@@ -18,7 +18,8 @@ and more, with every number traced to its source. It is a visualizer, not a game
   above the map while it is open. [Map makers](https://earthciv.org/#makers=all) lists everyone who made one.
 - **[World Rankings](https://earthciv.org/#rankings=overall) compares every country,** after a strategy game's
   rankings screen: ten World Bank measures in five tabs, each under one of the advisors, with the visitor's own
-  country marked.
+  country marked. One more tab, [Ratings](https://earthciv.org/#rankings=ratings), is the visitors' own ranking:
+  the maps themselves, in order of the stars people give them, each with its maker.
 
 EarthCiv and the community maps it showcases grew out of Andrej Karpathy's original U.S. map,
 [usaciv](https://karpathy.ai/usaciv)
@@ -401,6 +402,26 @@ Organization (goods trade); each tab names its source. Military spending is left
 it under SIPRI's own terms rather than CC BY 4.0, and tourism and the size of armed forces because their series stop
 in 2020.
 
+The last tab, **Ratings** ([earthciv.org/#rankings=ratings](https://earthciv.org/#rankings=ratings)), is not the World
+Bank's, and it does not rank countries. It ranks the maps themselves by the star ratings that visitors give them
+(below), each beside its maker, and it changes as ratings are given. The rules are in
+`web/js/ext/ports/rankingsRatings.js`:
+
+- Every map that can be rated is listed: an EarthCiv edition or a community map with a site, whether it is of one
+  country, of a part of one, or of several.
+- A map's **visitors' score** starts in the middle of the scale, at 3 of 5, and its ratings pull it from there: it is
+  their average, counted as if the map also had three ratings of 3 stars. One five-star rating makes 3.50, ten make
+  4.54 and a hundred 4.94. So a map is ranked from its first rating, one rating does not outrank many, and a map's
+  score depends on its own ratings alone.
+- Maps with the same score share a place. Among them the most rated is listed first. After that, and among the maps
+  nobody has rated yet (they follow the ranked ones, unranked), the maps take turns: a different one first each day.
+- Each row shows the ratings behind the score, their plain average and how many there are, and the map's maker:
+  their picture, their name and, where the catalog has it, their X account.
+
+A row opens the map's card, where the map is rated. A rated map's card says where the map stands, and a rating given
+there moves the map at once. Under this tab the world map keeps the maps' pins. The tab is there only where ratings
+are kept: a copy of the site without them has the World Bank's tabs alone.
+
 Every map is shown with the name and picture of the person who made it, and **Map makers**
 ([earthciv.org/#makers=all](https://earthciv.org/#makers=all)) lists them all, each with their maps. It starts with
 Andrej Karpathy, whose usaciv the others began with, and ends with EarthCiv's own edition. In between, makers
@@ -409,8 +430,9 @@ placed by their weighted visitor rating. GitHub stars from distinct repositories
 and vote counts, including makers awaiting enough ratings. Remaining ties rotate daily (`web/js/ext/ports/makers.js`). The country list also puts one community map forward
 as **Today's map**, with its maker's name and picture: every community map with a site takes a day in turn.
 
-Visitors can rate each map that opens, from one to five stars, and its card shows the average. Ratings are anonymous
-and need a small database on the host; a copy of the site without one simply shows no stars
+Visitors can rate each map that opens, from one to five stars, and its card shows the average. World Rankings'
+Ratings tab ranks the maps by these ratings (above). Ratings are anonymous and need a small database on the
+host; a copy of the site without one simply shows no stars and has no Ratings tab
 ([docs/RATINGS.md](docs/RATINGS.md)).
 
 ### Reading the map honestly
@@ -430,6 +452,9 @@ The map is drawn to be fun, but the numbers are real, so it is worth knowing whe
 - **World Rankings' colours can be on a log scale.** Measures that span several orders of magnitude (GDP,
   population, articles, land, the harvest, trade) are coloured on a log scale, as the map's key says; the bars in a
   tab are each figure's share of the highest. A country in grey has no figure for the ranked year, not a low one.
+- **The Ratings tab is a poll of this site's visitors, not a statistic.** Its scores say what the people who chose
+  to rate think of each map, and nothing about the countries the maps show. A few ratings can move a map a long way
+  while it has few, so each row shows how many ratings its score rests on.
 
 ### Credits and terms
 

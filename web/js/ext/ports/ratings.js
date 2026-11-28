@@ -83,6 +83,7 @@ export function createRatings({ url, onChange = () => {}, fetchFn = null, storag
   let mine = readStored(store) || {}; // map id → this visitor's stars
   const busy = new Set(); // map ids with a rating on its way to the server
   let open = false; // whether ratings can be given here
+  let loaded = false; // whether the totals have been read: until then nothing is known of any map's rating
   let loading = null;
 
   function setMine(id, stars) {
@@ -119,6 +120,7 @@ export function createRatings({ url, onChange = () => {}, fetchFn = null, storag
         })
         .then((doc) => {
           open = doc?.open === true && !framed();
+          loaded = true;
           totals.clear();
           for (const [id, total] of Object.entries(doc?.ratings || {})) {
             if (Array.isArray(total) && total[0] > 0) totals.set(id, [Number(total[0]) || 0, Number(total[1]) || 0]);
@@ -240,6 +242,10 @@ export function createRatings({ url, onChange = () => {}, fetchFn = null, storag
     sync,
     get open() {
       return open;
+    },
+    /** True once every map's totals have been read (World Rankings' Ratings tab is made from them). */
+    get loaded() {
+      return loaded;
     },
   };
 }

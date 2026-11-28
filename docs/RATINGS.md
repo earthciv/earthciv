@@ -19,6 +19,7 @@ There is no sign-in. One network counts once per map, which is close to, but not
 | `web/data/ratings.json` | A static file that says ratings are not open: `{"version": 1, "open": false, "reason": "static", "scale": 5, "ratings": {}}`. |
 | `functions/data/ratings.json.js` | A Cloudflare Pages Function that answers at the same address, `/data/ratings.json`, from a D1 database. |
 | `web/js/ext/ports/ratings.js` | The world view's side: reads the ratings, draws the stars, sends a visitor's rating. |
+| `web/js/ext/ports/rankingsRatings.js` | World Rankings' Ratings tab: the maps in order of their ratings ([below](#the-ratings-tab-of-world-rankings)). |
 
 On a host with no Function (any static host, `python -m pipeline serve`), the browser gets the static file, and the
 world view shows no stars. The Function also hands a request to that file while it has no database. So a copy of
@@ -45,6 +46,54 @@ The database has two tables, which the Function creates the first time it finds 
 Function): `ratings`, one row per network and map, and `totals`, one row per map with its number of ratings and the
 sum of their stars. Triggers in the database keep `totals` in step with `ratings`, so reading every map's average
 touches one row per map, and a rating costs the same however many a map has.
+
+## The Ratings tab of World Rankings
+
+World Rankings on the world map has one tab that is not the World Bank's and does not rank countries: **Ratings**,
+which ranks the maps themselves by their ratings, each beside its maker (`#rankings=ratings`). It is made in the
+browser from the same totals as the stars, so it needs nothing more from the server, and it follows a rating as
+soon as it is given.
+
+- **Which maps are listed.** Every map that can be rated: an EarthCiv edition or a community map with a site,
+  whether it is of one country, of a part of one, or of several. In the catalog of 2026-11-27 that is 60 of the 73
+  maps; the other 13 are source code only.
+- **A map's score** starts in the middle of the scale, at 3 of 5, and its ratings pull it from there: with `n`
+  ratings whose stars add up to `sum`, it is `(3 × 3 + sum) / (3 + n)`, rounded to two decimals. That is the average
+  of the ratings, counted as if the map also had three ratings of 3 stars.
+
+  | Ratings | Score |
+  | --- | --- |
+  | none | not ranked |
+  | one of 5 stars | 3.50 |
+  | ten of 5 stars | 4.54 |
+  | a hundred of 5 stars | 4.94 |
+  | one of 1 star | 2.50 |
+  | any number that average 3 stars | 3.00 |
+
+  So a map is ranked from its first rating, one rating does not outrank many, and a map's score depends on its own
+  ratings alone: rating one map never moves another map's score, only its place.
+- **Places.** Maps are ranked on the score as it is written. Equal scores share a place, as equal figures do in
+  the other tabs: a map's place is one more than the number of maps with a higher score.
+- **Where the score does not decide.** Among maps that share a place, the one with more ratings is listed first.
+  After that, and among the maps nobody has rated yet, the maps take turns: the catalog's order, moved round by one
+  place every day (UTC), as in the list of makers. So no map comes first for its name, or for the day it was added.
+- **Not ranked.** A map that can be rated and has no rating yet is listed after the ranked ones. A map that cannot
+  be rated is not listed.
+- **The maker.** Each row names the map's maker as the map's card does: their picture, their name, and their X
+  account where the catalog has one (`web/js/ext/ports/makers.js`).
+
+A row opens the card of the map's country with that map first, as the map's pin does. For a map of several
+countries that is the visitor's own country when the map covers it, and otherwise the country its pin stands in.
+A rated map's card says where the map stands, under its stars. The world map keeps the maps' pins under this tab:
+the other tabs colour the countries, and this one has no country to colour.
+
+The tab is there when ratings can be given or some have been, as a map's stars are. On a host without the Function
+the tab is missing and World Rankings has the World Bank's tabs alone. Where ratings are closed, the tab shows the
+scores and does not ask for ratings.
+
+[Limits](#limits) says what the ratings can and cannot withstand. The same holds for this ranking: it is a poll of
+the people who chose to rate, and while a map has few ratings, a few more can move it a long way. Each row
+therefore shows the number of ratings behind its score.
 
 ## What is stored
 
@@ -189,3 +238,4 @@ are gone. The database keeps what it has until it is deleted.
 
 `tests/test_ratings.py` checks the files and settings, and runs `tests/js/ratings.test.mjs` when it finds Node 22.13
 or newer: the Function against a real SQLite database, and the page's rules against the Function.
+`tests/test_world_rankings.py` runs `tests/js/rankingsRatings.test.mjs`, the Ratings tab's rules and its screen.
