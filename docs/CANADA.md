@@ -69,8 +69,11 @@ scale.
 - **Yields, panels and lenses.** Census industries are NAICS 2017 sectors, the same sectors as the U.S. industry keys,
   so the yields use the U.S. definitions. Each census lens reuses the U.S. lens's name, colours and group; its value
   is the census division covering most of the hex.
-- **The national view.** The map opens as the U.S. edition does: all the land framed in the window, here the whole
-  country, Arctic included. Canada's cities line the bottom of that frame, where the lens dock and the minimap sit, so
+- **The national view.** The map opens on the land framed in the window, as the U.S. edition does, but leaves out up
+  to the northern fifth of its height (`home_crop_north`, the north of the Arctic islands) when the country is taller
+  than the window, so the cities along the south are not squeezed into a strip: in a 1280×800 window the eight
+  biggest metros all get their banners. Zoom out for the rest; on a phone, where the width sets the frame, the whole
+  country shows. Canada's cities line the bottom of that frame, where the lens dock and the minimap sit, so
   the fit stops above the lens dock and the minimap is no taller than the U.S. one (152 px). Banner population floors
   are the U.S. floors scaled by Canada's share of the U.S. population (12%), so a city gets its banner at the zoom
   where a U.S. city of the same share would; zoom in for more. The capital, Ottawa, always has a banner, as

@@ -103,7 +103,8 @@ maker's picture and account. Nothing in this index dresses one edition's row dif
 | Hint | What it does |
 | --- | --- |
 | `home_dock_band` | Pixels of the home view kept clear above the lens dock (a tall country fits better). |
-| `banner_floor_scale` | Below this zoom, city banners shrink no further. |
+| `home_crop_north` | Share of the land's height, from its northern edge, that the home view may leave out when the land is taller than the window (0 to 0.5), so a country that lives in its south is not squeezed into a strip. Links' zoom levels stay relative to the whole land. |
+| `banner_floor_scale` | Scales the population a city needs for its banner at each zoom (the edition's share of the U.S. population). |
 | `resource_groups` | How the Energy advisor groups resource types (`id`, `label`, `types`). |
 | `trade_arcs_one_side` | Draw every trade route bending the same way. |
 | `emblem_color` | The emblem's colour on share images. |
