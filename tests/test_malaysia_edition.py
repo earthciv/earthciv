@@ -281,6 +281,15 @@ class EconomyDataTest(unittest.TestCase):
         self.assertIn("RM", self.lenses["income"]["unit"])
         self.assertIn("monthly", self.lenses["income"]["unit"])
 
+    def test_age_and_participation_lenses_are_shares(self):
+        for lens_id in ("children", "older", "participation"):
+            self.assertIn(lens_id, self.lenses)
+            values = [v for v in self.lenses[lens_id]["values"] if v is not None]
+            self.assertTrue(values and all(0 < v < 1 for v in values), lens_id)
+        land = [v for v in self.lenses["density"]["values"] if v is not None]
+        for lens_id in ("children", "older", "participation"):
+            self.assertEqual(len([v for v in self.lenses[lens_id]["values"] if v is not None]), len(land), lens_id)
+
     def test_economy_never_reads_ethnicity_or_religion(self):
         from pipeline import malaysia_economy
 

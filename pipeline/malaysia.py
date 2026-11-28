@@ -248,13 +248,14 @@ def sample_elevation(grid, xy):
     return samples
 
 
-def population(ethnicity="overall"):
+def population(ethnicity="overall", age="overall"):
     """{(state, district): {year: people}} on the 160 boundary districts, and the list of years. `ethnicity` is a
-    DOSM group (bumi_malay, bumi_other, chinese, indian, other_citizen, other_noncitizen) or "overall"."""
+    DOSM group (bumi_malay, bumi_other, chinese, indian, other_citizen, other_noncitizen) or "overall"; `age` is a
+    DOSM five-year band ("0-4" … "85+") or "overall"."""
     raw = defaultdict(dict)
     with (SOURCE_DIR / "population_district.csv").open(encoding="utf8") as f:
         for r in csv.DictReader(f):
-            if r["sex"] == "both" and r["age"] == "overall" and r["ethnicity"] == ethnicity:
+            if r["sex"] == "both" and r["age"] == age and r["ethnicity"] == ethnicity:
                 raw[(r["state"], r["district"])][int(r["date"][:4])] = float(r["population"]) * 1000
     pop = defaultdict(lambda: defaultdict(float))
     for key, series in raw.items():
@@ -469,6 +470,12 @@ RELIGIONS = [  # MyCensus 2020 (Kawasanku) variables
     ("other", "religion_other", "Other religions"),
     ("atheist", "religion_none", "No religion or unknown"),
 ]
+AGE_LENSES = [  # DOSM five-year bands summed; shares of all residents
+    (["0-4", "5-9", "10-14"], "children", "Children (under 15)", "🧒",
+     ["#1d2b3a", "#24506b", "#2f7f8f", "#5bb3a0", "#a6dcb0", "#eef8d8"], "aged under 15"),
+    (["60-64", "65-69", "70-74", "75-79", "80-84", "85+"], "older", "Older people (60+)", "🧓",
+     ["#2a1b2e", "#4f2a55", "#7d3f78", "#b05f8f", "#dc96a8", "#f8dcd0"], "aged 60 and over"),
+]
 LENS_GROUPS = [{"id": "people", "name": "People"}, {"id": "ethnicity", "name": "Ethnicity"},
                {"id": "religion", "name": "Religion"}]
 
@@ -501,7 +508,16 @@ def build_lenses(props, shapes, pop, year, county, econ, pct, owners):
                         "that covers most of the hex." + DOMAIN_NOTE,
          "values": spread(growth)},
     ]
-    for lens in lenses:  # density and growth: the U.S. colour range (2nd–98th percentile of hexes)
+    for bands, id, name, emoji, ramp, words in AGE_LENSES:
+        by_band = [population(age=b)[0] for b in bands]  # one read of the table per band, not per district
+        people = [sum(band[k][year] for band in by_band) for k in keys]
+        lenses.append({
+            "id": id, "group": "people", "name": name, "icon": "l-people", "emoji": emoji, "unit": "share of residents",
+            "format": "pct", "scale": "linear", "higher_is": "neutral", "source": "dosm_population", "ramp": ramp,
+            "description": f"Residents {words} ÷ all residents of the district that covers most of the hex ({year} DOSM "
+                           "mid-year estimate, five-year age bands)." + DOMAIN_NOTE,
+            "values": spread([round(n / pop[k][year], 4) for n, k in zip(people, keys)])})
+    for lens in lenses:  # density, growth and age: the U.S. colour range (2nd–98th percentile of hexes)
         lens["domain"] = percentile_domain(lens["values"], lens["scale"] == "log")
     noncitizen, _ = population("other_noncitizen")
     lenses.append(share_lens(
