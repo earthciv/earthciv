@@ -57,6 +57,17 @@ export function scoreOf(n, sum) {
   return Math.round(((START_RATINGS * START + sum) / (START_RATINGS + n)) * 100) / 100;
 }
 
+/**
+ * A map's ratings as they are counted, from what is known of them ({n, sum}, or nothing): a whole number of ratings
+ * `n`, and a sum of stars `sum` that so many ratings of one to five stars could add up to. The tab counts them so,
+ * and so does the order of a country's maps (./makers.js rankCountryPorts).
+ */
+export function countedRating(r) {
+  const n = Number.isFinite(r?.n) && r.n > 0 ? Math.floor(r.n) : 0;
+  // A sum that no n ratings of one to five stars could add up to is brought back within them.
+  return { n, sum: n ? Math.min(n * SCALE, Math.max(n, Number(r.sum) || 0)) : 0 };
+}
+
 /** A score as the screen writes it: always with its two decimals ("4.50"). */
 export function formatScore(score) {
   return Number.isFinite(score) ? score.toFixed(2) : "–";
@@ -77,10 +88,7 @@ export function tallyRatings(ports, ratingOf = () => null, { day = 0 } = {}) {
   const count = listed.length || 1;
   const shift = (((Math.floor(Number(day)) || 0) % count) + count) % count;
   const all = listed.map((port, index) => {
-    const r = ratingOf(port.id) || {};
-    const n = Number.isFinite(r.n) && r.n > 0 ? Math.floor(r.n) : 0;
-    // A sum that no n ratings of one to five stars could add up to is brought back within them.
-    const sum = n ? Math.min(n * SCALE, Math.max(n, Number(r.sum) || 0)) : 0;
+    const { n, sum } = countedRating(ratingOf(port.id));
     return { port, n, sum, average: n ? sum / n : null, score: scoreOf(n, sum), rank: null, tied: false, turn: (index - shift + count) % count };
   });
   const byTurn = (a, b) => a.turn - b.turn;

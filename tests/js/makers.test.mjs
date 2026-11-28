@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { MIN_RATINGS, avatarUrl, dayNumber, featuredPort, hueOf, initials, listMakers, makerOf, ownRepoStars, rankCountryPorts, rankMakers } from "../../web/js/ext/ports/makers.js";
+import { mapsOf, tallyRatings } from "../../web/js/ext/ports/rankingsRatings.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const PORTS = JSON.parse(readFileSync(new URL("web/data/ports.json", ROOT), "utf8")).ports;
@@ -349,18 +350,75 @@ test("rankCountryPorts picks merged, dedicated country, popular, then first cata
   // Multi-only European countries prefer the higher-starred Europe Civilization over EU Civ.
   assert.equal(rankCountryPorts(byCountry("SE"), { catalogOrder: PORTS })[0].id, "europeciv");
 
-  // Visitor star ratings (once at MIN_RATINGS) promote the popular community map to first.
+  // Visitors' ratings put the best rated of a country's community maps first.
   const frRated = rankCountryPorts(byCountry("FR"), {
     catalogOrder: PORTS,
-    globalMean: 4.0,
     ratingOf: (id) => (id === "franceciv-pham" ? { n: 5, sum: 24 } : { n: 0, sum: 0 }),
   });
   assert.equal(frRated[0].id, "franceciv-pham");
-
-  // Even if only one map has ratings, a well-rated map still beats an unrated peer.
   const esRated = rankCountryPorts(byCountry("ES"), {
     catalogOrder: PORTS,
     ratingOf: (id) => (id === "espana-map" ? { n: 4, sum: 19 } : { n: 0, sum: 0 }),
   });
   assert.equal(esRated[0].id, "espana-map");
+  // From the first rating: China's one rated map comes before the others, which nobody has rated.
+  const cnRated = rankCountryPorts(byCountry("CN"), {
+    catalogOrder: PORTS,
+    ratingOf: (id) => (id === "chinacivmap" ? { n: 1, sum: 5 } : { n: 0, sum: 0 }),
+  });
+  assert.equal(cnRated[0].id, "chinacivmap");
+});
+
+// A country "XX" with community maps a, b and c (in that catalog order), each of the country alone and opening inside.
+const XX = { countries: ["XX"], scope: "country" };
+const mapsOfXX = () => ["a", "b", "c"].map((id) => live(id, `Maker ${id}`, `maker-${id}/${id}`, XX));
+const orderWith = (ratings, ports = mapsOfXX()) => rankCountryPorts(ports, {
+  catalogOrder: ports,
+  ratingOf: (id) => (ratings[id] ? { n: ratings[id][0], sum: ratings[id][1] } : { n: 0, sum: 0 }),
+}).map((p) => p.id);
+
+test("a country's community maps come in the order of their visitors' score, from the first rating", () => {
+  assert.deepEqual(orderWith({}), ["a", "b", "c"]); // nobody has rated any: the catalog's order
+  assert.deepEqual(orderWith({ c: [1, 5] }), ["c", "a", "b"]); // one rating of 5 stars: 3.50
+  // A map nobody has rated counts as 3.00, where every score starts: one rated below that comes after it.
+  assert.deepEqual(orderWith({ a: [1, 1] }), ["b", "c", "a"]); // 2.50
+  assert.deepEqual(orderWith({ a: [1, 1], b: [1, 2] }), ["c", "b", "a"]); // 2.50 and 2.75
+  // Ratings of 4, 4 and 5 stars (3.67) put a map first. (The order used before counted a map's ratings only from the
+  // third, and then against the average of every rating on the site: with the site's ratings mostly five stars, these
+  // three put a map behind the maps nobody had rated.)
+  assert.deepEqual(orderWith({ c: [3, 13] }), ["c", "a", "b"]);
+  // One rating does not outrank many: 3.50 against ten ratings that average 4.8 (4.38).
+  assert.deepEqual(orderWith({ a: [1, 5], b: [10, 48] }), ["b", "a", "c"]);
+  // Equal scores: more ratings first (one rating of 5 stars and three of 4 both make 3.50).
+  assert.deepEqual(orderWith({ a: [1, 5], b: [3, 12] }), ["b", "a", "c"]);
+  // Then GitHub stars, as before.
+  const starred = mapsOfXX().map((p) => (p.id === "c" ? { ...p, github_stars: 7 } : p));
+  assert.deepEqual(orderWith({ a: [1, 5], c: [1, 5] }, starred), ["c", "a", "b"]);
+  // A total that no ratings of 1 to 5 stars could add up to is counted as the Ratings tab counts it: one rating of
+  // "50 stars" counts as one of 5 (3.50), behind two ratings of 5 (3.80).
+  assert.deepEqual(orderWith({ a: [1, 50], b: [2, 10] }), ["b", "a", "c"]);
+});
+
+test("ratings never move a map ahead of an EarthCiv edition, or ahead of a map of the country alone", () => {
+  const edition = { id: "xx", status: "merged", editionId: "xx", author: "EarthCiv", repo: "earthciv/earthciv", url: null, embed: true, ...XX };
+  const europe = live("europe", "Europe Maker", "europe-maker/europe", { countries: ["XX", "YY", "ZZ"], scope: "multi" });
+  const part = live("part", "Part Maker", "part-maker/part", { countries: ["XX"], scope: "region" });
+  const ports = [edition, ...mapsOfXX(), europe, part];
+  // Unrated, and the community maps rated as well as they can be: the edition stays first.
+  assert.deepEqual(orderWith({ a: [100, 500] }, ports), ["xx", "a", "b", "c", "europe", "part"]);
+  assert.deepEqual(orderWith({ xx: [1, 1], a: [100, 500] }, ports), ["xx", "a", "b", "c", "europe", "part"]);
+  // A map of several countries, or of a part of this one, comes after the maps of it alone, however it is rated.
+  assert.deepEqual(orderWith({ europe: [20, 100], part: [20, 100], b: [1, 1] }, ports), ["xx", "a", "c", "b", "europe", "part"]);
+  // Among themselves they go by their score too.
+  const twoEuropes = [europe, live("europe2", "Other Maker", "other-maker/europe2", { countries: ["XX", "YY"], scope: "multi" })];
+  assert.deepEqual(orderWith({ europe2: [1, 5] }, twoEuropes), ["europe2", "europe"]);
+});
+
+test("a country's maps of one kind and scope follow the Ratings tab's places", () => {
+  const ports = ["a", "b", "c", "d", "e"].map((id) => live(id, `Maker ${id}`, `maker-${id}/${id}`, XX));
+  const ratings = { a: [1, 1], b: [2, 10], c: [9, 40], d: [1, 4], e: [4, 13] };
+  const ratingOf = (id) => (ratings[id] ? { n: ratings[id][0], sum: ratings[id][1] } : { n: 0, sum: 0 });
+  const tab = mapsOf(tallyRatings(ports, ratingOf), "XX");
+  assert.ok(tab.every((x) => x.rank !== null) && new Set(tab.map((x) => x.score)).size === tab.length, "every map placed, no two alike");
+  assert.deepEqual(orderWith(ratings, ports), tab.map((x) => x.port.id));
 });
